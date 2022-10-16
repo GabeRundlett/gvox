@@ -55,6 +55,10 @@ target_link_libraries(${PROJECT_NAME}
     ${GLIB_GLIB_2_LIBRARY}
 )
 
+if((CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "GNU") AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
+endif()
+
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${GLIB_INCLUDE}
