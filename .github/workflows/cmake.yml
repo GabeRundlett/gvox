@@ -1,44 +1,54 @@
 name: CMake
-
 on:
   push:
     branches: ["master"]
   pull_request:
     branches: ["master"]
-
 jobs:
   build-linux:
+    name: Build Linux
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-
-      - name: Install ninja-build tool
-        # You may pin to the exact commit or the version.
-        # uses: seanmiddleditch/gha-setup-ninja@16b940825621068d98711680b6c3ff92201f8fc0
-        uses: seanmiddleditch/gha-setup-ninja@v3
-
+      - uses: lukka/get-cmake@latest
+      - uses: seanmiddleditch/gha-setup-ninja@v3
       - name: run-vcpkg
-        # You may pin to the exact commit or the version.
-        # uses: lukka/run-vcpkg@34684effe7451ea95f60397e56ba34c06daced68
         uses: lukka/run-vcpkg@v10.5
         with:
           vcpkgGitCommitId: a2261f65ea979eebf56074f604776160f0074b09
-
       - name: Configure CMake Clang
         run: cmake --preset=clang-x86_64-linux-gnu
-
       - name: Build Clang Debug
         run: cmake --build --preset=clang-x86_64-linux-gnu-debug
-
       - name: Build Clang Release
         run: cmake --build --preset=clang-x86_64-linux-gnu-release
-
       - name: Configure CMake GCC
         run: cmake --preset=gcc-x86_64-linux-gnu
-
       - name: Build GCC Debug
         run: cmake --build --preset=gcc-x86_64-linux-gnu-debug
-
       - name: Build GCC Release
         run: cmake --build --preset=gcc-x86_64-linux-gnu-release
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: microsoft/setup-msbuild@v1.0.2
+      - uses: lukka/get-cmake@latest
+      - uses: seanmiddleditch/gha-setup-ninja@v3
+      - name: run-vcpkg
+        uses: lukka/run-vcpkg@v10.5
+        with:
+          vcpkgGitCommitId: a2261f65ea979eebf56074f604776160f0074b09
+      # - name: Configure CMake Clang
+      #   run: cmake --preset=clang-x86_64-windows-msvc
+      # - name: Build Clang Debug
+      #   run: cmake --build --preset=clang-x86_64-windows-msvc-debug
+      # - name: Build Clang Release
+      #   run: cmake --build --preset=clang-x86_64-windows-msvc-release
+      - name: Configure CMake CL.exe
+        run: cmake --preset=cl-x86_64-windows-msvc
+      - name: Build CL.exe Debug
+        run: cmake --build --preset=cl-x86_64-windows-msvc-debug
+      - name: Build CL.exe Release
+        run: cmake --build --preset=cl-x86_64-windows-msvc-release
