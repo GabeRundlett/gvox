@@ -66,12 +66,25 @@ void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader) {
     g_hash_table_insert(ctx->format_loader_table, (void *)format_loader.format_name, value);
 }
 
+static FILE *gvox_open_file(char const *filepath, char const *permissions) {
+#if __linux__
+    FILE *fp = fopen(filepath, permissions);
+    return fp;
+#elif _WIN32
+    FILE *fp = NULL;
+    errno_t file_open_result = fopen_s(&fp, filepath, permissions);
+    if (file_open_result != 0)
+        return NULL;
+    return fp;
+#endif
+}
+
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     GVoxScene result = {0};
     GVoxHeader file_header;
     GVoxPayload file_payload;
     GVoxFormatName file_format_name;
-    FILE *fp = fopen(filepath, "rb+");
+    FILE *fp = gvox_open_file(filepath, "rb+");
     if (fp == NULL)
         return result;
     size_t header_bytes_read = fread(&file_header, sizeof(file_header), 1, fp);
@@ -99,7 +112,7 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
 
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format) {
     GVoxScene result = {0};
-    FILE *fp = fopen(filepath, "rb+");
+    FILE *fp = gvox_open_file(filepath, "rb+");
     if (fp == NULL)
         return result;
     fseek(fp, 0, SEEK_END);
@@ -127,12 +140,12 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
         return;
     // printf("creating payload (used for saving)\n");
     file_payload = format_loader->create_payload(scene);
-    FILE *fp = fopen(filepath, "wb+");
+    FILE *fp = gvox_open_file(filepath, "wb+");
     if (fp == NULL)
         goto cleanup_payload;
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = strlen(format);
-    // printf("saving gvox file header with format_name_size %lo and payload_size %lo\n", file_header.format_name_size, file_header.payload_size);
+    // printf("saving gvox file header with format_name_size %zu and payload_size %zu\n", file_header.format_name_size, file_header.payload_size);
     if (!is_raw) {
         fwrite(&file_header, sizeof(file_header), 1, fp);
         fwrite(format, file_header.format_name_size, 1, fp);
