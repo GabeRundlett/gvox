@@ -40,5 +40,5 @@ jobs:
       - name: Build GCC Debug
         run: cmake --build --preset=gcc-x86_64-linux-gnu-debug
 
-      - name: Build GCC Debug
+      - name: Build GCC Release
         run: cmake --build --preset=gcc-x86_64-linux-gnu-release
