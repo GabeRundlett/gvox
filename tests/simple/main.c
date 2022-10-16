@@ -45,20 +45,20 @@ void test_manually_create_gvox_simple(GVoxContext *gvox) {
         scene.nodes[0].voxels[i].id = (uint32_t)i;
     }
     print_voxels(scene);
-    gvox_save(gvox, scene, "test.gvox", "gvox_simple");
+    gvox_save(gvox, scene, "tests/simple/voxel_files/test.gvox", "gvox_simple");
     gvox_destroy_scene(scene);
 }
 
 void test_load_gvox_simple(GVoxContext *gvox) {
     GVoxScene scene;
-    scene = gvox_load(gvox, "test.gvox");
+    scene = gvox_load(gvox, "tests/simple/voxel_files/test.gvox");
     print_voxels(scene);
     gvox_destroy_scene(scene);
 }
 
 void test_load_magicavoxel(GVoxContext *gvox) {
     GVoxScene scene;
-    scene = gvox_load_raw(gvox, "magica.vox", "magicavoxel");
+    scene = gvox_load_raw(gvox, "tests/simple/voxel_files/magica.vox", "magicavoxel");
     print_voxels(scene);
     gvox_destroy_scene(scene);
 }
@@ -66,9 +66,9 @@ void test_load_magicavoxel(GVoxContext *gvox) {
 int main(void) {
     GVoxContext *gvox = gvox_create_context();
 
-    // test_manually_create_gvox_simple(gvox);
-    // test_load_gvox_simple(gvox);
-    test_load_magicavoxel(gvox);
+    test_manually_create_gvox_simple(gvox);
+    test_load_gvox_simple(gvox);
+    // test_load_magicavoxel(gvox);
 
     gvox_destroy_context(gvox);
 }
