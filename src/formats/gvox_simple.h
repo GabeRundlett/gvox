@@ -1,5 +1,5 @@
-#ifndef GVOX_FORMATS_GVOX_RAW
-#define GVOX_FORMATS_GVOX_RAW
+#ifndef GVOX_FORMATS_GVOX_SIMPLE
+#define GVOX_FORMATS_GVOX_SIMPLE
 
 #include <gvox/gvox.h>
 
