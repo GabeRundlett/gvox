@@ -1,6 +1,7 @@
 # This repo is the home of the GVOX library
 
-`.gvox` is a meta-format that allows for several voxel data structures to co-exist within a single file
+`.gvox` is a meta-format that allows for several voxel data structures to co-exist within a single file.
+
 GVOX is the library that ties it all together, supplying parsing, conversion and serialization mechanisms to the consumer.
 
 ## Goals
