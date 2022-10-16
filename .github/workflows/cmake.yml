@@ -31,14 +31,14 @@ jobs:
       - name: Build Clang Debug
         run: cmake --build --preset=clang-x86_64-linux-gnu-debug
 
-      # - name: Build Clang Release
-      #   run: cmake --build --preset=clang-x86_64-linux-gnu-release
+      - name: Build Clang Release
+        run: cmake --build --preset=clang-x86_64-linux-gnu-release
 
-      # - name: Configure CMake GCC
-      #   run: cmake --preset=gcc-x86_64-linux-gnu
+      - name: Configure CMake GCC
+        run: cmake --preset=gcc-x86_64-linux-gnu
 
-      # - name: Build GCC Debug
-      #   run: cmake --build --preset=gcc-x86_64-linux-gnu-debug
+      - name: Build GCC Debug
+        run: cmake --build --preset=gcc-x86_64-linux-gnu-debug
 
-      # - name: Build GCC Debug
-      #   run: cmake --build --preset=gcc-x86_64-linux-gnu-release
+      - name: Build GCC Debug
+        run: cmake --build --preset=gcc-x86_64-linux-gnu-release

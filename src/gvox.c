@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include <gvox/gvox.h>
 #include <glib.h>
 
@@ -70,18 +71,23 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     GVoxHeader file_header;
     GVoxPayload file_payload;
     GVoxFormatName file_format_name;
-    FILE *fp;
-    errno_t file_open_result = fopen_s(&fp, filepath, "rb+");
-    if (fp == NULL || file_open_result != 0)
+    FILE *fp = fopen(filepath, "rb+");
+    if (fp == NULL)
         return result;
-    fread(&file_header, sizeof(file_header), 1, fp);
+    size_t header_bytes_read = fread(&file_header, sizeof(file_header), 1, fp);
+    assert(header_bytes_read == sizeof(file_header) && "How did this happen?");
+    (void)header_bytes_read;
     file_format_name.str_size = file_header.format_name_size;
     file_format_name.str = malloc(file_format_name.str_size + 1);
-    fread(file_format_name.str, file_format_name.str_size, 1, fp);
+    size_t format_name_bytes_read = fread(file_format_name.str, file_format_name.str_size, 1, fp);
+    assert(format_name_bytes_read == file_format_name.str_size && "How did this happen?");
+    (void)format_name_bytes_read;
     file_format_name.str[file_format_name.str_size] = '\0';
     file_payload.size = file_header.payload_size;
     file_payload.data = malloc(file_payload.size);
-    fread(file_payload.data, file_payload.size, 1, fp);
+    size_t payload_bytes_read = fread(file_payload.data, file_payload.size, 1, fp);
+    assert(payload_bytes_read == file_payload.size && "How did this happen?");
+    (void)payload_bytes_read;
     fclose(fp);
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, file_format_name.str);
     if (format_loader)
@@ -93,9 +99,8 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
 
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format) {
     GVoxScene result = {0};
-    FILE *fp;
-    errno_t file_open_result = fopen_s(&fp, filepath, "rb+");
-    if (fp == NULL || file_open_result != 0)
+    FILE *fp = fopen(filepath, "rb+");
+    if (fp == NULL)
         return result;
     fseek(fp, 0, SEEK_END);
     long file_size = ftell(fp);
@@ -103,7 +108,9 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
     GVoxPayload file_payload;
     file_payload.size = (size_t)file_size;
     file_payload.data = malloc(file_payload.size);
-    fread(file_payload.data, file_payload.size, 1, fp);
+    size_t payload_bytes_read = fread(file_payload.data, file_payload.size, 1, fp);
+    assert(payload_bytes_read == file_payload.size && "How did this happen?");
+    (void)payload_bytes_read;
     fclose(fp);
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
     if (format_loader)
@@ -120,13 +127,12 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
         return;
     // printf("creating payload (used for saving)\n");
     file_payload = format_loader->create_payload(scene);
-    FILE *fp;
-    errno_t file_open_result = fopen_s(&fp, filepath, "wb+");
-    if (fp == NULL || file_open_result != 0)
+    FILE *fp = fopen(filepath, "wb+");
+    if (fp == NULL)
         goto cleanup_payload;
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = strlen(format);
-    // printf("saving gvox file header with format_name_size %lld and payload_size %lld\n", file_header.format_name_size, file_header.payload_size);
+    // printf("saving gvox file header with format_name_size %lo and payload_size %lo\n", file_header.format_name_size, file_header.payload_size);
     if (!is_raw) {
         fwrite(&file_header, sizeof(file_header), 1, fp);
         fwrite(format, file_header.format_name_size, 1, fp);

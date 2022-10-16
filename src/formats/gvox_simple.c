@@ -6,7 +6,7 @@
 
 GVoxPayload gvox_simple_create_payload(GVoxScene scene) {
     GVoxPayload result = {0};
-    // printf("creating gvox_simple payload from the %lld nodes at %p\n", scene.node_n, (void *)scene.nodes);
+    // printf("creating gvox_simple payload from the %lo nodes at %p\n", scene.node_n, (void *)scene.nodes);
     result.size += sizeof(size_t);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)
@@ -35,13 +35,13 @@ GVoxPayload gvox_simple_create_payload(GVoxScene scene) {
 }
 
 void gvox_simple_destroy_payload(GVoxPayload payload) {
-    // printf("destroying gvox_simple payload at %p with size %lld\n", payload.data, payload.size);
+    // printf("destroying gvox_simple payload at %p with size %lo\n", payload.data, payload.size);
     free(payload.data);
 }
 
 GVoxScene gvox_simple_parse_payload(GVoxPayload payload) {
     GVoxScene result = {0};
-    // printf("parsing gvox_simple payload at %p with size %lld\n", payload.data, payload.size);
+    // printf("parsing gvox_simple payload at %p with size %lo\n", payload.data, payload.size);
     uint8_t *buffer_ptr = (uint8_t *)payload.data;
     uint8_t *buffer_sentinel = (uint8_t *)payload.data + payload.size;
     result.node_n = *(size_t *)buffer_ptr;
