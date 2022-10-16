@@ -6,7 +6,7 @@ GVOX is the library that ties it all together, supplying parsing, conversion and
 ## Goals
  * I want GVOX to be accessible to everyone making a voxel engine, including but not limited to
    * People who are targeting the Web, using Rust or other WASM compatible languages
-   * People using any language that has C bindings, such as ZIG, C++, (Java?) and many more
+   * People using any language that has simple C bindability, such as ZIG, C++, (Java?) and many more
  
    This is why the library is written in C99, and I plan on creating bindings for as many projects that want it (Open an issue on GitHub, and we can work together!)
 
