@@ -46,7 +46,11 @@ find_library(GLIB_GLIB_2_LIBRARY "glib-2.0")
 # find_library(GLIB_GMODULE_2_LIBRARY "gmodule-2.0")
 # find_library(GLIB_GTHREAD_2_LIBRARY "gthread-2.0")
 
+find_package(Threads REQUIRED)
+
 target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+    Threads::Threads
     PRIVATE
     ${GLIB_GLIB_2_LIBRARY}
 )
