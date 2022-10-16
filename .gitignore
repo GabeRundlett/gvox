@@ -1,0 +1,5 @@
+.out*
+.vs*
+
+imgui.ini
+*.dot
