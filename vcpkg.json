@@ -3,9 +3,7 @@
     "version": "0.0.1",
     "description": "GVOX Voxel Format Library",
     "homepage": "https://github.com/GabeRundlett/gvox",
-    "dependencies": [
-        "glib"
-    ],
+    "dependencies": [],
     "features": {
         "tests": {
             "description": "Build Tests"

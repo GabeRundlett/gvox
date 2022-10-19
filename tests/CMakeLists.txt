@@ -23,6 +23,13 @@ function(GVOX_CREATE_TEST)
             )
         endif()
     endif()
+
+    foreach(FORMAT_NAME ${GVOX_FORMATS})
+        add_custom_command(TARGET gvox_test_${FOLDER_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:${FORMAT_NAME}>
+                $<TARGET_FILE_DIR:gvox_test_${FOLDER_NAME}>)
+    endforeach()
 endfunction()
 
 GVOX_CREATE_TEST(

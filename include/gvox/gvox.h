@@ -51,12 +51,16 @@ typedef struct _GVoxContext GVoxContext;
 
 GVoxContext *gvox_create_context(void);
 void gvox_destroy_context(GVoxContext *ctx);
+void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader);
+void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
+
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format);
+
 void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
 void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
+
 void gvox_destroy_scene(GVoxScene scene);
-void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader);
 
 #ifdef __cplusplus
 }

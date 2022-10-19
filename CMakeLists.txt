@@ -30,45 +30,32 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
 endif()
 
 add_library(${PROJECT_NAME} STATIC
-    "src/gvox.c"
-    "src/formats/gvox_simple.c"
-    "src/formats/magicavoxel.c"
+    "src/gvox.cpp"
 )
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} PUBLIC c_std_99)
-
-find_path(GLIB_INCLUDE "glib.h" PATH_SUFFIXES "glib-2.0")
-find_library(GLIB_GLIB_2_LIBRARY "glib-2.0")
-# find_library(GLIB_GIO_2_LIBRARY "gio-2.0")
-# find_library(GLIB_GOBJECT_2_LIBRARY "gobject-2.0")
-# find_library(GLIB_GMODULE_2_LIBRARY "gmodule-2.0")
-# find_library(GLIB_GTHREAD_2_LIBRARY "gthread-2.0")
-
-find_package(Threads REQUIRED)
-
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-    Threads::Threads
-    PRIVATE
-    ${GLIB_GLIB_2_LIBRARY}
-)
-
-if((CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "GNU") AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
-endif()
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
-    ${GLIB_INCLUDE}
-    ${GLIB_INCLUDE}/../../lib/glib-2.0/include
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 set_project_warnings(${PROJECT_NAME})
+
+set(GVOX_FORMATS
+    gvox_simple
+    magicavoxel
+)
+
+foreach(FORMAT_NAME ${GVOX_FORMATS})
+    add_library(${FORMAT_NAME} SHARED
+        "src/formats/${FORMAT_NAME}.cpp"
+    )
+    target_link_libraries(${FORMAT_NAME} PRIVATE gvox::gvox)
+endforeach()
 
 if(GVOX_ENABLE_TESTS)
     add_subdirectory(tests)
