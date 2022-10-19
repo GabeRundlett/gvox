@@ -4,7 +4,11 @@
 #include <stdlib.h>
 #include <memory.h>
 
+#if __linux__
+#define EXPORT
+#elif _WIN32
 #define EXPORT __declspec(dllexport) __stdcall
+#endif
 
 extern "C" {
 GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {

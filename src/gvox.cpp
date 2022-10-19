@@ -10,7 +10,8 @@
 #include <filesystem>
 
 #if __linux__
-
+#include <unistd.h>
+#include <dlfcn.h>
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -26,13 +27,15 @@ static GVoxFormatLoader *gvox_context_find_loader(GVoxContext *ctx, std::string 
 }
 
 std::filesystem::path get_exe_path() {
+    char *out_str = new char[512];
 #if __linux__
-    return {};
+    readlink("/proc/self/exe", out_str, 512);
 #elif _WIN32
-    char *out_str = new char[MAX_PATH];
-    GetModuleFileName(NULL, out_str, MAX_PATH);
-    return std::filesystem::path(out_str);
+    GetModuleFileName(NULL, out_str, 512);
 #endif
+    auto result = std::filesystem::path(out_str);
+    delete out_str;
+    return result;
 }
 
 GVoxContext *gvox_create_context(void) {
