@@ -1,6 +1,6 @@
 {
     "name": "gvox",
-    "version": "0.0.1",
+    "version-string": "nightly",
     "description": "GVOX Voxel Format Library",
     "homepage": "https://github.com/GabeRundlett/gvox",
     "dependencies": [],
