@@ -46,10 +46,10 @@ set(GVOX_FORMATS
 )
 
 foreach(FORMAT_NAME ${GVOX_FORMATS})
-    add_library(${FORMAT_NAME} SHARED
+    add_library(gvox_format_${FORMAT_NAME} SHARED
         "src/formats/${FORMAT_NAME}.cpp"
     )
-    target_link_libraries(${FORMAT_NAME} PRIVATE gvox::gvox)
+    target_link_libraries(gvox_format_${FORMAT_NAME} PRIVATE gvox::gvox)
 endforeach()
 
 if(GVOX_ENABLE_TESTS)
@@ -80,5 +80,8 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_DATADIR}/gvox)
 install(TARGETS gvox EXPORT gvox-targets)
+foreach(FORMAT_NAME ${GVOX_FORMATS})
+    install(TARGETS gvox_format_${FORMAT_NAME} EXPORT gvox-targets)
+endforeach()
 install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ TYPE INCLUDE)
