@@ -37,7 +37,7 @@ typedef struct {
 
 typedef struct {
     size_t size;
-    void *data;
+    uint8_t *data;
 } GVoxPayload;
 
 typedef struct {

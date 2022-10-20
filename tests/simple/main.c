@@ -66,9 +66,9 @@ void test_load_magicavoxel(GVoxContext *gvox) {
 int main(void) {
     GVoxContext *gvox = gvox_create_context();
 
-    test_manually_create_gvox_simple(gvox);
-    test_load_gvox_simple(gvox);
-    // test_load_magicavoxel(gvox);
+    // test_manually_create_gvox_simple(gvox);
+    // test_load_gvox_simple(gvox);
+    test_load_magicavoxel(gvox);
 
     gvox_destroy_context(gvox);
 }

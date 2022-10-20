@@ -34,7 +34,7 @@ std::filesystem::path get_exe_path() {
     GetModuleFileName(NULL, out_str, 512);
 #endif
     auto result = std::filesystem::path(out_str);
-    delete out_str;
+    delete[] out_str;
     return result;
 }
 
@@ -94,7 +94,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
 }
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
-    GVoxScene result = {0};
+    GVoxScene result = {};
     GVoxHeader file_header;
     GVoxPayload file_payload;
     struct {
@@ -106,11 +106,11 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     file.read((char *)&file_header, sizeof(file_header));
     file_format_name.str_size = file_header.format_name_size;
     file_format_name.str = new char[file_format_name.str_size + 1];
-    file.read(file_format_name.str, file_format_name.str_size);
+    file.read(file_format_name.str, static_cast<std::streamsize>(file_format_name.str_size));
     file_format_name.str[file_format_name.str_size] = '\0';
     file_payload.size = file_header.payload_size;
     file_payload.data = new uint8_t[file_payload.size];
-    file.read((char *)file_payload.data, file_payload.size);
+    file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, file_format_name.str);
     if (format_loader)
@@ -121,13 +121,14 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
 }
 
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format) {
-    GVoxScene result = {0};
+    GVoxScene result = {};
     GVoxPayload file_payload;
     auto file = std::ifstream(filepath, std::ios::binary | std::ios::ate);
     assert(file.is_open());
     file_payload.size = static_cast<size_t>(file.tellg());
     file_payload.data = new uint8_t[file_payload.size];
-    file.read((char *)file_payload.data, file_payload.size);
+    file.seekg(0, std::ios::beg);
+    file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
     if (format_loader)
@@ -152,9 +153,9 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
     // printf("saving gvox file header with format_name_size %zu and payload_size %zu\n", file_header.format_name_size, file_header.payload_size);
     if (!is_raw) {
         file.write(reinterpret_cast<char const *>(&file_header), sizeof(file_header));
-        file.write(reinterpret_cast<char const *>(format), file_header.format_name_size);
+        file.write(reinterpret_cast<char const *>(format), static_cast<std::streamsize>(file_header.format_name_size));
     }
-    file.write(reinterpret_cast<char const *>(file_payload.data), file_payload.size);
+    file.write(reinterpret_cast<char const *>(file_payload.data), static_cast<std::streamsize>(file_payload.size));
     file.close();
 cleanup_payload:
     // printf("destroying payload (used for saving)\n");
