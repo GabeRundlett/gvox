@@ -63,10 +63,12 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     using GVoxDestroyPayloadFunc = void (*)(GVoxPayload);
     using GVoxParsePayloadFunc = GVoxScene (*)(GVoxPayload);
 
+    std::string filename = std::string("gvox_format_") + format_loader_name;
+
 #if __linux__
-    void *so_handle = dlopen(format_loader_name, RTLD_LAZY);
+    void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
     if (!so_handle) {
-        auto path = get_exe_path() / format_loader_name;
+        auto path = get_exe_path() / filename.c_str();
         so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
     }
     assert(so_handle != nullptr);
@@ -77,9 +79,9 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         .parse_payload = (GVoxParsePayloadFunc)dlsym(so_handle, "gvox_parse_payload"),
     };
 #elif _WIN32
-    HINSTANCE dll_handle = LoadLibrary(format_loader_name);
+    HINSTANCE dll_handle = LoadLibrary(filename.c_str());
     if (!dll_handle) {
-        auto path = get_exe_path() / format_loader_name;
+        auto path = get_exe_path() / filename.c_str();
         dll_handle = LoadLibrary(path.string().c_str());
     }
     assert(dll_handle != nullptr);
