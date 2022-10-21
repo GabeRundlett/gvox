@@ -36,6 +36,9 @@ std::filesystem::path get_exe_path() {
     GetModuleFileName(NULL, out_str, 512);
 #endif
     auto result = std::filesystem::path(out_str);
+#if __linux__
+    result = result.parent_path();
+#endif
     delete[] out_str;
     return result;
 }
@@ -68,6 +71,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     std::string filename = std::string("gvox_format_") + format_loader_name;
 
 #if __linux__
+    filename = "lib" + filename + ".so";
     void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
     if (!so_handle) {
         auto path = get_exe_path() / filename.c_str();
