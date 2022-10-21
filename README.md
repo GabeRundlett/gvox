@@ -9,7 +9,7 @@ GVOX is the library that ties it all together, supplying parsing, conversion and
    * People who are targeting the Web, using Rust or other WASM compatible languages
    * People using any language that has simple C bindability, such as ZIG, C++, (Java?) and many more
  
-   This is why the library is written in C99, and I plan on creating bindings for as many projects that want it (Open an issue on GitHub, and we can work together!)
+   This is why the library uses a C99 interface, and I plan on creating bindings for as many projects that want it (Open an issue on GitHub, and we can work together!)
 
  * I want GVOX to be extremely extensible, so anyone can create their own formats that are then automatically convertible to any of the existing formats supported by GVOX!
  
@@ -17,8 +17,8 @@ GVOX is the library that ties it all together, supplying parsing, conversion and
 
 ## Building
 For now, you must have the following things installed to build the repository
- * A C compiler
- * CMake (3.12 or higher)
+ * A C++ compiler
+ * CMake (3.21 or higher)
  * Ninja build
  * vcpkg (plus the VCPKG_ROOT environment variable)
 

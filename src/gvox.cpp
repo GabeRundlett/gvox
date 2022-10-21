@@ -8,6 +8,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <vector>
 
 #if __linux__
 #include <unistd.h>
