@@ -20,6 +20,7 @@
 
 struct _GVoxContext {
     std::unordered_map<std::string, GVoxFormatLoader *> format_loader_table = {};
+    std::vector<std::filesystem::path> root_paths = {};
 };
 
 static GVoxFormatLoader *gvox_context_find_loader(GVoxContext *ctx, std::string const &format_name) {
@@ -95,6 +96,10 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     gvox_register_format(ctx, format_loader);
 }
 
+void gvox_register_root_path(GVoxContext *ctx, char const *path) {
+    ctx->root_paths.push_back(path);
+}
+
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     GVoxScene result = {};
     GVoxHeader file_header;
@@ -104,6 +109,13 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
         size_t str_size;
     } file_format_name;
     auto file = std::ifstream(filepath, std::ios::binary);
+    if (!file.is_open()) {
+        for (auto const &root_path : ctx->root_paths) {
+            file = std::ifstream(root_path / filepath, std::ios::binary);
+            if (file.is_open())
+                break;
+        }
+    }
     assert(file.is_open());
     file.read((char *)&file_header, sizeof(file_header));
     file_format_name.str_size = file_header.format_name_size;
@@ -126,6 +138,13 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
     GVoxScene result = {};
     GVoxPayload file_payload;
     auto file = std::ifstream(filepath, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        for (auto const &root_path : ctx->root_paths) {
+            file = std::ifstream(root_path / filepath, std::ios::binary | std::ios::ate);
+            if (file.is_open())
+                break;
+        }
+    }
     assert(file.is_open());
     file_payload.size = static_cast<size_t>(file.tellg());
     file_payload.data = new uint8_t[file_payload.size];
