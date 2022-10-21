@@ -188,8 +188,7 @@ void Parser::parse_chunk_nSHP() {
     // }
 }
 void Parser::parse_chunk_IMAP() {
-    (void)buffer_ptr;
-    assert(0 && "BRUH");
+    // assert(0 && "BRUH");
 }
 void Parser::parse_chunk_LAYR() {
     // int node_id = parse_int32(&buffer_ptr);
@@ -201,8 +200,7 @@ void Parser::parse_chunk_MATL() {
     // parse_dict(&buffer_ptr);
 }
 void Parser::parse_chunk_MATT() {
-    (void)buffer_ptr;
-    assert(0 && "MATT Deprecated");
+    // assert(0 && "MATT Deprecated");
 }
 void Parser::parse_chunk_rOBJ() {
     parse_dict(&buffer_ptr);
