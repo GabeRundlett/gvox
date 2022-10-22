@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <memory.h>
-#include <assert.h>
 
 #include <array>
 #include <vector>
@@ -188,7 +187,6 @@ void Parser::parse_chunk_nSHP() {
     // }
 }
 void Parser::parse_chunk_IMAP() {
-    // assert(0 && "BRUH");
 }
 void Parser::parse_chunk_LAYR() {
     // int node_id = parse_int32(&buffer_ptr);
@@ -200,7 +198,6 @@ void Parser::parse_chunk_MATL() {
     // parse_dict(&buffer_ptr);
 }
 void Parser::parse_chunk_MATT() {
-    // assert(0 && "MATT Deprecated");
 }
 void Parser::parse_chunk_rOBJ() {
     parse_dict(&buffer_ptr);

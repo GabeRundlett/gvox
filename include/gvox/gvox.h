@@ -53,7 +53,7 @@ GVoxContext *gvox_create_context(void);
 void gvox_destroy_context(GVoxContext *ctx);
 void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader);
 void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
-void gvox_register_root_path(GVoxContext *ctx, char const *path);
+void gvox_push_root_path(GVoxContext *ctx, char const *path);
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format);

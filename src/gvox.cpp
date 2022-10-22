@@ -46,6 +46,8 @@ std::filesystem::path get_exe_path() {
 GVoxContext *gvox_create_context(void) {
     GVoxContext *result = new GVoxContext;
     gvox_load_format(result, "gvox_simple");
+    gvox_load_format(result, "gvox_u32");
+    gvox_load_format(result, "gvox_u32_delta");
     gvox_load_format(result, "magicavoxel");
     return result;
 }
@@ -150,7 +152,10 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
                 break;
         }
     }
-    assert(file.is_open());
+    if (!file.is_open()) {
+        // TODO: Error handling
+        return result;
+    }
     file_payload.size = static_cast<size_t>(file.tellg());
     file_payload.data = new uint8_t[file_payload.size];
     file.seekg(0, std::ios::beg);
