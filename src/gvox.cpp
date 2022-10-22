@@ -36,9 +36,8 @@ std::filesystem::path get_exe_path() {
     GetModuleFileName(NULL, out_str, 512);
 #endif
     auto result = std::filesystem::path(out_str);
-#if __linux__
-    result = result.parent_path();
-#endif
+    if (!std::filesystem::is_directory(result))
+        result = result.parent_path();
     delete[] out_str;
     return result;
 }
@@ -87,6 +86,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         .parse_payload = (GVoxParsePayloadFunc)dlsym(so_handle, "gvox_parse_payload"),
     };
 #elif _WIN32
+    filename = filename + ".dll";
     HINSTANCE dll_handle = LoadLibrary(filename.c_str());
     if (!dll_handle) {
         auto path = get_exe_path() / filename.c_str();
