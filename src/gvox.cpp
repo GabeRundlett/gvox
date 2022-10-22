@@ -103,8 +103,12 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     gvox_register_format(ctx, format_loader);
 }
 
-void gvox_register_root_path(GVoxContext *ctx, char const *path) {
+void gvox_push_root_path(GVoxContext *ctx, char const *path) {
     ctx->root_paths.push_back(path);
+}
+
+void gvox_pop_root_path(GVoxContext *ctx) {
+    ctx->root_paths.pop_back();
 }
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
