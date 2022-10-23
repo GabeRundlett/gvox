@@ -4,6 +4,9 @@
 
 #include <gvox/gvox.h>
 
+#include <chrono>
+#include <iostream>
+
 float sample_terrain(float x, float y, float z) {
     float r = (float)(rand() % 1000) * 0.001f;
     return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 3.0f + r * 0.5f;
@@ -42,6 +45,13 @@ GVoxScene create_test_scene() {
                     result.color.z = 0.3f;
                     result.id = 1;
                 }
+
+                // result.id = rand() % 1000;
+                // float r = (float)(result.id) * 0.001f;
+                // result.color.x = r;
+                // result.color.y = r;
+                // result.color.z = r;
+
                 scene.nodes[0].voxels[i] = result;
             }
         }
@@ -69,7 +79,6 @@ GVoxScene create_test_scene() {
                         result.color.z = 0.1f;
                         result.id = 3;
                     }
-
                     scene.nodes[0].voxels[i] = result;
                 }
             }
@@ -78,14 +87,43 @@ GVoxScene create_test_scene() {
     return scene;
 }
 
+using Clock = std::chrono::high_resolution_clock;
+
+struct Timer {
+    Clock::time_point start = Clock::now();
+
+    ~Timer() {
+        auto now = Clock::now();
+        std::cout << "elapsed: " << std::chrono::duration<float>(now - start).count() << std::endl;
+    }
+};
+
 int main() {
     GVoxContext *gvox = gvox_create_context();
 
     GVoxScene scene = create_test_scene();
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_simple.gvox", "gvox_simple");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_delta.gvox", "gvox_u32_delta");
-    gvox_save_raw(gvox, scene, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
+
+    {
+        Timer timer{};
+        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_simple.gvox", "gvox_simple");
+        std::cout << "gvox_simple      | ";
+    }
+    {
+        Timer timer{};
+        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+        std::cout << "gvox_u32         | ";
+    }
+    {
+        Timer timer{};
+        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
+        std::cout << "gvox_u32_palette | ";
+    }
+    {
+        Timer timer{};
+        gvox_save_raw(gvox, scene, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
+        std::cout << "magicavoxel      | ";
+    }
+
     gvox_destroy_scene(scene);
 
     gvox_destroy_context(gvox);

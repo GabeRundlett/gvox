@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <memory.h>
+#include <assert.h>
 
 #include <array>
 #include <vector>
@@ -136,6 +137,12 @@ void Parser::parse_chunk_XYZI() {
     memset(nodes.back().voxels, 0, size * sizeof(GVoxVoxel));
     for (int i = 0; i < voxel_count; ++i) {
         MagicavoxelVoxel voxel = *(reinterpret_cast<MagicavoxelVoxel *>(buffer_ptr) + i);
+        // assert(voxel.x < size_x);
+        // assert(voxel.y < size_y);
+        // assert(voxel.z < size_z);
+        voxel.x = voxel.x < size_x ? voxel.x : (size_x - 1);
+        voxel.y = voxel.y < size_y ? voxel.y : (size_y - 1);
+        voxel.z = voxel.z < size_z ? voxel.z : (size_z - 1);
         size_t index = voxel.x + voxel.y * size_x + voxel.z * size_x * size_y;
         nodes.back().voxels[index] = GVoxVoxel{.id = static_cast<uint32_t>(voxel.color_index)};
     }

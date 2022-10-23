@@ -14,7 +14,6 @@
 extern "C" {
 GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {
     GVoxPayload result = {};
-    // printf("creating gvox_simple payload from the %zu nodes at %p\n", scene.node_n, (void *)scene.nodes);
     result.size += sizeof(size_t);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)
@@ -56,13 +55,11 @@ GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {
 }
 
 void EXPORT gvox_destroy_payload(GVoxPayload payload) {
-    // printf("destroying gvox_simple payload at %p with size %zu\n", payload.data, payload.size);
     delete[] payload.data;
 }
 
 GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
     GVoxScene result = {};
-    // printf("parsing gvox_simple payload at %p with size %zu\n", payload.data, payload.size);
     uint8_t *buffer_ptr = (uint8_t *)payload.data;
     uint8_t *buffer_sentinel = (uint8_t *)payload.data + payload.size;
     result.node_n = *(size_t *)buffer_ptr;
@@ -77,7 +74,7 @@ GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
         result.nodes[node_i].size_z = *(size_t *)buffer_ptr;
         buffer_ptr += sizeof(result.nodes[node_i].size_z);
         size_t voxels_n = result.nodes[node_i].size_x * result.nodes[node_i].size_y * result.nodes[node_i].size_z;
-        size_t voxels_size = voxels_n * sizeof(uint32_t);
+        size_t voxels_size = voxels_n * sizeof(GVoxVoxel);
         result.nodes[node_i].voxels = (GVoxVoxel *)malloc(voxels_size);
         for (size_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
             uint32_t u32_voxel = 0;

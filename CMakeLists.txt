@@ -43,7 +43,7 @@ set_project_warnings(${PROJECT_NAME})
 set(GVOX_FORMATS
     gvox_simple
     gvox_u32
-    gvox_u32_delta
+    gvox_u32_palette
     magicavoxel
 )
 

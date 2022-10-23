@@ -46,7 +46,7 @@ GVoxContext *gvox_create_context(void) {
     GVoxContext *result = new GVoxContext;
     gvox_load_format(result, "gvox_simple");
     gvox_load_format(result, "gvox_u32");
-    gvox_load_format(result, "gvox_u32_delta");
+    gvox_load_format(result, "gvox_u32_palette");
     gvox_load_format(result, "magicavoxel");
     return result;
 }
@@ -78,7 +78,9 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         auto path = get_exe_path() / filename.c_str();
         so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
     }
-    assert(so_handle != nullptr);
+    if (!so_handle) {
+        return;
+    }
     GVoxFormatLoader format_loader = {
         .format_name = format_loader_name,
         .create_payload = (GVoxCreatePayloadFunc)dlsym(so_handle, "gvox_create_payload"),
@@ -92,7 +94,9 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         auto path = get_exe_path() / filename.c_str();
         dll_handle = LoadLibrary(path.string().c_str());
     }
-    assert(dll_handle != nullptr);
+    if (!dll_handle) {
+        return;
+    }
     GVoxFormatLoader format_loader = {
         .format_name = format_loader_name,
         .create_payload = (GVoxCreatePayloadFunc)GetProcAddress(dll_handle, "gvox_create_payload"),
@@ -178,14 +182,12 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
     if (!format_loader)
         return;
-    // printf("creating payload (used for saving)\n");
     file_payload = format_loader->create_payload(scene);
     auto file = std::ofstream(filepath, std::ios::binary);
     if (!file.is_open())
         goto cleanup_payload;
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = strlen(format);
-    // printf("saving gvox file header with format_name_size %zu and payload_size %zu\n", file_header.format_name_size, file_header.payload_size);
     if (!is_raw) {
         file.write(reinterpret_cast<char const *>(&file_header), sizeof(file_header));
         file.write(reinterpret_cast<char const *>(format), static_cast<std::streamsize>(file_header.format_name_size));
@@ -193,7 +195,6 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
     file.write(reinterpret_cast<char const *>(file_payload.data), static_cast<std::streamsize>(file_payload.size));
     file.close();
 cleanup_payload:
-    // printf("destroying payload (used for saving)\n");
     format_loader->destroy_payload(file_payload);
 }
 
