@@ -31,6 +31,7 @@ function(GVOX_CREATE_TEST)
                 $<TARGET_FILE_DIR:${TGT}>
         )
     endforeach()
+    set_project_sanitizers(${TGT})
 endfunction()
 
 GVOX_CREATE_TEST(

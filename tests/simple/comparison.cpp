@@ -7,14 +7,26 @@
 #include <chrono>
 #include <iostream>
 
+#include "noise.hpp"
+#include "print.h"
+
+FractalNoiseConfig noise_conf{
+    .amplitude = 1.0f,
+    .persistance = 0.5f,
+    .scale = 2.00f,
+    .lacunarity = 2.0f,
+    .octaves = 4,
+};
+
 float sample_terrain(float x, float y, float z) {
-    float r = (float)(rand() % 1000) * 0.001f;
-    return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 3.0f + r * 0.5f;
+    return fractal_noise(f32vec3{x, y, z}, noise_conf);
+    // float r = (float)(rand() % 1000) * 0.001f;
+    // return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 3.0f + r * 0.5f;
 }
 
-static const size_t sx = 128;
-static const size_t sy = 128;
-static const size_t sz = 128;
+static const size_t sx = 8;
+static const size_t sy = 8;
+static const size_t sz = 8;
 
 float sample_terrain_i(int xi, int yi, int zi) {
     float x = ((float)xi) * (1.0f / (float)sx);
@@ -32,6 +44,7 @@ GVoxScene create_test_scene() {
     scene.nodes[0].size_z = sz;
     size_t const voxel_n = scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z;
     scene.nodes[0].voxels = (GVoxVoxel *)malloc(sizeof(GVoxVoxel) * voxel_n);
+
     for (int zi = 0; zi < sz; ++zi) {
         for (int yi = 0; yi < sy; ++yi) {
             for (int xi = 0; xi < sx; ++xi) {
@@ -39,10 +52,10 @@ GVoxScene create_test_scene() {
                 GVoxVoxel result = {.color = {0.0f, 0.0f, 0.0f}, .id = 0};
                 scene.nodes[0].voxels[i] = result;
                 float val = sample_terrain_i(xi, yi, zi);
-                if (val > 0.0f) {
-                    result.color.x = 0.3f;
-                    result.color.y = 0.3f;
-                    result.color.z = 0.3f;
+                if (val > -0.0f) {
+                    result.color.x = 0.33f;
+                    result.color.y = 0.32f;
+                    result.color.z = 0.30f;
                     result.id = 1;
                 }
 
@@ -65,7 +78,7 @@ GVoxScene create_test_scene() {
                     int si = 0;
                     for (si = 0; si < 6; ++si) {
                         float val = sample_terrain_i(xi, yi, zi + 1 + si);
-                        if (val < 0.0f)
+                        if (val < -0.0f)
                             break;
                     }
                     if (si < 2) {
@@ -78,6 +91,14 @@ GVoxScene create_test_scene() {
                         result.color.y = 0.4f;
                         result.color.z = 0.1f;
                         result.id = 3;
+                    } else {
+                        float r = (float)(rand() % 1000) * 0.001f;
+                        if (r < 0.5f) {
+                            result.color.x = 0.30f;
+                            result.color.y = 0.29f;
+                            result.color.z = 0.28f;
+                            result.id = 4;
+                        }
                     }
                     scene.nodes[0].voxels[i] = result;
                 }
@@ -100,31 +121,44 @@ struct Timer {
 
 int main() {
     GVoxContext *gvox = gvox_create_context();
+    // gvox_load_format(gvox, "gvox_simple_rs");
 
     GVoxScene scene = create_test_scene();
 
-    {
-        Timer timer{};
-        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_simple.gvox", "gvox_simple");
-        std::cout << "gvox_simple      | ";
-    }
-    {
-        Timer timer{};
-        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
-        std::cout << "gvox_u32         | ";
-    }
+    // scene = gvox_load_raw(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_simple_rs");
+
+    // {
+    //     Timer timer{};
+    //     gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_simple.gvox", "gvox_simple");
+    //     std::cout << "gvox_simple      | ";
+    // }
+    // {
+    //     Timer timer{};
+    //     gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+    //     std::cout << "gvox_u32         | ";
+    // }
     {
         Timer timer{};
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
         std::cout << "gvox_u32_palette | ";
     }
-    {
-        Timer timer{};
-        gvox_save_raw(gvox, scene, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
-        std::cout << "magicavoxel      | ";
-    }
+    // {
+    //     Timer timer{};
+    //     gvox_save_raw(gvox, scene, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
+    //     std::cout << "magicavoxel      | ";
+    // }
 
+    printf("generated scene content:\n");
+    print_voxels(scene);
     gvox_destroy_scene(scene);
+
+    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
+    printf("loaded scene content:\n");
+    print_voxels(scene);
+    gvox_destroy_scene(scene);
+
+    // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
+    // gvox_destroy_scene(scene);
 
     gvox_destroy_context(gvox);
 }

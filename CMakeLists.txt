@@ -47,11 +47,25 @@ set(GVOX_FORMATS
     magicavoxel
 )
 
+function(set_project_sanitizers TARGET_NAME)
+    set(SANITIZER_FLAGS
+        $<$<CXX_COMPILER_ID:MSVC>:/fsanitize=address>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=address>
+    )
+    if(GVOX_ENABLE_ASAN)
+        target_compile_options(${TARGET_NAME} PRIVATE ${SANITIZER_FLAGS})
+        target_link_options(${TARGET_NAME} PRIVATE ${SANITIZER_FLAGS})
+    endif()
+endfunction()
+
+set_project_sanitizers(${PROJECT_NAME})
+
 foreach(FORMAT_NAME ${GVOX_FORMATS})
     add_library(gvox_format_${FORMAT_NAME} SHARED
         "src/formats/${FORMAT_NAME}.cpp"
     )
     target_link_libraries(gvox_format_${FORMAT_NAME} PRIVATE gvox::gvox)
+    set_project_sanitizers(gvox_format_${FORMAT_NAME})
 endforeach()
 
 if(GVOX_ENABLE_TESTS)
