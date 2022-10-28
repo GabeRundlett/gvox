@@ -30,10 +30,12 @@ static GVoxFormatLoader *gvox_context_find_loader(GVoxContext *ctx, std::string 
 
 std::filesystem::path get_exe_path() {
     char *out_str = new char[512];
+    for (size_t i = 0; i < 512; ++i)
+        out_str[i] = '\0';
 #if __linux__
-    readlink("/proc/self/exe", out_str, 512);
+    readlink("/proc/self/exe", out_str, 511);
 #elif _WIN32
-    GetModuleFileName(NULL, out_str, 512);
+    GetModuleFileName(NULL, out_str, 511);
 #endif
     auto result = std::filesystem::path(out_str);
     if (!std::filesystem::is_directory(result))
@@ -75,7 +77,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     filename = "lib" + filename + ".so";
     void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
     if (!so_handle) {
-        auto path = get_exe_path() / filename.c_str();
+        auto path = get_exe_path() / filename;
         so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
     }
     if (!so_handle) {
@@ -91,7 +93,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     filename = filename + ".dll";
     HINSTANCE dll_handle = LoadLibrary(filename.c_str());
     if (!dll_handle) {
-        auto path = get_exe_path() / filename.c_str();
+        auto path = get_exe_path() / filename;
         dll_handle = LoadLibrary(path.string().c_str());
     }
     if (!dll_handle) {
