@@ -102,7 +102,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         return;
     }
     GVoxFormatLoader format_loader = {
-        .format_name = format_loader_name,
+        .name_str = format_loader_name,
         .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, "gvox_format_create_context"),
         .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, "gvox_format_destroy_context"),
         .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, "gvox_format_create_payload"),
