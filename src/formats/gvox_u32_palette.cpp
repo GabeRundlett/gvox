@@ -1,9 +1,8 @@
 #include <gvox/gvox.h>
 
-#include <stdio.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <memory.h>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <algorithm>
 #include <unordered_set>
 #include <array>
@@ -33,7 +32,7 @@ uint32_t ceil_log2(size_t x) {
 
     for (i = 0; i < 6; i++) {
         int k = (((x & t[i]) == 0) ? 0 : j);
-        y += k;
+        y += static_cast<uint32_t>(k);
         x >>= k;
         j >>= 1;
     }
@@ -133,7 +132,7 @@ struct PaletteCompressor {
         uint32_t *palette_begin = (uint32_t *)output_buffer;
         uint32_t *palette_end = palette_begin + variants;
 
-        size_t vi = 0;
+        // size_t vi = 0;
         for (auto u32_voxel : tile_set) {
             write_data<uint32_t>(output_buffer, u32_voxel);
 
@@ -143,7 +142,7 @@ struct PaletteCompressor {
             // uint32_t i = (u32_voxel >> 0x18) & 0xff;
             // std::cout << "rgbi: " << r << " " << g << " " << b << " " << i << " ";
             // std::cout << "vi: " << vi << std::endl;
-            ++vi;
+            // ++vi;
         }
         // std::cout << "variants: " << variants << std::endl;
 
@@ -281,7 +280,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
     result.node_n = read_data<size_t>(buffer_ptr);
     // std::cout << "node_n = " << result.node_n << std::endl;
 
-    result.nodes = (GVoxSceneNode *)malloc(sizeof(GVoxSceneNode) * result.node_n);
+    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     for (size_t node_i = 0; node_i < result.node_n; ++node_i) {
         auto &node = result.nodes[node_i];
         node.size_x = read_data<size_t>(buffer_ptr);
@@ -296,7 +295,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
         size_t chunk_nx = (node.size_x + CHUNK_SIZE - 1) / CHUNK_SIZE;
         size_t chunk_ny = (node.size_y + CHUNK_SIZE - 1) / CHUNK_SIZE;
         size_t chunk_nz = (node.size_z + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        node.voxels = (GVoxVoxel *)malloc(voxels_size);
+        node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
         for (size_t chunk_z = 0; chunk_z < chunk_nz; ++chunk_z) {
             for (size_t chunk_y = 0; chunk_y < chunk_ny; ++chunk_y) {
                 for (size_t chunk_x = 0; chunk_x < chunk_nx; ++chunk_x) {

@@ -8,6 +8,13 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+typedef enum {
+    GVOX_SUCCESS = 0,
+    GVOX_ERROR_FAILED_TO_LOAD_FILE = -1,
+    GVOX_ERROR_FAILED_TO_LOAD_FORMAT = -2,
+    GVOX_ERROR_INVALID_FORMAT = -3,
+} GVoxResult;
+
 typedef struct {
     struct {
         float x;
@@ -42,7 +49,7 @@ typedef struct {
     char const *name_str;
     void *context;
 
-    void *(*create_context)();
+    void *(*create_context)(void);
     void (*destroy_context)(void *);
     GVoxPayload (*create_payload)(void *, GVoxScene scene);
     void (*destroy_payload)(void *, GVoxPayload payload);
@@ -59,6 +66,10 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
 
 void gvox_push_root_path(GVoxContext *ctx, char const *path);
 void gvox_pop_root_path(GVoxContext *ctx);
+
+GVoxResult gvox_get_result(GVoxContext *ctx);
+void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
+void gvox_pop_result(GVoxContext *ctx);
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format);

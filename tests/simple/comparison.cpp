@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 
 #include <gvox/gvox.h>
 
@@ -38,20 +38,20 @@ float sample_terrain_i(int xi, int yi, int zi) {
 GVoxScene create_test_scene() {
     GVoxScene scene;
     scene.node_n = 1;
-    scene.nodes = (GVoxSceneNode *)malloc(sizeof(GVoxSceneNode) * scene.node_n);
+    scene.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * scene.node_n);
     scene.nodes[0].size_x = sx;
     scene.nodes[0].size_y = sy;
     scene.nodes[0].size_z = sz;
     size_t const voxel_n = scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z;
-    scene.nodes[0].voxels = (GVoxVoxel *)malloc(sizeof(GVoxVoxel) * voxel_n);
+    scene.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * voxel_n);
 
-    for (int zi = 0; zi < sz; ++zi) {
-        for (int yi = 0; yi < sy; ++yi) {
-            for (int xi = 0; xi < sx; ++xi) {
+    for (size_t zi = 0; zi < sz; ++zi) {
+        for (size_t yi = 0; yi < sy; ++yi) {
+            for (size_t xi = 0; xi < sx; ++xi) {
                 size_t i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = {.color = {0.0f, 0.0f, 0.0f}, .id = 0};
                 scene.nodes[0].voxels[i] = result;
-                float val = sample_terrain_i(xi, yi, zi);
+                float val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi));
                 if (val > -0.0f) {
                     result.color.x = 0.33f;
                     result.color.y = 0.32f;
@@ -69,15 +69,15 @@ GVoxScene create_test_scene() {
             }
         }
     }
-    for (int zi = 0; zi < sz; ++zi) {
-        for (int yi = 0; yi < sy; ++yi) {
-            for (int xi = 0; xi < sx; ++xi) {
+    for (size_t zi = 0; zi < sz; ++zi) {
+        for (size_t yi = 0; yi < sy; ++yi) {
+            for (size_t xi = 0; xi < sx; ++xi) {
                 size_t i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = scene.nodes[0].voxels[i];
                 if (result.id == 1) {
                     int si = 0;
                     for (si = 0; si < 6; ++si) {
-                        float val = sample_terrain_i(xi, yi, zi + 1 + si);
+                        float val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi) + 1 + si);
                         if (val < -0.0f)
                             break;
                     }
@@ -139,7 +139,18 @@ int main() {
     // }
     {
         Timer timer{};
+
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
+        while (gvox_get_result(gvox) != GVOX_SUCCESS) {
+            size_t msg_size;
+            gvox_get_result_message(gvox, nullptr, &msg_size);
+            std::string msg;
+            msg.resize(msg_size);
+            gvox_get_result_message(gvox, nullptr, &msg_size);
+            gvox_pop_result(gvox);
+            return -1;
+        }
+
         std::cout << "gvox_u32_palette | ";
     }
     // {

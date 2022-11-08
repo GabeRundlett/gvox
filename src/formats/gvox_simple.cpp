@@ -1,8 +1,8 @@
 #include <gvox/gvox.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <memory.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #if __linux__
 #define EXPORT
@@ -64,7 +64,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
     uint8_t *buffer_sentinel = (uint8_t *)payload.data + payload.size;
     result.node_n = *(size_t *)buffer_ptr;
     buffer_ptr += sizeof(result.node_n);
-    result.nodes = (GVoxSceneNode *)malloc(sizeof(GVoxSceneNode) * result.node_n);
+    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     size_t node_i = 0;
     while (buffer_ptr < buffer_sentinel) {
         result.nodes[node_i].size_x = *(size_t *)buffer_ptr;
@@ -74,8 +74,8 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
         result.nodes[node_i].size_z = *(size_t *)buffer_ptr;
         buffer_ptr += sizeof(result.nodes[node_i].size_z);
         size_t voxels_size = result.nodes[node_i].size_x * result.nodes[node_i].size_y * result.nodes[node_i].size_z * sizeof(GVoxVoxel);
-        result.nodes[node_i].voxels = (GVoxVoxel *)malloc(voxels_size);
-        memcpy(result.nodes[node_i].voxels, buffer_ptr, voxels_size);
+        result.nodes[node_i].voxels = (GVoxVoxel *)std::malloc(voxels_size);
+        std::memcpy(result.nodes[node_i].voxels, buffer_ptr, voxels_size);
         buffer_ptr += voxels_size;
         ++node_i;
     }

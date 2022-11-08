@@ -1,8 +1,9 @@
 #include <gvox/gvox.h>
 
-#include <stdio.h>
-#include <memory.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
 
 #include <array>
 #include <vector>
@@ -41,20 +42,20 @@ Palette default_palette = {
     0xff663300, 0xff333300, 0xff003300, 0xffff0000, 0xffcc0000, 0xff990000, 0xff660000, 0xff330000, 0xff0000ee, 0xff0000dd, 0xff0000bb, 0xff0000aa, 0xff000088, 0xff000077, 0xff000055, 0xff000044,
     0xff000022, 0xff000011, 0xff00ee00, 0xff00dd00, 0xff00bb00, 0xff00aa00, 0xff008800, 0xff007700, 0xff005500, 0xff004400, 0xff002200, 0xff001100, 0xffee0000, 0xffdd0000, 0xffbb0000, 0xffaa0000,
     0xff880000, 0xff770000, 0xff550000, 0xff440000, 0xff220000, 0xff110000, 0xffeeeeee, 0xffdddddd, 0xffbbbbbb, 0xffaaaaaa, 0xff888888, 0xff777777, 0xff555555, 0xff444444, 0xff222222, 0xff111111};
-static const MagicavoxelChunkID CHUNK_VOX_ = {'V', 'O', 'X', ' '};
+// static const MagicavoxelChunkID CHUNK_VOX_ = {'V', 'O', 'X', ' '};
 static const MagicavoxelChunkID CHUNK_MAIN = {'M', 'A', 'I', 'N'};
 static const MagicavoxelChunkID CHUNK_SIZE = {'S', 'I', 'Z', 'E'};
 static const MagicavoxelChunkID CHUNK_XYZI = {'X', 'Y', 'Z', 'I'};
 static const MagicavoxelChunkID CHUNK_RGBA = {'R', 'G', 'B', 'A'};
-static const MagicavoxelChunkID CHUNK_nTRN = {'n', 'T', 'R', 'N'};
-static const MagicavoxelChunkID CHUNK_nGRP = {'n', 'G', 'R', 'P'};
-static const MagicavoxelChunkID CHUNK_nSHP = {'n', 'S', 'H', 'P'};
-static const MagicavoxelChunkID CHUNK_IMAP = {'I', 'M', 'A', 'P'};
-static const MagicavoxelChunkID CHUNK_LAYR = {'L', 'A', 'Y', 'R'};
-static const MagicavoxelChunkID CHUNK_MATL = {'M', 'A', 'T', 'L'};
-static const MagicavoxelChunkID CHUNK_MATT = {'M', 'A', 'T', 'T'};
-static const MagicavoxelChunkID CHUNK_rOBJ = {'r', 'O', 'B', 'J'};
-static const MagicavoxelChunkID CHUNK_rCAM = {'r', 'C', 'A', 'M'};
+// static const MagicavoxelChunkID CHUNK_nTRN = {'n', 'T', 'R', 'N'};
+// static const MagicavoxelChunkID CHUNK_nGRP = {'n', 'G', 'R', 'P'};
+// static const MagicavoxelChunkID CHUNK_nSHP = {'n', 'S', 'H', 'P'};
+// static const MagicavoxelChunkID CHUNK_IMAP = {'I', 'M', 'A', 'P'};
+// static const MagicavoxelChunkID CHUNK_LAYR = {'L', 'A', 'Y', 'R'};
+// static const MagicavoxelChunkID CHUNK_MATL = {'M', 'A', 'T', 'L'};
+// static const MagicavoxelChunkID CHUNK_MATT = {'M', 'A', 'T', 'T'};
+// static const MagicavoxelChunkID CHUNK_rOBJ = {'r', 'O', 'B', 'J'};
+// static const MagicavoxelChunkID CHUNK_rCAM = {'r', 'C', 'A', 'M'};
 template <typename T>
 static void write_data(uint8_t **buffer_ptr, T const &data) {
     *reinterpret_cast<T *>(*buffer_ptr) = data;
@@ -101,7 +102,7 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
         }
     }
     result.size += sizeof(voxel_n);
-    result.size += sizeof(MagicavoxelVoxel) * voxel_n;
+    result.size += sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n);
     // RGBA chunk
     result.size += sizeof(ChunkHeader);
     result.size += sizeof(Palette);
@@ -115,7 +116,7 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x));
     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_y));
     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_z));
-    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * voxel_n), .children_size = 0});
+    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n)), .children_size = 0});
     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z));
     for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
         for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
@@ -166,7 +167,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
     result.nodes[0].size_y = scene->models[0]->size_y;
     result.nodes[0].size_z = scene->models[0]->size_z;
     auto size = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
-    result.nodes[0].voxels = (GVoxVoxel *)malloc(sizeof(GVoxVoxel) * size);
+    result.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * size);
     for (size_t zi = 0; zi < result.nodes[0].size_z; ++zi) {
         for (size_t yi = 0; yi < result.nodes[0].size_y; ++yi) {
             for (size_t xi = 0; xi < result.nodes[0].size_x; ++xi) {

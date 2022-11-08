@@ -50,7 +50,7 @@ set(GVOX_FORMATS
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS
         # $<$<CXX_COMPILER_ID:MSVC>:/fsanitize=address>
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=address>
+        $<$<AND:$<CXX_COMPILER_ID:GNU,Clang>,$<NOT:$<PLATFORM_ID:Windows>>>:-fsanitize=address>
     )
     if(GVOX_ENABLE_ASAN)
         target_compile_options(${TARGET_NAME} PRIVATE ${SANITIZER_FLAGS})
