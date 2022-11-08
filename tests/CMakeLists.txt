@@ -26,7 +26,7 @@ function(GVOX_CREATE_TEST)
         add_custom_command(
             TARGET ${TGT}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            COMMAND ${CMAKE_COMMAND} -E copy
                 $<TARGET_FILE:gvox_format_${FORMAT_NAME}>
                 $<TARGET_FILE_DIR:${TGT}>
         )
