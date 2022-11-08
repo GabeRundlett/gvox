@@ -53,23 +53,41 @@ GVoxContext *gvox_create_context(void) {
     return result;
 }
 
+void impl_gvox_unregister_format(GVoxFormatLoader const &self) {
+    // basically the destructor for format_loader
+    if (self.context) {
+        assert(self.destroy_context != nullptr);
+        self.destroy_context(self.context);
+    }
+}
+
 void gvox_destroy_context(GVoxContext *ctx) {
     if (!ctx)
         return;
+    for (auto &[format_key, format_loader] : ctx->format_loader_table) {
+        impl_gvox_unregister_format(*format_loader);
+    }
     delete ctx;
 }
 
 void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader) {
+    assert(format_loader.create_context != nullptr);
+    assert(format_loader.destroy_context != nullptr);
     assert(format_loader.create_payload != nullptr);
     assert(format_loader.destroy_payload != nullptr);
     assert(format_loader.parse_payload != nullptr);
-    ctx->format_loader_table[format_loader.format_name] = new GVoxFormatLoader{format_loader};
+    if (format_loader.context == nullptr) {
+        format_loader.context = format_loader.create_context();
+    }
+    ctx->format_loader_table[format_loader.name_str] = new GVoxFormatLoader{format_loader};
 }
 
 void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
-    using GVoxCreatePayloadFunc = GVoxPayload (*)(GVoxScene);
-    using GVoxDestroyPayloadFunc = void (*)(GVoxPayload);
-    using GVoxParsePayloadFunc = GVoxScene (*)(GVoxPayload);
+    using GVoxFormatCreateContextFunc = void *(*)();
+    using GVoxFormatDestroyContextFunc = void (*)(void *);
+    using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene);
+    using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload);
+    using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
 
     std::string filename = std::string("gvox_format_") + format_loader_name;
 
@@ -85,9 +103,11 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     }
     GVoxFormatLoader format_loader = {
         .format_name = format_loader_name,
-        .create_payload = (GVoxCreatePayloadFunc)dlsym(so_handle, "gvox_create_payload"),
-        .destroy_payload = (GVoxDestroyPayloadFunc)dlsym(so_handle, "gvox_destroy_payload"),
-        .parse_payload = (GVoxParsePayloadFunc)dlsym(so_handle, "gvox_parse_payload"),
+        .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, "gvox_format_create_context"),
+        .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, "gvox_format_destroy_context"),
+        .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, "gvox_format_create_payload"),
+        .destroy_payload = (GVoxFormatDestroyPayloadFunc)dlsym(so_handle, "gvox_format_destroy_payload"),
+        .parse_payload = (GVoxFormatParsePayloadFunc)dlsym(so_handle, "gvox_format_parse_payload"),
     };
 #elif _WIN32
     filename = filename + ".dll";
@@ -100,10 +120,12 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         return;
     }
     GVoxFormatLoader format_loader = {
-        .format_name = format_loader_name,
-        .create_payload = (GVoxCreatePayloadFunc)GetProcAddress(dll_handle, "gvox_create_payload"),
-        .destroy_payload = (GVoxDestroyPayloadFunc)GetProcAddress(dll_handle, "gvox_destroy_payload"),
-        .parse_payload = (GVoxParsePayloadFunc)GetProcAddress(dll_handle, "gvox_parse_payload"),
+        .name_str = format_loader_name,
+        .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, "gvox_format_create_context"),
+        .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, "gvox_format_destroy_context"),
+        .create_payload = (GVoxFormatCreatePayloadFunc)GetProcAddress(dll_handle, "gvox_format_create_payload"),
+        .destroy_payload = (GVoxFormatDestroyPayloadFunc)GetProcAddress(dll_handle, "gvox_format_destroy_payload"),
+        .parse_payload = (GVoxFormatParsePayloadFunc)GetProcAddress(dll_handle, "gvox_format_parse_payload"),
     };
 #endif
     gvox_register_format(ctx, format_loader);
@@ -145,7 +167,7 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, file_format_name.str);
     if (format_loader)
-        result = format_loader->parse_payload(file_payload);
+        result = format_loader->parse_payload(format_loader->context, file_payload);
     delete[] file_format_name.str;
     delete[] file_payload.data;
     return result;
@@ -173,7 +195,7 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
     if (format_loader)
-        result = format_loader->parse_payload(file_payload);
+        result = format_loader->parse_payload(format_loader->context, file_payload);
     delete[] file_payload.data;
     return result;
 }
@@ -184,7 +206,7 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
     if (!format_loader)
         return;
-    file_payload = format_loader->create_payload(scene);
+    file_payload = format_loader->create_payload(format_loader->context, scene);
     auto file = std::ofstream(filepath, std::ios::binary);
     if (!file.is_open())
         goto cleanup_payload;
@@ -197,7 +219,7 @@ static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *fil
     file.write(reinterpret_cast<char const *>(file_payload.data), static_cast<std::streamsize>(file_payload.size));
     file.close();
 cleanup_payload:
-    format_loader->destroy_payload(file_payload);
+    format_loader->destroy_payload(format_loader->context, file_payload);
 }
 
 void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format) {

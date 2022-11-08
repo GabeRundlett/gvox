@@ -7,11 +7,25 @@
 #if __linux__
 #define EXPORT
 #elif _WIN32
-#define EXPORT __declspec(dllexport) __stdcall
+#define EXPORT __declspec(dllexport)
 #endif
 
-extern "C" {
-GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {
+struct Context {
+    Context();
+    ~Context();
+
+    GVoxPayload create_payload(GVoxScene scene);
+    void destroy_payload(GVoxPayload payload);
+    GVoxScene parse_payload(GVoxPayload payload);
+};
+
+Context::Context() {
+}
+
+Context::~Context() {
+}
+
+GVoxPayload Context::create_payload(GVoxScene scene) {
     GVoxPayload result = {};
     result.size += sizeof(size_t);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
@@ -40,11 +54,11 @@ GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {
     return result;
 }
 
-void EXPORT gvox_destroy_payload(GVoxPayload payload) {
+void Context::destroy_payload(GVoxPayload payload) {
     delete[] payload.data;
 }
 
-GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
+GVoxScene Context::parse_payload(GVoxPayload payload) {
     GVoxScene result = {};
     uint8_t *buffer_ptr = (uint8_t *)payload.data;
     uint8_t *buffer_sentinel = (uint8_t *)payload.data + payload.size;
@@ -67,4 +81,28 @@ GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
     }
     return result;
 }
+
+extern "C" EXPORT void *gvox_format_create_context() {
+    auto result = new Context{};
+    return result;
+}
+
+extern "C" EXPORT void gvox_format_destroy_context(void *context_ptr) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    delete self;
+}
+
+extern "C" EXPORT GVoxPayload gvox_format_create_payload(void *context_ptr, GVoxScene scene) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    return self->create_payload(scene);
+}
+
+extern "C" EXPORT void gvox_format_destroy_payload(void *context_ptr, GVoxPayload payload) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    self->destroy_payload(payload);
+}
+
+extern "C" EXPORT GVoxScene gvox_format_parse_payload(void *context_ptr, GVoxPayload payload) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    return self->parse_payload(payload);
 }

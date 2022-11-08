@@ -39,24 +39,29 @@ typedef struct {
 } GVoxPayload;
 
 typedef struct {
-    char const *format_name;
-    GVoxPayload (*create_payload)(GVoxScene scene);
-    void (*destroy_payload)(GVoxPayload payload);
-    GVoxScene (*parse_payload)(GVoxPayload payload);
+    char const *name_str;
+    void *context;
+
+    void *(*create_context)();
+    void (*destroy_context)(void *);
+    GVoxPayload (*create_payload)(void *, GVoxScene scene);
+    void (*destroy_payload)(void *, GVoxPayload payload);
+    GVoxScene (*parse_payload)(void *, GVoxPayload payload);
 } GVoxFormatLoader;
 
 typedef struct _GVoxContext GVoxContext;
 
 GVoxContext *gvox_create_context(void);
 void gvox_destroy_context(GVoxContext *ctx);
+
 void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader);
 void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
+
 void gvox_push_root_path(GVoxContext *ctx, char const *path);
 void gvox_pop_root_path(GVoxContext *ctx);
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
 GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format);
-
 void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
 void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
 

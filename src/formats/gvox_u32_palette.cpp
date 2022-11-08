@@ -13,7 +13,7 @@
 #if __linux__
 #define EXPORT
 #elif _WIN32
-#define EXPORT __declspec(dllexport) __stdcall
+#define EXPORT __declspec(dllexport)
 #endif
 
 static constexpr auto CHUNK_SIZE = 8;
@@ -137,10 +137,10 @@ struct PaletteCompressor {
         for (auto u32_voxel : tile_set) {
             write_data<uint32_t>(output_buffer, u32_voxel);
 
-            float r = ((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
-            float g = ((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
-            float b = ((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
-            uint32_t i = (u32_voxel >> 0x18) & 0xff;
+            // float r = float((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
+            // float g = float((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
+            // float b = float((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
+            // uint32_t i = (u32_voxel >> 0x18) & 0xff;
             // std::cout << "rgbi: " << r << " " << g << " " << b << " " << i << " ";
             // std::cout << "vi: " << vi << std::endl;
             ++vi;
@@ -251,17 +251,31 @@ struct PaletteCompressor {
     }
 };
 
-extern "C" {
-GVoxPayload EXPORT gvox_create_payload(GVoxScene scene) {
+struct Context {
+    Context();
+    ~Context();
+
+    GVoxPayload create_payload(GVoxScene scene);
+    void destroy_payload(GVoxPayload payload);
+    GVoxScene parse_payload(GVoxPayload payload);
+};
+
+Context::Context() {
+}
+
+Context::~Context() {
+}
+
+GVoxPayload Context::create_payload(GVoxScene scene) {
     PaletteCompressor compressor;
     return compressor.create(scene);
 }
 
-void EXPORT gvox_destroy_payload(GVoxPayload payload) {
+void Context::destroy_payload(GVoxPayload payload) {
     delete[] payload.data;
 }
 
-GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
+GVoxScene Context::parse_payload(GVoxPayload payload) {
     GVoxScene result = {};
     uint8_t *buffer_ptr = (uint8_t *)payload.data;
     result.node_n = read_data<size_t>(buffer_ptr);
@@ -352,4 +366,28 @@ GVoxScene EXPORT gvox_parse_payload(GVoxPayload payload) {
 
     return result;
 }
+
+extern "C" EXPORT void *gvox_format_create_context() {
+    auto result = new Context{};
+    return result;
+}
+
+extern "C" EXPORT void gvox_format_destroy_context(void *context_ptr) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    delete self;
+}
+
+extern "C" EXPORT GVoxPayload gvox_format_create_payload(void *context_ptr, GVoxScene scene) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    return self->create_payload(scene);
+}
+
+extern "C" EXPORT void gvox_format_destroy_payload(void *context_ptr, GVoxPayload payload) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    self->destroy_payload(payload);
+}
+
+extern "C" EXPORT GVoxScene gvox_format_parse_payload(void *context_ptr, GVoxPayload payload) {
+    auto self = reinterpret_cast<Context *>(context_ptr);
+    return self->parse_payload(payload);
 }
