@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 
 #if __linux__
@@ -36,16 +37,16 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
     }
     result.data = new uint8_t[result.size];
     uint8_t *buffer_ptr = (uint8_t *)result.data;
-    memcpy(buffer_ptr, &scene.node_n, sizeof(scene.node_n));
+    std::memcpy(buffer_ptr, &scene.node_n, sizeof(scene.node_n));
     buffer_ptr += sizeof(scene.node_n);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)
             continue;
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_x, sizeof(scene.nodes[node_i].size_x));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_x, sizeof(scene.nodes[node_i].size_x));
         buffer_ptr += sizeof(scene.nodes[node_i].size_x);
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_y, sizeof(scene.nodes[node_i].size_y));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_y, sizeof(scene.nodes[node_i].size_y));
         buffer_ptr += sizeof(scene.nodes[node_i].size_y);
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_z, sizeof(scene.nodes[node_i].size_z));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_z, sizeof(scene.nodes[node_i].size_z));
         buffer_ptr += sizeof(scene.nodes[node_i].size_z);
         size_t voxels_n = scene.nodes[node_i].size_x * scene.nodes[node_i].size_y * scene.nodes[node_i].size_z;
         size_t voxels_size = voxels_n * sizeof(uint32_t);
@@ -60,7 +61,7 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
             u32_voxel = u32_voxel | (g << 0x08);
             u32_voxel = u32_voxel | (b << 0x10);
             u32_voxel = u32_voxel | (i << 0x18);
-            memcpy(buffer_ptr + voxel_i * sizeof(uint32_t), &u32_voxel, sizeof(uint32_t));
+            std::memcpy(buffer_ptr + voxel_i * sizeof(uint32_t), &u32_voxel, sizeof(uint32_t));
         }
         buffer_ptr += voxels_size;
     }
@@ -91,7 +92,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
         result.nodes[node_i].voxels = (GVoxVoxel *)std::malloc(voxels_size);
         for (size_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
             uint32_t u32_voxel = 0;
-            memcpy(&u32_voxel, buffer_ptr + voxel_i * sizeof(uint32_t), sizeof(uint32_t));
+            std::memcpy(&u32_voxel, buffer_ptr + voxel_i * sizeof(uint32_t), sizeof(uint32_t));
             float r = ((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
             float g = ((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
             float b = ((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;

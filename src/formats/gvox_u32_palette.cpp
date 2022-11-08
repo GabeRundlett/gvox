@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 #include <unordered_set>
 #include <array>
@@ -245,7 +246,7 @@ struct PaletteCompressor {
         result.data = new uint8_t[result.size];
         auto *buffer_ptr = result.data;
         write_data<size_t>(buffer_ptr, scene.node_n);
-        memcpy(buffer_ptr, data.data(), result.size - pre_node_size);
+        std::memcpy(buffer_ptr, data.data(), result.size - pre_node_size);
         return result;
     }
 };

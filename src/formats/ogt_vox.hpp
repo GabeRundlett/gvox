@@ -562,7 +562,7 @@ static uint32_t _vox_file_bytes_remaining(const _vox_file *fp) {
 
 static bool _vox_file_read(_vox_file *fp, void *data, uint32_t data_size) {
     size_t data_to_read = _vox_min(_vox_file_bytes_remaining(fp), data_size);
-    memcpy(data, &fp->buffer[fp->offset], data_to_read);
+    std::memcpy(data, &fp->buffer[fp->offset], data_to_read);
     fp->offset += data_size;
     return data_to_read == data_size;
 }
@@ -630,7 +630,7 @@ static void *_vox_realloc(void *old_ptr, size_t old_size, size_t new_size) {
     if (new_ptr) {
         // copy any existing elements over
         if (old_ptr && old_size)
-            memcpy(new_ptr, old_ptr, old_size);
+            std::memcpy(new_ptr, old_ptr, old_size);
         // zero out any new tail elements
         ogt_assert(new_size > old_size, "_vox_realloc error"); // this should be guaranteed by the _vox_realloc early out case above.
         uintptr_t new_tail_ptr = (uintptr_t)new_ptr + old_size;
@@ -1223,10 +1223,10 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
     child_ids.push_back(UINT32_MAX);
 
     // copy the default palette into the scene. It may get overwritten by a palette chunk later
-    memcpy(&palette, k_default_vox_palette, sizeof(ogt_vox_palette));
+    std::memcpy(&palette, k_default_vox_palette, sizeof(ogt_vox_palette));
 
     // zero initialize materials (this sets valid defaults)
-    memset(&materials, 0, sizeof(materials));
+    std::memset(&materials, 0, sizeof(materials));
 
     // load and validate fileheader and file version.
     uint32_t file_header = 0;
@@ -1905,7 +1905,7 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
     {
         // copy name data into the scene
         char *scene_misc_data = (char *)&scene[1];
-        memcpy(scene_misc_data, &misc_data[0], sizeof(char) * misc_data.size());
+        std::memcpy(scene_misc_data, &misc_data[0], sizeof(char) * misc_data.size());
 
         // copy instances over to scene
         size_t num_scene_instances = instances.size();
@@ -1929,14 +1929,14 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
         size_t num_scene_models = model_ptrs.size();
         ogt_vox_model **scene_models = (ogt_vox_model **)_vox_malloc(sizeof(ogt_vox_model *) * num_scene_models);
         if (num_scene_models)
-            memcpy(scene_models, &model_ptrs[0], sizeof(ogt_vox_model *) * num_scene_models);
+            std::memcpy(scene_models, &model_ptrs[0], sizeof(ogt_vox_model *) * num_scene_models);
         scene->models = (const ogt_vox_model **)scene_models;
         scene->num_models = (uint32_t)num_scene_models;
 
         // copy layer pointers over to the scene
         size_t num_scene_layers = layers.size();
         ogt_vox_layer *scene_layers = (ogt_vox_layer *)_vox_malloc(sizeof(ogt_vox_layer) * num_scene_layers);
-        memcpy(scene_layers, &layers[0], sizeof(ogt_vox_layer) * num_scene_layers);
+        std::memcpy(scene_layers, &layers[0], sizeof(ogt_vox_layer) * num_scene_layers);
         scene->layers = scene_layers;
         scene->num_layers = (uint32_t)num_scene_layers;
 
@@ -1944,7 +1944,7 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
         size_t num_scene_groups = groups.size();
         ogt_vox_group *scene_groups = num_scene_groups ? (ogt_vox_group *)_vox_malloc(sizeof(ogt_vox_group) * num_scene_groups) : NULL;
         if (num_scene_groups)
-            memcpy(scene_groups, &groups[0], sizeof(ogt_vox_group) * num_scene_groups);
+            std::memcpy(scene_groups, &groups[0], sizeof(ogt_vox_group) * num_scene_groups);
         scene->groups = scene_groups;
         scene->num_groups = (uint32_t)num_scene_groups;
 
@@ -2071,7 +2071,7 @@ static void _vox_file_write_uint8(_vox_file_writeable *fp, uint8_t data) {
 }
 static void _vox_file_write_at_offset(_vox_file_writeable *fp, uint32_t offset, const void *data, uint32_t data_size) {
     ogt_assert((offset + data_size) <= fp->data.count, "write at offset must not be an append write");
-    memcpy(&fp->data[offset], data, data_size);
+    std::memcpy(&fp->data[offset], data, data_size);
 }
 static uint32_t _vox_file_get_offset(const _vox_file_writeable *fp) {
     return (uint32_t)fp->data.count;
@@ -2828,14 +2828,14 @@ ogt_vox_scene *ogt_vox_merge_scenes(const ogt_vox_scene **scenes, uint32_t scene
         for (uint32_t instance_index = 0; instance_index < num_instances; instance_index++) {
             if (instances[instance_index].name) {
                 size_t string_len = _vox_strlen(instances[instance_index].name) + 1; // +1 for zero terminator
-                memcpy(scene_misc_data, instances[instance_index].name, string_len);
+                std::memcpy(scene_misc_data, instances[instance_index].name, string_len);
                 instances[instance_index].name = scene_misc_data;
                 scene_misc_data += string_len;
             }
             if (instances[instance_index].model_anim.num_keyframes) {
                 ogt_vox_keyframe_model *model_keyframes = (ogt_vox_keyframe_model *)scene_misc_data;
                 uint32_t keyframe_size = sizeof(ogt_vox_keyframe_model) * instances[instance_index].model_anim.num_keyframes;
-                memcpy(scene_misc_data, instances[instance_index].model_anim.keyframes, keyframe_size);
+                std::memcpy(scene_misc_data, instances[instance_index].model_anim.keyframes, keyframe_size);
                 instances[instance_index].model_anim.keyframes = model_keyframes;
                 scene_misc_data += keyframe_size;
                 // bias the model_index in model_keyframes back into the range for the scene that this instance came from.
@@ -2849,7 +2849,7 @@ ogt_vox_scene *ogt_vox_merge_scenes(const ogt_vox_scene **scenes, uint32_t scene
             }
             if (instances[instance_index].transform_anim.num_keyframes) {
                 uint32_t keyframe_size = sizeof(ogt_vox_keyframe_transform) * instances[instance_index].transform_anim.num_keyframes;
-                memcpy(scene_misc_data, instances[instance_index].transform_anim.keyframes, keyframe_size);
+                std::memcpy(scene_misc_data, instances[instance_index].transform_anim.keyframes, keyframe_size);
                 instances[instance_index].transform_anim.keyframes = (ogt_vox_keyframe_transform *)scene_misc_data;
                 scene_misc_data += keyframe_size;
             }
@@ -2857,13 +2857,13 @@ ogt_vox_scene *ogt_vox_merge_scenes(const ogt_vox_scene **scenes, uint32_t scene
         for (uint32_t group_index = 0; group_index < num_groups; group_index++) {
             if (groups[group_index].name) {
                 size_t string_len = _vox_strlen(groups[group_index].name) + 1; // +1 for zero terminator
-                memcpy(scene_misc_data, groups[group_index].name, string_len);
+                std::memcpy(scene_misc_data, groups[group_index].name, string_len);
                 groups[group_index].name = scene_misc_data;
                 scene_misc_data += string_len;
             }
             if (groups[group_index].transform_anim.num_keyframes) {
                 uint32_t keyframe_size = sizeof(ogt_vox_keyframe_transform) * groups[group_index].transform_anim.num_keyframes;
-                memcpy(scene_misc_data, groups[group_index].transform_anim.keyframes, keyframe_size);
+                std::memcpy(scene_misc_data, groups[group_index].transform_anim.keyframes, keyframe_size);
                 groups[group_index].transform_anim.keyframes = (ogt_vox_keyframe_transform *)scene_misc_data;
                 scene_misc_data += keyframe_size;
             }

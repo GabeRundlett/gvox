@@ -36,19 +36,19 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
     }
     result.data = new uint8_t[result.size];
     uint8_t *buffer_ptr = (uint8_t *)result.data;
-    memcpy(buffer_ptr, &scene.node_n, sizeof(scene.node_n));
+    std::memcpy(buffer_ptr, &scene.node_n, sizeof(scene.node_n));
     buffer_ptr += sizeof(scene.node_n);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)
             continue;
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_x, sizeof(scene.nodes[node_i].size_x));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_x, sizeof(scene.nodes[node_i].size_x));
         buffer_ptr += sizeof(scene.nodes[node_i].size_x);
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_y, sizeof(scene.nodes[node_i].size_y));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_y, sizeof(scene.nodes[node_i].size_y));
         buffer_ptr += sizeof(scene.nodes[node_i].size_y);
-        memcpy(buffer_ptr, &scene.nodes[node_i].size_z, sizeof(scene.nodes[node_i].size_z));
+        std::memcpy(buffer_ptr, &scene.nodes[node_i].size_z, sizeof(scene.nodes[node_i].size_z));
         buffer_ptr += sizeof(scene.nodes[node_i].size_z);
         size_t voxels_size = scene.nodes[node_i].size_x * scene.nodes[node_i].size_y * scene.nodes[node_i].size_z * sizeof(GVoxVoxel);
-        memcpy(buffer_ptr, scene.nodes[node_i].voxels, voxels_size);
+        std::memcpy(buffer_ptr, scene.nodes[node_i].voxels, voxels_size);
         buffer_ptr += voxels_size;
     }
     return result;
