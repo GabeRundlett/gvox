@@ -9,8 +9,9 @@ jobs:
     name: Update Packages
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/repository-dispatch@v2
-      - with:
+      - name: "Dispatch"
+        uses: peter-evans/repository-dispatch@v2
+        with:
           token: ${{ secrets.REGISTRY_TOKEN }}
           repository: GabeRundlett/vcpkg-registry
           event-type: update-all
