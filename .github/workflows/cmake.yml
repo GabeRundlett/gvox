@@ -7,14 +7,14 @@ on:
 jobs:
   update-package:
     name: Update Packages
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Clone Package Management Repo
-        run: git clone https://github.com/GabeRundlett/vcpkg-registry
-      - name: CD to vcpkg-registry
-        run:  cd vcpkg-registry
-      - name: Update Registry
-        run: DIR
+      - uses: peter-evans/repository-dispatch@v2
+      - with:
+          token: ${{ secrets.REGISTRY_TOKEN }}
+          repository: GabeRundlett/vcpkg-registry
+          event-type: update-all
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
   # build-linux:
   #   name: Build Linux
   #   runs-on: ubuntu-latest
