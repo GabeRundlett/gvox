@@ -6,7 +6,7 @@ on:
     branches: ["master"]
 jobs:
   update-package:
-    name: Update Packages
+    name: Trigger Package Updates
     runs-on: ubuntu-latest
     steps:
       - name: "Dispatch"
