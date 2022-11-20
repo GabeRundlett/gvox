@@ -34,7 +34,11 @@ endif()
 add_library(${PROJECT_NAME} STATIC "src/gvox.cpp")
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-# target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS} ZLIB::ZLIB)
+target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+    ${CMAKE_DL_LIBS}
+    # ZLIB::ZLIB
+)
 target_include_directories(${PROJECT_NAME}
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
