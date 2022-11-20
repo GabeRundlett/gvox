@@ -5,6 +5,14 @@ on:
   pull_request:
     branches: ["master"]
 jobs:
+  update-package:
+    name: Update Packages
+    runs-on: windows-latest
+    steps:
+      - name: Clone Package Management Repo
+        run: git clone https://github.com/GabeRundlett/vcpkg-registry && cd vcpkg-registry
+      - name: Update Registry
+        run: ./update-all
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest

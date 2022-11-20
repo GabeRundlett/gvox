@@ -3,7 +3,9 @@
     "version-string": "nightly",
     "description": "GVOX Voxel Format Library",
     "homepage": "https://github.com/GabeRundlett/gvox",
-    "dependencies": [],
+    "dependencies": [
+        "zlib"
+    ],
     "features": {
         "tests": {
             "description": "Build Tests"
