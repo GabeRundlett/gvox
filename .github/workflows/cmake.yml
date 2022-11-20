@@ -14,7 +14,7 @@ jobs:
       - name: CD to vcpkg-registry
         run:  cd vcpkg-registry
       - name: Update Registry
-        run: ./update_all.ps1
+        run: DIR
   # build-linux:
   #   name: Build Linux
   #   runs-on: ubuntu-latest
