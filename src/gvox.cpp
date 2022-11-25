@@ -27,33 +27,35 @@ struct _GVoxContext {
     std::vector<std::pair<std::string, GVoxResult>> errors = {};
 };
 
-static GVoxFormatLoader *gvox_context_find_loader(GVoxContext *ctx, std::string const &format_name) {
+static auto gvox_context_find_loader(GVoxContext *ctx, std::string const &format_name) -> GVoxFormatLoader * {
     auto iter = ctx->format_loader_table.find(format_name);
     if (iter == ctx->format_loader_table.end()) {
-        ctx->errors.push_back({"Failed to find format [" + format_name + "]", GVOX_ERROR_INVALID_FORMAT});
+        ctx->errors.emplace_back("Failed to find format [" + format_name + "]", GVOX_ERROR_INVALID_FORMAT);
         return nullptr;
     }
     return iter->second;
 }
 
-std::filesystem::path get_exe_path() {
+auto get_exe_path() -> std::filesystem::path {
     char *out_str = new char[512];
-    for (size_t i = 0; i < 512; ++i)
+    for (size_t i = 0; i < 512; ++i) {
         out_str[i] = '\0';
+    }
 #if __linux__
     readlink("/proc/self/exe", out_str, 511);
 #elif _WIN32
-    GetModuleFileName(NULL, out_str, 511);
+    GetModuleFileName(nullptr, out_str, 511);
 #endif
     auto result = std::filesystem::path(out_str);
-    if (!std::filesystem::is_directory(result))
+    if (!std::filesystem::is_directory(result)) {
         result = result.parent_path();
+    }
     delete[] out_str;
     return result;
 }
 
-GVoxContext *gvox_create_context(void) {
-    GVoxContext *result = new GVoxContext;
+auto gvox_create_context(void) -> GVoxContext * {
+    auto *result = new GVoxContext;
     gvox_load_format(result, "gvox_simple");
     gvox_load_format(result, "gvox_u32");
     gvox_load_format(result, "gvox_u32_palette");
@@ -63,15 +65,16 @@ GVoxContext *gvox_create_context(void) {
 
 void impl_gvox_unregister_format(GVoxContext *ctx, GVoxFormatLoader const &self) {
     // basically the destructor for format_loader
-    if (self.context) {
-        ctx->errors.push_back({"Failed to destroy the context of format [" + std::string(self.name_str) + "]", GVOX_ERROR_INVALID_FORMAT});
+    if (self.context != nullptr) {
+        ctx->errors.emplace_back("Failed to destroy the context of format [" + std::string(self.name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
         self.destroy_context(self.context);
     }
 }
 
 void gvox_destroy_context(GVoxContext *ctx) {
-    if (!ctx)
+    if (ctx == nullptr) {
         return;
+    }
     for (auto &[format_key, format_loader] : ctx->format_loader_table) {
         impl_gvox_unregister_format(ctx, *format_loader);
     }
@@ -84,7 +87,7 @@ void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader) {
         format_loader.create_payload == nullptr ||
         format_loader.destroy_payload == nullptr ||
         format_loader.parse_payload == nullptr) {
-        ctx->errors.push_back({"Failed to register format [" + std::string(format_loader.name_str) + "]", GVOX_ERROR_INVALID_FORMAT});
+        ctx->errors.emplace_back("Failed to register format [" + std::string(format_loader.name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
         return;
     }
     if (format_loader.context == nullptr) {
@@ -124,15 +127,15 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
 #elif _WIN32
     filename = filename + ".dll";
     HINSTANCE dll_handle = LoadLibrary(filename.c_str());
-    if (!dll_handle) {
+    if (dll_handle == nullptr) {
         auto path = get_exe_path() / filename;
         dll_handle = LoadLibrary(path.string().c_str());
     }
-    if (!dll_handle) {
-        ctx->errors.push_back({"Failed to load Format DLL at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT});
+    if (dll_handle == nullptr) {
+        ctx->errors.emplace_back("Failed to load Format DLL at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT);
         return;
     }
-    GVoxFormatLoader format_loader = {
+    GVoxFormatLoader const format_loader = {
         .name_str = format_loader_name,
         .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, "gvox_format_create_context"),
         .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, "gvox_format_destroy_context"),
@@ -145,33 +148,35 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
 }
 
 void gvox_push_root_path(GVoxContext *ctx, char const *path) {
-    ctx->root_paths.push_back(path);
+    ctx->root_paths.emplace_back(path);
 }
 
 void gvox_pop_root_path(GVoxContext *ctx) {
     ctx->root_paths.pop_back();
 }
 
-GVoxResult gvox_get_result(GVoxContext *ctx) {
-    if (ctx->errors.size() == 0)
+auto gvox_get_result(GVoxContext *ctx) -> GVoxResult {
+    if (ctx->errors.empty()) {
         return GVOX_SUCCESS;
+    }
     auto [msg, id] = ctx->errors.back();
     return id;
 }
 
 void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size) {
-    if (str_buffer) {
+    if (str_buffer != nullptr) {
         assert(str_size);
-        if (ctx->errors.size() == 0) {
-            for (size_t i = 0; i < *str_size; ++i)
+        if (ctx->errors.empty()) {
+            for (size_t i = 0; i < *str_size; ++i) {
                 str_buffer[i] = '\0';
+            }
             return;
         }
         auto [msg, id] = ctx->errors.back();
         assert(msg.size() <= *str_size);
         std::copy(msg.begin(), msg.end(), str_buffer);
-    } else if (str_size) {
-        if (ctx->errors.size() == 0) {
+    } else if (str_size != nullptr) {
+        if (ctx->errors.empty()) {
             *str_size = 0;
             return;
         }
@@ -184,24 +189,25 @@ void gvox_pop_result(GVoxContext *ctx) {
     ctx->errors.pop_back();
 }
 
-GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
+auto gvox_load(GVoxContext *ctx, char const *filepath) -> GVoxScene {
     GVoxScene result = {};
     GVoxHeader file_header;
     GVoxPayload file_payload;
     struct {
         char *str;
         size_t str_size;
-    } file_format_name;
+    } file_format_name{};
     auto file = std::ifstream(filepath, std::ios::binary);
     if (!file.is_open()) {
         for (auto const &root_path : ctx->root_paths) {
             file = std::ifstream(root_path / filepath, std::ios::binary);
-            if (file.is_open())
+            if (file.is_open()) {
                 break;
+            }
         }
     }
     if (!file.is_open()) {
-        ctx->errors.push_back({"Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE});
+        ctx->errors.emplace_back("Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE);
         return result;
     }
     file.read((char *)&file_header, sizeof(file_header));
@@ -214,26 +220,28 @@ GVoxScene gvox_load(GVoxContext *ctx, char const *filepath) {
     file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, file_format_name.str);
-    if (format_loader)
+    if (format_loader != nullptr) {
         result = format_loader->parse_payload(format_loader->context, file_payload);
+    }
     delete[] file_format_name.str;
     delete[] file_payload.data;
     return result;
 }
 
-GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format) {
+auto gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format) -> GVoxScene {
     GVoxScene result = {};
     GVoxPayload file_payload;
     auto file = std::ifstream(filepath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         for (auto const &root_path : ctx->root_paths) {
             file = std::ifstream(root_path / filepath, std::ios::binary | std::ios::ate);
-            if (file.is_open())
+            if (file.is_open()) {
                 break;
+            }
         }
     }
     if (!file.is_open()) {
-        ctx->errors.push_back({"Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE});
+        ctx->errors.emplace_back("Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE);
         return result;
     }
     file_payload.size = static_cast<size_t>(file.tellg());
@@ -242,25 +250,28 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
     file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
     file.close();
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
-    if (format_loader)
+    if (format_loader != nullptr) {
         result = format_loader->parse_payload(format_loader->context, file_payload);
+    }
     delete[] file_payload.data;
     return result;
 }
 
-static inline void _gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format, uint8_t is_raw) {
+static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format, uint8_t is_raw) {
     GVoxHeader file_header;
     GVoxPayload file_payload;
     GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
-    if (!format_loader)
+    if (format_loader == nullptr) {
         return;
+    }
     file_payload = format_loader->create_payload(format_loader->context, scene);
     auto file = std::ofstream(filepath, std::ios::binary);
-    if (!file.is_open())
+    if (!file.is_open()) {
         goto cleanup_payload;
+    }
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = strlen(format);
-    if (!is_raw) {
+    if (is_raw == 0u) {
         file.write(reinterpret_cast<char const *>(&file_header), sizeof(file_header));
         file.write(reinterpret_cast<char const *>(format), static_cast<std::streamsize>(file_header.format_name_size));
     }
@@ -271,18 +282,20 @@ cleanup_payload:
 }
 
 void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format) {
-    _gvox_save(ctx, scene, filepath, format, false);
+    gvox_save(ctx, scene, filepath, format, 0u);
 }
 
 void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format) {
-    _gvox_save(ctx, scene, filepath, format, true);
+    gvox_save(ctx, scene, filepath, format, 1u);
 }
 
 void gvox_destroy_scene(GVoxScene scene) {
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
-        if (scene.nodes[node_i].voxels)
+        if (scene.nodes[node_i].voxels != nullptr) {
             free(scene.nodes[node_i].voxels);
+        }
     }
-    if (scene.nodes)
+    if (scene.nodes != nullptr) {
         free(scene.nodes);
+    }
 }

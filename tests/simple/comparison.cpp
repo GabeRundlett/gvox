@@ -11,15 +11,15 @@
 #include "noise.hpp"
 #include "print.h"
 
-FractalNoiseConfig noise_conf{
+constexpr auto noise_conf = FractalNoiseConfig{
     .amplitude = 1.0f,
     .persistance = 0.5f,
-    .scale = 2.00f,
+    .scale = 2.0f,
     .lacunarity = 2.0f,
     .octaves = 4,
 };
 
-float sample_terrain(float x, float y, float z) {
+auto sample_terrain(float x, float y, float z) -> float {
     return fractal_noise(f32vec3{x, y, z}, noise_conf);
     // float r = (float)(rand() % 1000) * 0.001f;
     // return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 3.0f + r * 0.5f;
@@ -29,14 +29,14 @@ static const size_t sx = 8;
 static const size_t sy = 8;
 static const size_t sz = 8;
 
-float sample_terrain_i(int xi, int yi, int zi) {
-    float x = ((float)xi) * (1.0f / (float)sx);
-    float y = ((float)yi) * (1.0f / (float)sy);
-    float z = ((float)zi) * (1.0f / (float)sz);
+auto sample_terrain_i(int xi, int yi, int zi) -> float {
+    float const x = ((float)xi) * (1.0f / (float)sx);
+    float const y = ((float)yi) * (1.0f / (float)sy);
+    float const z = ((float)zi) * (1.0f / (float)sz);
     return sample_terrain(x, y, z);
 }
 
-GVoxScene create_test_scene() {
+auto create_test_scene() -> GVoxScene {
     GVoxScene scene;
     scene.node_n = 1;
     scene.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * scene.node_n);
@@ -49,10 +49,10 @@ GVoxScene create_test_scene() {
     for (size_t zi = 0; zi < sz; ++zi) {
         for (size_t yi = 0; yi < sy; ++yi) {
             for (size_t xi = 0; xi < sx; ++xi) {
-                size_t i = xi + yi * sx + zi * sx * sy;
+                size_t const i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = {.color = {0.0f, 0.0f, 0.0f}, .id = 0};
                 scene.nodes[0].voxels[i] = result;
-                float val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi));
+                float const val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi));
                 if (val > -0.0f) {
                     result.color.x = 0.33f;
                     result.color.y = 0.32f;
@@ -73,14 +73,15 @@ GVoxScene create_test_scene() {
     for (size_t zi = 0; zi < sz; ++zi) {
         for (size_t yi = 0; yi < sy; ++yi) {
             for (size_t xi = 0; xi < sx; ++xi) {
-                size_t i = xi + yi * sx + zi * sx * sy;
+                size_t const i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = scene.nodes[0].voxels[i];
                 if (result.id == 1) {
                     int si = 0;
                     for (si = 0; si < 6; ++si) {
-                        float val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi) + 1 + si);
-                        if (val < -0.0f)
+                        float const val = sample_terrain_i(static_cast<int32_t>(xi), static_cast<int32_t>(yi), static_cast<int32_t>(zi) + 1 + si);
+                        if (val < -0.0f) {
                             break;
+                        }
                     }
                     if (si < 2) {
                         result.color.x = 0.3f;
@@ -93,7 +94,7 @@ GVoxScene create_test_scene() {
                         result.color.z = 0.1f;
                         result.id = 3;
                     } else {
-                        float r = (float)(rand() % 1000) * 0.001f;
+                        float const r = (float)(rand() % 1000) * 0.001f;
                         if (r < 0.5f) {
                             result.color.x = 0.30f;
                             result.color.y = 0.29f;
@@ -120,7 +121,7 @@ struct Timer {
     }
 };
 
-int main() {
+auto main() -> int {
     GVoxContext *gvox = gvox_create_context();
     // gvox_load_format(gvox, "gvox_simple_rs");
 
@@ -139,11 +140,11 @@ int main() {
     //     std::cout << "gvox_u32         | ";
     // }
     {
-        Timer timer{};
+        Timer const timer{};
 
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
         while (gvox_get_result(gvox) != GVOX_SUCCESS) {
-            size_t msg_size;
+            size_t msg_size = 0;
             gvox_get_result_message(gvox, nullptr, &msg_size);
             std::string msg;
             msg.resize(msg_size);

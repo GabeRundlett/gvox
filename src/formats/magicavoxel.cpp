@@ -25,7 +25,7 @@ struct MagicavoxelChunkID {
     uint8_t b0, b1, b2, b3;
 };
 using Palette = std::array<uint32_t, 256>;
-Palette default_palette = {
+static constexpr Palette default_palette = {
     0x00000000, 0xffffffff, 0xffccffff, 0xff99ffff, 0xff66ffff, 0xff33ffff, 0xff00ffff, 0xffffccff, 0xffccccff, 0xff99ccff, 0xff66ccff, 0xff33ccff, 0xff00ccff, 0xffff99ff, 0xffcc99ff, 0xff9999ff,
     0xff6699ff, 0xff3399ff, 0xff0099ff, 0xffff66ff, 0xffcc66ff, 0xff9966ff, 0xff6666ff, 0xff3366ff, 0xff0066ff, 0xffff33ff, 0xffcc33ff, 0xff9933ff, 0xff6633ff, 0xff3333ff, 0xff0033ff, 0xffff00ff,
     0xffcc00ff, 0xff9900ff, 0xff6600ff, 0xff3300ff, 0xff0000ff, 0xffffffcc, 0xffccffcc, 0xff99ffcc, 0xff66ffcc, 0xff33ffcc, 0xff00ffcc, 0xffffcccc, 0xffcccccc, 0xff99cccc, 0xff66cccc, 0xff33cccc,
@@ -64,27 +64,23 @@ static void write_data(uint8_t **buffer_ptr, T const &data) {
 
 struct Context {
     Context();
-    ~Context();
+    ~Context() = default;
 
-    GVoxPayload create_payload(GVoxScene scene);
-    void destroy_payload(GVoxPayload payload);
-    GVoxScene parse_payload(GVoxPayload payload);
+    static auto create_payload(GVoxScene scene) -> GVoxPayload;
+    static void destroy_payload(GVoxPayload payload);
+    static auto parse_payload(GVoxPayload payload) -> GVoxScene;
 };
 
-Context::Context() {
-}
+Context::Context() = default;
 
-Context::~Context() {
-}
-
-GVoxPayload Context::create_payload(GVoxScene scene) {
+auto Context::create_payload(GVoxScene scene) -> GVoxPayload {
     GVoxPayload result = {};
     struct ChunkHeader {
         MagicavoxelChunkID id;
         int self_size;
         int children_size;
     };
-    int version = 150;
+    int const version = 150;
     result.size += sizeof(CHUNK_ID_VOX_);
     result.size += sizeof(version);
     // Main chunk
@@ -121,26 +117,26 @@ GVoxPayload Context::create_payload(GVoxScene scene) {
     for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
         for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
             for (size_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
-                size_t i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
+                size_t const i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
                 auto const &i_voxel = scene.nodes[0].voxels[i];
                 if (i_voxel.id != 0) {
-                    MagicavoxelVoxel o_voxel;
+                    MagicavoxelVoxel o_voxel{};
                     o_voxel.x = static_cast<uint8_t>(xi);
                     o_voxel.y = static_cast<uint8_t>(yi);
                     o_voxel.z = static_cast<uint8_t>(zi);
                     auto min_iter = std::min_element(default_palette.begin(), default_palette.end(), [&](uint32_t a_, uint32_t b_) {
-                        float a[3] = {
+                        auto const a = std::array<float, 3>{
                             static_cast<float>((a_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
                             static_cast<float>((a_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
                             static_cast<float>((a_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
                         };
-                        float b[3] = {
+                        auto const b = std::array<float, 3>{
                             static_cast<float>((b_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
                             static_cast<float>((b_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
                             static_cast<float>((b_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
                         };
-                        float a_dist = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
-                        float b_dist = b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
+                        float const a_dist = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+                        float const b_dist = b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
                         return a_dist < b_dist;
                     });
                     o_voxel.color_index = static_cast<uint8_t>(min_iter - default_palette.begin());
@@ -158,7 +154,7 @@ void Context::destroy_payload(GVoxPayload payload) {
     delete[] payload.data;
 }
 
-GVoxScene Context::parse_payload(GVoxPayload payload) {
+auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     ogt_vox_scene const *scene = ogt_vox_read_scene(payload.data, static_cast<uint32_t>(payload.size));
     result.node_n = 1;
@@ -171,7 +167,7 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
     for (size_t zi = 0; zi < result.nodes[0].size_z; ++zi) {
         for (size_t yi = 0; yi < result.nodes[0].size_y; ++yi) {
             for (size_t xi = 0; xi < result.nodes[0].size_x; ++xi) {
-                size_t i = xi + yi * result.nodes[0].size_x + zi * result.nodes[0].size_x * result.nodes[0].size_y;
+                size_t const i = xi + yi * result.nodes[0].size_x + zi * result.nodes[0].size_x * result.nodes[0].size_y;
                 auto const &voxel = scene->models[0]->voxel_data[i];
                 if (voxel == 0) {
                     result.nodes[0].voxels[i] = GVoxVoxel{
@@ -196,27 +192,27 @@ GVoxScene Context::parse_payload(GVoxPayload payload) {
     return result;
 }
 
-extern "C" EXPORT void *gvox_format_create_context() {
-    auto result = new Context{};
+extern "C" EXPORT auto gvox_format_create_context() -> void * {
+    auto *result = new Context{};
     return result;
 }
 
 extern "C" EXPORT void gvox_format_destroy_context(void *context_ptr) {
-    auto self = reinterpret_cast<Context *>(context_ptr);
+    auto *self = reinterpret_cast<Context *>(context_ptr);
     delete self;
 }
 
-extern "C" EXPORT GVoxPayload gvox_format_create_payload(void *context_ptr, GVoxScene scene) {
-    auto self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT auto gvox_format_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
+    auto *self = reinterpret_cast<Context *>(context_ptr);
     return self->create_payload(scene);
 }
 
 extern "C" EXPORT void gvox_format_destroy_payload(void *context_ptr, GVoxPayload payload) {
-    auto self = reinterpret_cast<Context *>(context_ptr);
+    auto *self = reinterpret_cast<Context *>(context_ptr);
     self->destroy_payload(payload);
 }
 
-extern "C" EXPORT GVoxScene gvox_format_parse_payload(void *context_ptr, GVoxPayload payload) {
-    auto self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT auto gvox_format_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
+    auto *self = reinterpret_cast<Context *>(context_ptr);
     return self->parse_payload(payload);
 }
