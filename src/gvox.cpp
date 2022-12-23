@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <vector>
 #include <iostream>
+#include <array>
 
 #if __linux__
 #include <unistd.h>
@@ -96,55 +97,78 @@ void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader) {
     ctx->format_loader_table[format_loader.name_str] = new GVoxFormatLoader{format_loader};
 }
 
-void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
-    using GVoxFormatCreateContextFunc = void *(*)();
-    using GVoxFormatDestroyContextFunc = void (*)(void *);
-    using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene);
-    using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload);
-    using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
+using GVoxFormatCreateContextFunc = void *(*)();
+using GVoxFormatDestroyContextFunc = void (*)(void *);
+using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene);
+using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload);
+using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
 
+#include <static_formats.hpp>
+
+void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     std::string filename = std::string("gvox_format_") + format_loader_name;
 
+    auto static_format_iter = std::find_if(static_format_infos.begin(), static_format_infos.end(), [&](auto const &static_format_info) {
+        return static_format_info.name == filename;
+    });
+
+    if (static_format_iter != static_format_infos.end()) {
+        GVoxFormatLoader const format_loader = {
+            .name_str = format_loader_name,
+            .create_context = static_format_iter->create_context,
+            .destroy_context = static_format_iter->destroy_context,
+            .create_payload = static_format_iter->create_payload,
+            .destroy_payload = static_format_iter->destroy_payload,
+            .parse_payload = static_format_iter->parse_payload,
+        };
+        gvox_register_format(ctx, format_loader);
+    } else {
+        auto create_context_str = std::string("gvox_format_") + format_loader_name + "_create_context";
+        auto destroy_context_str = std::string("gvox_format_") + format_loader_name + "_destroy_context";
+        auto create_payload_str = std::string("gvox_format_") + format_loader_name + "_create_payload";
+        auto destroy_payload_str = std::string("gvox_format_") + format_loader_name + "_destroy_payload";
+        auto parse_payload_str = std::string("gvox_format_") + format_loader_name + "_parse_payload";
 #if __linux__
-    filename = "lib" + filename + ".so";
-    void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
-    if (!so_handle) {
-        auto path = get_exe_path() / filename;
-        so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
-    }
-    if (!so_handle) {
-        ctx->errors.push_back({"Failed to load Format .so at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT});
-        return;
-    }
-    GVoxFormatLoader format_loader = {
-        .name_str = format_loader_name,
-        .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, "gvox_format_create_context"),
-        .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, "gvox_format_destroy_context"),
-        .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, "gvox_format_create_payload"),
-        .destroy_payload = (GVoxFormatDestroyPayloadFunc)dlsym(so_handle, "gvox_format_destroy_payload"),
-        .parse_payload = (GVoxFormatParsePayloadFunc)dlsym(so_handle, "gvox_format_parse_payload"),
-    };
+        filename = "lib" + filename + ".so";
+        void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
+        if (!so_handle) {
+            auto path = get_exe_path() / filename;
+            so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
+        }
+        if (!so_handle) {
+            ctx->errors.push_back({"Failed to load Format .so at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT});
+            return;
+        }
+        GVoxFormatLoader format_loader = {
+            .name_str = format_loader_name,
+            .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, create_context_str.c_str()),
+            .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, destroy_context_str.c_str()),
+            .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, create_payload_str.c_str()),
+            .destroy_payload = (GVoxFormatDestroyPayloadFunc)dlsym(so_handle, destroy_payload_str.c_str()),
+            .parse_payload = (GVoxFormatParsePayloadFunc)dlsym(so_handle, parse_payload_str.c_str()),
+        };
 #elif _WIN32
-    filename = filename + ".dll";
-    HINSTANCE dll_handle = LoadLibrary(filename.c_str());
-    if (dll_handle == nullptr) {
-        auto path = get_exe_path() / filename;
-        dll_handle = LoadLibrary(path.string().c_str());
-    }
-    if (dll_handle == nullptr) {
-        ctx->errors.emplace_back("Failed to load Format DLL at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT);
-        return;
-    }
-    GVoxFormatLoader const format_loader = {
-        .name_str = format_loader_name,
-        .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, "gvox_format_create_context"),
-        .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, "gvox_format_destroy_context"),
-        .create_payload = (GVoxFormatCreatePayloadFunc)GetProcAddress(dll_handle, "gvox_format_create_payload"),
-        .destroy_payload = (GVoxFormatDestroyPayloadFunc)GetProcAddress(dll_handle, "gvox_format_destroy_payload"),
-        .parse_payload = (GVoxFormatParsePayloadFunc)GetProcAddress(dll_handle, "gvox_format_parse_payload"),
-    };
+        filename = filename + ".dll";
+        HINSTANCE dll_handle = LoadLibrary(filename.c_str());
+        if (dll_handle == nullptr) {
+            auto path = get_exe_path() / filename;
+            dll_handle = LoadLibrary(path.string().c_str());
+        }
+        if (dll_handle == nullptr) {
+            ctx->errors.emplace_back("Failed to load Format DLL at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT);
+            return;
+        }
+        GVoxFormatLoader const format_loader = {
+            .name_str = format_loader_name,
+            .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, create_context_str.c_str()),
+            .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, destroy_context_str.c_str()),
+            .create_payload = (GVoxFormatCreatePayloadFunc)GetProcAddress(dll_handle, create_payload_str.c_str()),
+            .destroy_payload = (GVoxFormatDestroyPayloadFunc)GetProcAddress(dll_handle, destroy_payload_str.c_str()),
+            .parse_payload = (GVoxFormatParsePayloadFunc)GetProcAddress(dll_handle, parse_payload_str.c_str()),
+        };
 #endif
-    gvox_register_format(ctx, format_loader);
+        gvox_register_format(ctx, format_loader);
+    }
 }
 
 void gvox_push_root_path(GVoxContext *ctx, char const *path) {

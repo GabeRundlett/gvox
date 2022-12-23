@@ -10,15 +10,19 @@
 
 #include <iostream>
 
+#if GVOX_FORMAT_GVOX_U32_PALETTE_BUILT_STATIC
+#define EXPORT
+#else
 #if __linux__
 #define EXPORT
 #elif _WIN32
 #define EXPORT __declspec(dllexport)
 #endif
+#endif
 
 static constexpr auto CHUNK_SIZE = 8;
 
-auto ceil_log2(size_t x) -> uint32_t {
+static auto ceil_log2(size_t x) -> uint32_t {
     static auto const t = std::array<size_t, 6>{
         0xFFFFFFFF00000000ull,
         0x00000000FFFF0000ull,
@@ -66,6 +70,16 @@ static constexpr std::array<uint32_t, 9> mask_bases = {
     0b0000'0001'1111'1111,
 };
 
+static auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t {
+    auto palette_chunk_size = (bits_per_variant * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE + 7) / 8;
+    // return palette_chunk_size; Why not this?
+    palette_chunk_size = (palette_chunk_size + 3) / 4;
+    auto size = palette_chunk_size * 4;
+    // WHY???
+    size += 4;
+    return size;
+}
+
 struct PaletteCompressor {
     std::vector<uint8_t> data;
 
@@ -112,15 +126,12 @@ struct PaletteCompressor {
 
         // insert palette
         size += sizeof(uint32_t) * variants;
+        // std::cout << variants << " " << std::flush;
 
         if (variants != 1) {
             // insert palette chunk
-            auto palette_chunk_size = (CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE * bits_per_variant) / 8;
-            palette_chunk_size = (palette_chunk_size + 3) / 4;
-            size += palette_chunk_size * 4 + 1;
+            size += calc_palette_chunk_size(bits_per_variant);
         }
-        // WHY???
-        size += 4;
 
         size_t const old_size = data.size();
         data.reserve(old_size + size);
@@ -157,6 +168,7 @@ struct PaletteCompressor {
                         size_t const py = oy + yi;
                         size_t const pz = oz + zi;
                         size_t const index = px + py * node.size_x + pz * node.size_x * node.size_y;
+                        size_t const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
                         auto const &i_vox = node.voxels[index];
                         uint32_t u32_voxel = 0;
                         uint32_t const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
@@ -168,15 +180,17 @@ struct PaletteCompressor {
                         u32_voxel = u32_voxel | (b << 0x10);
                         u32_voxel = u32_voxel | (i << 0x18);
                         auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
-                        auto const palette_id = static_cast<uint32_t>(palette_iter - palette_begin);
-                        auto const bit_index = static_cast<uint32_t>(index * bits_per_variant);
-                        uint32_t const byte_index = bit_index / 8;
-                        uint32_t const bit_offset = bit_index - byte_index * 8;
-                        uint32_t const mask = mask_bases[bits_per_variant];
+                        assert(palette_iter != palette_end);
+                        auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
+                        auto const bit_index = static_cast<size_t>(in_chunk_index * bits_per_variant);
+                        auto const byte_index = bit_index / 8;
+                        auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
+                        auto const mask = mask_bases[bits_per_variant];
+                        assert(output_buffer + byte_index < data.data() + data.size());
                         // std::cout << "bi: " << byte_index << "  " << std::flush;
                         auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                         output = output & ~(mask << bit_offset);
-                        output = output | (palette_id << bit_offset);
+                        output = output | static_cast<uint32_t>(palette_id << bit_offset);
                     }
                     // std::cout << std::endl;
                 }
@@ -254,27 +268,27 @@ struct PaletteCompressor {
     }
 };
 
-struct Context {
-    Context();
-    ~Context() = default;
+struct GVoxU32PaletteContext {
+    GVoxU32PaletteContext();
+    ~GVoxU32PaletteContext() = default;
 
     static auto create_payload(GVoxScene scene) -> GVoxPayload;
     static void destroy_payload(GVoxPayload payload);
     static auto parse_payload(GVoxPayload payload) -> GVoxScene;
 };
 
-Context::Context() = default;
+GVoxU32PaletteContext::GVoxU32PaletteContext() = default;
 
-auto Context::create_payload(GVoxScene scene) -> GVoxPayload {
+auto GVoxU32PaletteContext::create_payload(GVoxScene scene) -> GVoxPayload {
     PaletteCompressor compressor;
     return compressor.create(scene);
 }
 
-void Context::destroy_payload(GVoxPayload payload) {
+void GVoxU32PaletteContext::destroy_payload(GVoxPayload payload) {
     delete[] payload.data;
 }
 
-auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
+auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     auto *buffer_ptr = static_cast<uint8_t *>(payload.data);
     result.node_n = read_data<size_t>(buffer_ptr);
@@ -308,8 +322,9 @@ auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
                     auto variants = chunk_info;
                     auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
                     size_t const bits_per_variant = ceil_log2(variants);
-                    assert(bits_per_variant < 9);
+                    assert(bits_per_variant <= 9);
                     buffer_ptr += variants * sizeof(uint32_t);
+                    // std::cout << variants << " " << std::flush;
                     if (variants == 1) {
                         for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
                             for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
@@ -338,12 +353,13 @@ auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     size_t const py = oy + yi;
                                     size_t const pz = oz + zi;
                                     size_t const index = px + py * node.size_x + pz * node.size_x * node.size_y;
-                                    auto const bit_index = static_cast<uint32_t>(index * bits_per_variant);
+                                    size_t const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
+                                    auto const bit_index = static_cast<uint32_t>(in_chunk_index * bits_per_variant);
                                     uint32_t const byte_index = bit_index / 8;
                                     uint32_t const bit_offset = bit_index - byte_index * 8;
                                     uint32_t const mask = mask_bases[bits_per_variant];
                                     auto &input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
-                                    uint32_t const palette_id = (input & mask) >> bit_offset;
+                                    uint32_t const palette_id = (input >> bit_offset) & mask;
                                     uint32_t const u32_voxel = palette_begin[palette_id];
                                     float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
                                     float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;
@@ -356,6 +372,7 @@ auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
                                 }
                             }
                         }
+                        buffer_ptr += calc_palette_chunk_size(bits_per_variant);
                     }
                 }
             }
@@ -366,27 +383,27 @@ auto Context::parse_payload(GVoxPayload payload) -> GVoxScene {
     return result;
 }
 
-extern "C" EXPORT auto gvox_format_create_context() -> void * {
-    auto *result = new Context{};
+extern "C" EXPORT auto gvox_format_gvox_u32_palette_create_context() -> void * {
+    auto *result = new GVoxU32PaletteContext{};
     return result;
 }
 
-extern "C" EXPORT void gvox_format_destroy_context(void *context_ptr) {
-    auto *self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT void gvox_format_gvox_u32_palette_destroy_context(void *context_ptr) {
+    auto *self = reinterpret_cast<GVoxU32PaletteContext *>(context_ptr);
     delete self;
 }
 
-extern "C" EXPORT auto gvox_format_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
-    auto *self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT auto gvox_format_gvox_u32_palette_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
+    auto *self = reinterpret_cast<GVoxU32PaletteContext *>(context_ptr);
     return self->create_payload(scene);
 }
 
-extern "C" EXPORT void gvox_format_destroy_payload(void *context_ptr, GVoxPayload payload) {
-    auto *self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT void gvox_format_gvox_u32_palette_destroy_payload(void *context_ptr, GVoxPayload payload) {
+    auto *self = reinterpret_cast<GVoxU32PaletteContext *>(context_ptr);
     self->destroy_payload(payload);
 }
 
-extern "C" EXPORT auto gvox_format_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
-    auto *self = reinterpret_cast<Context *>(context_ptr);
+extern "C" EXPORT auto gvox_format_gvox_u32_palette_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
+    auto *self = reinterpret_cast<GVoxU32PaletteContext *>(context_ptr);
     return self->parse_payload(payload);
 }
