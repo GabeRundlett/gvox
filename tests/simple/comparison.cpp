@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 #include "print.h"
 #include "scene.h"
