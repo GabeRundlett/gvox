@@ -21,13 +21,12 @@ void print_voxels(GVoxScene scene) {
                     //     brightness = 1.0f;
                     // char c = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"[(size_t)(brightness * 69.0f)];
                     char c = '*';
-                    auto r = uint8_t(vox.color.x * 255);
+                    uint8_t r = (uint8_t)(vox.color.x * 255);
                     if (r == 0)
                         c = ' ';
                     if (r == 255)
                         c = '#';
                     fputc(c, stdout);
-                    // printf("%02x ", uint8_t(vox.color.x * 255));
                 }
                 // fputc('\n', stdout);
                 fputc(' ', stdout);
