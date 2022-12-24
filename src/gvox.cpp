@@ -118,6 +118,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     if (static_format_iter != static_format_infos.end()) {
         GVoxFormatLoader const format_loader = {
             .name_str = format_loader_name,
+            .context = nullptr,
             .create_context = static_format_iter->create_context,
             .destroy_context = static_format_iter->destroy_context,
             .create_payload = static_format_iter->create_payload,
@@ -144,6 +145,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         }
         GVoxFormatLoader format_loader = {
             .name_str = format_loader_name,
+            .context = nullptr,
             .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, create_context_str.c_str()),
             .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, destroy_context_str.c_str()),
             .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, create_payload_str.c_str()),
@@ -163,6 +165,7 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         }
         GVoxFormatLoader const format_loader = {
             .name_str = format_loader_name,
+            .context = nullptr,
             .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, create_context_str.c_str()),
             .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, destroy_context_str.c_str()),
             .create_payload = (GVoxFormatCreatePayloadFunc)GetProcAddress(dll_handle, create_payload_str.c_str()),

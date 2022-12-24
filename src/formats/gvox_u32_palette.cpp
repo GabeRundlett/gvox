@@ -34,9 +34,8 @@ static auto ceil_log2(size_t x) -> uint32_t {
 
     uint32_t y = (((x & (x - 1)) == 0) ? 0 : 1);
     int j = 32;
-    int i = 0;
 
-    for (i = 0; i < 6; i++) {
+    for (size_t i = 0; i < 6; i++) {
         int const k = (((x & t[i]) == 0) ? 0 : j);
         y += static_cast<uint32_t>(k);
         x >>= k;
@@ -335,9 +334,9 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     size_t const pz = oz + zi;
                                     size_t const index = px + py * node.size_x + pz * node.size_x * node.size_y;
                                     uint32_t const u32_voxel = palette_begin[0];
-                                    float r = ((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
-                                    float g = ((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
-                                    float b = ((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
+                                    float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
+                                    float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
+                                    float b = static_cast<float>((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
                                     uint32_t const i = (u32_voxel >> 0x18) & 0xff;
                                     node.voxels[index] = GVoxVoxel{
                                         .color = {r, g, b},

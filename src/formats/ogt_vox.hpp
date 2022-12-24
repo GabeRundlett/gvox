@@ -860,7 +860,7 @@ static uint32_t _vox_dict_get_value_as_uint32(const _vox_dictionary *dict, const
     if (!str)
         return default_value;
     uint32_t value;
-    _vox_str_scanf(str, "%i", &value);
+    _vox_str_scanf(str, "%u", &value);
     return value;
 }
 
@@ -2127,7 +2127,7 @@ static void _vox_file_write_chunk_nTRN(_vox_file_writeable *fp, uint32_t node_id
     _vox_file_write_uint32(fp, node_id);
 
     // write the node dictionary
-    uint32_t node_dict_keyvalue_count = (name ? 1 : 0) + (hidden_string ? 1 : 0) + (loop_string ? 1 : 0);
+    uint32_t node_dict_keyvalue_count = (name ? 1u : 0u) + (hidden_string ? 1u : 0u) + (loop_string ? 1u : 0u);
     _vox_file_write_uint32(fp, node_dict_keyvalue_count); // num key values
     _vox_file_write_dict_key_value(fp, "_name", name);
     _vox_file_write_dict_key_value(fp, "_hidden", hidden_string);
