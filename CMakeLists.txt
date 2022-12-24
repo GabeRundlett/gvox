@@ -4,7 +4,7 @@ include(cmake/warnings.cmake)
 
 project(gvox VERSION 0.0.1)
 
-# find_package(ZLIB REQUIRED)
+find_package(ZLIB REQUIRED)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -39,7 +39,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     ${CMAKE_DL_LIBS}
-    # ZLIB::ZLIB
+    ZLIB::ZLIB
 )
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -54,9 +54,10 @@ set(GVOX_FORMATS
 )
 
 set(GVOX_STATIC_FORMATS
-    gvox_simple
+    gvox_raw
     gvox_u32
     gvox_u32_palette
+    zlib
 )
 
 set(static_formats_header_content "#pragma once

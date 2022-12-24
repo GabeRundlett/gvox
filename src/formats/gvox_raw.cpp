@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#if GVOX_FORMAT_GVOX_SIMPLE_BUILT_STATIC
+#if GVOX_FORMAT_GVOX_RAW_BUILT_STATIC
 #define EXPORT
 #else
 #if __linux__
@@ -14,18 +14,18 @@
 #endif
 #endif
 
-struct GVoxSimpleContext {
-    GVoxSimpleContext();
-    ~GVoxSimpleContext() = default;
+struct GVoxRawContext {
+    GVoxRawContext();
+    ~GVoxRawContext() = default;
 
     static auto create_payload(GVoxScene scene) -> GVoxPayload;
     static void destroy_payload(GVoxPayload payload);
     static auto parse_payload(GVoxPayload payload) -> GVoxScene;
 };
 
-GVoxSimpleContext::GVoxSimpleContext() = default;
+GVoxRawContext::GVoxRawContext() = default;
 
-auto GVoxSimpleContext::create_payload(GVoxScene scene) -> GVoxPayload {
+auto GVoxRawContext::create_payload(GVoxScene scene) -> GVoxPayload {
     GVoxPayload result = {};
     result.size += sizeof(size_t);
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
@@ -56,11 +56,11 @@ auto GVoxSimpleContext::create_payload(GVoxScene scene) -> GVoxPayload {
     return result;
 }
 
-void GVoxSimpleContext::destroy_payload(GVoxPayload payload) {
+void GVoxRawContext::destroy_payload(GVoxPayload payload) {
     delete[] payload.data;
 }
 
-auto GVoxSimpleContext::parse_payload(GVoxPayload payload) -> GVoxScene {
+auto GVoxRawContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     auto *buffer_ptr = (uint8_t *)payload.data;
     uint8_t *buffer_sentinel = (uint8_t *)payload.data + payload.size;
@@ -84,27 +84,27 @@ auto GVoxSimpleContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     return result;
 }
 
-extern "C" EXPORT auto gvox_format_gvox_simple_create_context() -> void * {
-    auto *result = new GVoxSimpleContext{};
+extern "C" EXPORT auto gvox_format_gvox_raw_create_context() -> void * {
+    auto *result = new GVoxRawContext{};
     return result;
 }
 
-extern "C" EXPORT void gvox_format_gvox_simple_destroy_context(void *context_ptr) {
-    auto *self = reinterpret_cast<GVoxSimpleContext *>(context_ptr);
+extern "C" EXPORT void gvox_format_gvox_raw_destroy_context(void *context_ptr) {
+    auto *self = reinterpret_cast<GVoxRawContext *>(context_ptr);
     delete self;
 }
 
-extern "C" EXPORT auto gvox_format_gvox_simple_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
-    auto *self = reinterpret_cast<GVoxSimpleContext *>(context_ptr);
+extern "C" EXPORT auto gvox_format_gvox_raw_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
+    auto *self = reinterpret_cast<GVoxRawContext *>(context_ptr);
     return self->create_payload(scene);
 }
 
-extern "C" EXPORT void gvox_format_gvox_simple_destroy_payload(void *context_ptr, GVoxPayload payload) {
-    auto *self = reinterpret_cast<GVoxSimpleContext *>(context_ptr);
+extern "C" EXPORT void gvox_format_gvox_raw_destroy_payload(void *context_ptr, GVoxPayload payload) {
+    auto *self = reinterpret_cast<GVoxRawContext *>(context_ptr);
     self->destroy_payload(payload);
 }
 
-extern "C" EXPORT auto gvox_format_gvox_simple_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
-    auto *self = reinterpret_cast<GVoxSimpleContext *>(context_ptr);
+extern "C" EXPORT auto gvox_format_gvox_raw_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
+    auto *self = reinterpret_cast<GVoxRawContext *>(context_ptr);
     return self->parse_payload(payload);
 }

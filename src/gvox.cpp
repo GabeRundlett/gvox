@@ -58,9 +58,10 @@ auto get_exe_path() -> std::filesystem::path {
 
 auto gvox_create_context(void) -> GVoxContext * {
     auto *result = new GVoxContext;
-    gvox_load_format(result, "gvox_simple");
+    gvox_load_format(result, "gvox_raw");
     gvox_load_format(result, "gvox_u32");
     gvox_load_format(result, "gvox_u32_palette");
+    gvox_load_format(result, "zlib");
     gvox_load_format(result, "magicavoxel");
     return result;
 }
