@@ -205,6 +205,9 @@ struct PaletteCompressor {
     }
 
     auto node_precomp(GVoxSceneNode const &node) -> size_t {
+        // allocate at least 5% of the original node
+        data.reserve((node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20);
+
         size_t size = 0;
 
         size_t const old_size = data.size();

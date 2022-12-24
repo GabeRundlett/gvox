@@ -12,7 +12,7 @@
 #include "print.h"
 #include "scene.h"
 
-#define TEST_ALL 0
+#define TEST_ALL 1
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -95,13 +95,15 @@ auto main() -> int {
 
     gvox_destroy_scene(scene);
 #else
-    GVoxScene scene = create_scene(8, 8, 8);
-    // using namespace std::literals;
-    // std::this_thread::sleep_for(0.1s);
+    GVoxScene scene = []() {
+        Timer const timer{};
+        auto const size = 8 * 64;
+        return create_scene(size, size, size);
+    }();
     {
         Timer const timer{};
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
-        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+        // gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
         while (gvox_get_result(gvox) != GVOX_SUCCESS) {
             size_t msg_size = 0;
             gvox_get_result_message(gvox, nullptr, &msg_size);
@@ -112,21 +114,18 @@ auto main() -> int {
             gvox_destroy_scene(scene);
             return -1;
         }
-        std::cout << "\ngvox_u32_palette | " << std::flush;
     }
-    std::cout << "generated scene content:" << std::endl;
-    print_voxels(scene);
+    // std::cout << "generated scene content:" << std::endl;
+    // print_voxels(scene);
     gvox_destroy_scene(scene);
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
-    std::cout << "\nloaded uncompressed scene content:" << std::endl;
-    print_voxels(scene);
-    gvox_destroy_scene(scene);
+    // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
+    // std::cout << "\nloaded uncompressed scene content:" << std::endl;
+    // print_voxels(scene);
+    // gvox_destroy_scene(scene);
     scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
     std::cout << "\nloaded compressed scene content:" << std::endl;
-    print_voxels(scene);
+    // print_voxels(scene);
     gvox_destroy_scene(scene);
-    std::cout << std::flush;
-    // std::this_thread::sleep_for(0.1s);
 #endif
 
     gvox_destroy_context(gvox);
