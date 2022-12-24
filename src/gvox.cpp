@@ -12,6 +12,7 @@
 #include <vector>
 #include <iostream>
 #include <array>
+#include <algorithm>
 
 #if __linux__
 #include <unistd.h>
@@ -78,6 +79,7 @@ void gvox_destroy_context(GVoxContext *ctx) {
     }
     for (auto &[format_key, format_loader] : ctx->format_loader_table) {
         impl_gvox_unregister_format(ctx, *format_loader);
+        delete format_loader;
     }
     delete ctx;
 }

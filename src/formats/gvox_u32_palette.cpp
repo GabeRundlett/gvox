@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <array>
+#include <vector>
 
 #include <iostream>
 
@@ -76,7 +77,7 @@ static auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t {
     palette_chunk_size = (palette_chunk_size + 3) / 4;
     auto size = palette_chunk_size * 4;
     // WHY???
-    size += 4;
+    size += 3;
     return size;
 }
 
@@ -186,7 +187,7 @@ struct PaletteCompressor {
                         auto const byte_index = bit_index / 8;
                         auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                         auto const mask = mask_bases[bits_per_variant];
-                        assert(output_buffer + byte_index < data.data() + data.size());
+                        assert(output_buffer + byte_index + 3 < data.data() + data.size());
                         // std::cout << "bi: " << byte_index << "  " << std::flush;
                         auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                         output = output & ~(mask << bit_offset);

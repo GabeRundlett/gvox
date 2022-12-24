@@ -43,6 +43,7 @@ auto main() -> int {
             msg.resize(msg_size);
             gvox_get_result_message(gvox, nullptr, &msg_size);
             gvox_pop_result(gvox);
+            gvox_destroy_scene(scene);
             return -1;
         }
 
