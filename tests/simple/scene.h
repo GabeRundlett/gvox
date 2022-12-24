@@ -6,7 +6,7 @@
 
 float sample_terrain(float x, float y, float z) {
     float r = (float)(rand() % 1000) * 0.001f;
-    return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 3.0f + r * 0.5f;
+    return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 6.0f + r * 0.5f;
 }
 
 float sample_terrain_i(int xi, int yi, int zi, size_t sx, size_t sy, size_t sz) {
@@ -30,7 +30,7 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
         for (size_t yi = 0; yi < sy; ++yi) {
             for (size_t xi = 0; xi < sx; ++xi) {
                 size_t const i = xi + yi * sx + zi * sx * sy;
-                GVoxVoxel result = {.color = {0.0f, 0.0f, 0.0f}, .id = 0};
+                GVoxVoxel result = {.color = {0.6f, 0.7f, 0.9f}, .id = 0};
                 scene.nodes[0].voxels[i] = result;
                 float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi, sx, sy, sz);
                 if (val > -0.0f) {
@@ -54,7 +54,7 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                 if (result.id == 1) {
                     int si = 0;
                     for (si = 0; si < 6; ++si) {
-                        float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi, sx, sy, sz);
+                        float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi + si, sx, sy, sz);
                         if (val < -0.0f) {
                             break;
                         }

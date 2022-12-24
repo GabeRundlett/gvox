@@ -106,7 +106,7 @@ auto ZlibContext::create_payload(GVoxScene scene) -> GVoxPayload {
 
     auto uncompressed_size = result.size;
 
-    auto compressed = new uint8_t[result.size];
+    auto *compressed = new uint8_t[result.size];
 
     z_stream defstream{};
     defstream.zalloc = Z_NULL;
@@ -122,7 +122,7 @@ auto ZlibContext::create_payload(GVoxScene scene) -> GVoxPayload {
 
     assert(defstream.msg == nullptr);
 
-    size_t compressed_size = defstream.total_out;
+    size_t const compressed_size = defstream.total_out;
 
     // std::cout << uncompressed_size << ", " << compressed_size << std::endl;
 
@@ -145,7 +145,7 @@ auto ZlibContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     auto *buffer_ptr = (uint8_t *)payload.data;
     auto *buffer_sentinel = buffer_ptr + payload.size;
-    uint8_t *uncompressed_data;
+    uint8_t *uncompressed_data = nullptr;
     {
         auto uncompressed_size = *reinterpret_cast<size_t *>(buffer_ptr);
         auto compressed_size = payload.size - sizeof(size_t);

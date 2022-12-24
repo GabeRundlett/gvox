@@ -19,6 +19,12 @@ using Clock = std::chrono::high_resolution_clock;
 struct Timer {
     Clock::time_point start = Clock::now();
 
+    Timer() = default;
+    Timer(Timer const &) = default;
+    Timer(Timer &&) = default;
+    Timer& operator=(Timer const &) = default;
+    Timer& operator=(Timer &&) = default;
+
     ~Timer() {
         auto now = Clock::now();
         std::cout << "elapsed: " << std::chrono::duration<float>(now - start).count() << std::endl;
@@ -29,7 +35,7 @@ auto main() -> int {
     GVoxContext *gvox = gvox_create_context();
 
 #if TEST_ALL
-    GVoxScene scene = create_scene(256, 256, 256);
+    GVoxScene const scene = create_scene(256, 256, 256);
     GVoxScene loaded_scene;
     {
         Timer const timer{};
@@ -90,8 +96,8 @@ auto main() -> int {
     gvox_destroy_scene(scene);
 #else
     GVoxScene scene = create_scene(8, 8, 8);
-    using namespace std::literals;
-    std::this_thread::sleep_for(0.5s);
+    // using namespace std::literals;
+    // std::this_thread::sleep_for(0.1s);
     {
         Timer const timer{};
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
@@ -120,7 +126,7 @@ auto main() -> int {
     print_voxels(scene);
     gvox_destroy_scene(scene);
     std::cout << std::flush;
-    std::this_thread::sleep_for(0.5s);
+    // std::this_thread::sleep_for(0.1s);
 #endif
 
     gvox_destroy_context(gvox);

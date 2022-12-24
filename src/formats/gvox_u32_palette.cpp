@@ -126,7 +126,11 @@ struct PaletteCompressor {
 
         // insert palette
         size += sizeof(uint32_t) * variants;
-        // std::cout << variants << " " << std::flush;
+
+        // std::cout << variants << " | ";
+        // for (auto const tile : tile_set)
+        //     std::cout << tile << ", ";
+        // std::cout << std::endl;
 
         if (variants != 1) {
             // insert palette chunk
@@ -185,7 +189,7 @@ struct PaletteCompressor {
                         auto const bit_index = static_cast<size_t>(in_chunk_index * bits_per_variant);
                         auto const byte_index = bit_index / 8;
                         auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
-                        auto const mask = mask_bases[bits_per_variant];
+                        auto const mask = mask_bases[bits_per_variant - 1];
                         assert(output_buffer + byte_index + 3 < data.data() + data.size());
                         // std::cout << "bi: " << byte_index << "  " << std::flush;
                         auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
@@ -324,7 +328,12 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                     size_t const bits_per_variant = ceil_log2(variants);
                     assert(bits_per_variant <= 9);
                     buffer_ptr += variants * sizeof(uint32_t);
-                    // std::cout << variants << " " << std::flush;
+
+                    // std::cout << variants << " | ";
+                    // for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i)
+                    //     std::cout << palette_begin[tile_i] << ", ";
+                    // std::cout << std::endl;
+
                     if (variants == 1) {
                         for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
                             for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
@@ -355,11 +364,12 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     size_t const index = px + py * node.size_x + pz * node.size_x * node.size_y;
                                     size_t const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
                                     auto const bit_index = static_cast<uint32_t>(in_chunk_index * bits_per_variant);
-                                    uint32_t const byte_index = bit_index / 8;
-                                    uint32_t const bit_offset = bit_index - byte_index * 8;
-                                    uint32_t const mask = mask_bases[bits_per_variant];
+                                    auto const byte_index = bit_index / 8;
+                                    auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
+                                    uint32_t const mask = mask_bases[bits_per_variant - 1];
                                     auto &input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
                                     uint32_t const palette_id = (input >> bit_offset) & mask;
+                                    assert(palette_id < variants);
                                     uint32_t const u32_voxel = palette_begin[palette_id];
                                     float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
                                     float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;

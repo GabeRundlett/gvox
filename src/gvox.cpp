@@ -322,10 +322,10 @@ void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char
 void gvox_destroy_scene(GVoxScene scene) {
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (scene.nodes[node_i].voxels != nullptr) {
-            free(scene.nodes[node_i].voxels);
+            std::free(scene.nodes[node_i].voxels);
         }
     }
     if (scene.nodes != nullptr) {
-        free(scene.nodes);
+        std::free(scene.nodes);
     }
 }
