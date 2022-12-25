@@ -1,14 +1,22 @@
 {
-    "name": "gvox",
-    "version-string": "nightly",
-    "description": "GVOX Voxel Format Library",
-    "homepage": "https://github.com/GabeRundlett/gvox",
-    "dependencies": [
-        "zlib"
-    ],
-    "features": {
-        "tests": {
-            "description": "Build Tests"
-        }
+  "name": "gvox",
+  "version-string": "nightly",
+  "description": "GVOX Voxel Format Library",
+  "homepage": "https://github.com/GabeRundlett/gvox",
+  "dependencies": [
+    "zlib",
+    {
+      "name": "daxa",
+      "features": [
+        "glslang",
+        "utils"
+      ]
     }
+  ],
+  "features": {
+    "tests": {
+      "description": "Build Tests"
+    }
+  },
+  "builtin-baseline": "44b540607036e0587f6564c91f93663b0212ab98"
 }

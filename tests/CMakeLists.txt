@@ -34,6 +34,8 @@ function(GVOX_CREATE_TEST)
     set_project_sanitizers(${TGT})
 endfunction()
 
+find_package(daxa CONFIG REQUIRED)
+
 GVOX_CREATE_TEST(
     FOLDER simple
     FILE main
@@ -44,5 +46,8 @@ GVOX_CREATE_TEST(
     FOLDER simple
     FILE comparison
     LANG cpp
-    LIBS
+    LIBS daxa::daxa
 )
+
+set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
+target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")

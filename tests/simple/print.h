@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <gvox/gvox.h>
 
-#define PRINT_MODE 0
+#define PRINT_MODE 3
 
 void print_voxels(GVoxScene scene) {
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
@@ -35,9 +35,11 @@ void print_voxels(GVoxScene scene) {
 #elif PRINT_MODE == 2
                     char c = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"[(size_t)(vox.id)];
 #elif PRINT_MODE == 3
+                    printf("\033[38;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
                     printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
                     char c = '_';
 #endif
+                    fputc(c, stdout);
                     fputc(c, stdout);
                 }
                 printf("\033[0m ");
