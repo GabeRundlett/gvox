@@ -289,7 +289,12 @@ void run_gpu_version(GVoxScene const &scene) {
     device.wait_idle();
     GpuOutput *buffer_ptr = device.get_host_address_as<GpuOutput>(staging_gpu_output_buffer);
     if (!buffer_ptr) {
-        goto cleanup;
+        device.wait_idle();
+        device.collect_garbage();
+        device.destroy_buffer(gpu_input_buffer);
+        device.destroy_buffer(gpu_output_buffer);
+        device.destroy_buffer(staging_gpu_output_buffer);
+        return;
     }
     GpuOutput &gpu_output = *buffer_ptr;
     std::cout << "GPU: " << std::dec << (8 * 8 * 8 * sizeof(uint32_t)) << ", " << gpu_output.palette_size << std::dec << std::endl;
@@ -321,7 +326,6 @@ void run_gpu_version(GVoxScene const &scene) {
     print_voxels(gpu_scene);
     gvox_destroy_scene(gpu_scene);
 
-cleanup:
     device.wait_idle();
     device.collect_garbage();
     device.destroy_buffer(gpu_input_buffer);

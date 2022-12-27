@@ -294,7 +294,7 @@ static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *file
     file_payload = format_loader->create_payload(format_loader->context, scene);
     auto file = std::ofstream(filepath, std::ios::binary);
     if (!file.is_open()) {
-        goto cleanup_payload;
+        format_loader->destroy_payload(format_loader->context, file_payload);
     }
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = strlen(format);
@@ -304,7 +304,6 @@ static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *file
     }
     file.write(reinterpret_cast<char const *>(file_payload.data), static_cast<std::streamsize>(file_payload.size));
     file.close();
-cleanup_payload:
     format_loader->destroy_payload(format_loader->context, file_payload);
 }
 
