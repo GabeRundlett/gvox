@@ -45,7 +45,7 @@ auto main() -> int {
     GVoxContext *gvox = gvox_create_context();
 
 #if TEST_ALL
-    GVoxScene const scene = create_scene(64, 64, 64);
+    GVoxScene const scene = create_scene(256, 256, 256);
     GVoxScene loaded_scene;
     {
         Timer const timer{};
@@ -89,6 +89,17 @@ auto main() -> int {
         Timer const timer{};
         loaded_scene = gvox_load(gvox, "tests/simple/compare_scene0_zlib.gvox");
         std::cout << "load zlib             | " << std::flush;
+    }
+    gvox_destroy_scene(loaded_scene);
+    {
+        Timer const timer{};
+        gvox_save(gvox, scene, "tests/simple/compare_scene0_gzip.gvox", "gzip");
+        std::cout << "save zlib             | " << std::flush;
+    }
+    {
+        Timer const timer{};
+        loaded_scene = gvox_load(gvox, "tests/simple/compare_scene0_gzip.gvox");
+        std::cout << "load gzip             | " << std::flush;
     }
     gvox_destroy_scene(loaded_scene);
     {
@@ -281,7 +292,7 @@ void run_gpu_version(GVoxScene const &scene) {
         goto cleanup;
     }
     GpuOutput &gpu_output = *buffer_ptr;
-    std::cout << "GPU: " << std::hex << min_voxel << ", " << gpu_output.palette_size << std::dec << std::endl;
+    std::cout << "GPU: " << std::dec << (8 * 8 * 8 * sizeof(uint32_t)) << ", " << gpu_output.palette_size << std::dec << std::endl;
     GVoxScene gpu_scene;
     gpu_scene.node_n = 1;
     gpu_scene.nodes = (GVoxSceneNode *)malloc(sizeof(GVoxSceneNode) * gpu_scene.node_n);

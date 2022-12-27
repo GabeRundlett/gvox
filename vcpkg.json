@@ -5,6 +5,7 @@
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
     "zlib",
+    "gzip-hpp",
     {
       "name": "daxa",
       "features": [

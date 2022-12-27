@@ -4,8 +4,6 @@ include(cmake/warnings.cmake)
 
 project(gvox VERSION 0.0.1)
 
-find_package(ZLIB REQUIRED)
-
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
     find_program(CPPCHECK cppcheck)
@@ -36,6 +34,9 @@ add_library(${PROJECT_NAME} STATIC
 )
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+find_package(ZLIB REQUIRED)
+find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     ${CMAKE_DL_LIBS}
@@ -49,7 +50,7 @@ target_include_directories(${PROJECT_NAME}
 )
 set_project_warnings(${PROJECT_NAME})
 
-set(GVOX_FORMATS
+set(GVOX_DYNAMIC_FORMATS
     magicavoxel
 )
 
@@ -57,13 +58,28 @@ set(GVOX_STATIC_FORMATS
     gvox_raw
     gvox_u32
     gvox_u32_palette
+    gzip
     zlib
 )
 
-set(static_formats_header_content "#pragma once
+set(GVOX_FORMATS ${GVOX_DYNAMIC_FORMATS} ${GVOX_STATIC_FORMATS})
+
+foreach(FORMAT_NAME ${GVOX_FORMATS})
+    set(format_names_content "${format_names_content}
+    \"${FORMAT_NAME}\",")
+endforeach()
+
+set(formats_header_content "#pragma once
 
 #include <array>
 #include <string_view>
+
+static constexpr std::array format_names = {${format_names_content}
+};
+")
+
+set(formats_header_content "${formats_header_content}
+#pragma region STATIC_FORMATS
 
 struct StaticFormatInfo {
     std::string_view name;
@@ -74,12 +90,13 @@ struct StaticFormatInfo {
     GVoxFormatParsePayloadFunc parse_payload;
 };
 ")
+
 foreach(FORMAT_NAME ${GVOX_STATIC_FORMATS})
     target_sources(${PROJECT_NAME} PRIVATE "src/formats/${FORMAT_NAME}.cpp")
     string(MAKE_C_IDENTIFIER "${FORMAT_NAME}" FORMAT_NAME_UPPER)
     string(TOUPPER "${FORMAT_NAME_UPPER}" FORMAT_NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=true)
-    set(static_formats_header_content "${static_formats_header_content}
+    set(formats_header_content "${formats_header_content}
 extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
 extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
 extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload;
@@ -97,12 +114,14 @@ extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GV
     },")
 endforeach()
 
-set(static_formats_header_content "${static_formats_header_content}
+set(formats_header_content "${formats_header_content}
 static constexpr std::array static_format_infos = {${static_format_infos_content}
 };
+
+#pragma endregion
 ")
 
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/static_formats.hpp" "${static_formats_header_content}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/formats.hpp" "${formats_header_content}")
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS
@@ -117,7 +136,7 @@ endfunction()
 
 set_project_sanitizers(${PROJECT_NAME})
 
-foreach(FORMAT_NAME ${GVOX_FORMATS})
+foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
     add_library(gvox_format_${FORMAT_NAME} SHARED
         "src/formats/${FORMAT_NAME}.cpp"
     )
@@ -153,7 +172,7 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_DATADIR}/gvox)
 install(TARGETS gvox EXPORT gvox-targets)
-foreach(FORMAT_NAME ${GVOX_FORMATS})
+foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
     install(TARGETS gvox_format_${FORMAT_NAME} EXPORT gvox-targets)
 endforeach()
 install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)

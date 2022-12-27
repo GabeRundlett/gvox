@@ -22,7 +22,7 @@ function(GVOX_CREATE_TEST)
         endif()
     endif()
 
-    foreach(FORMAT_NAME ${GVOX_FORMATS})
+    foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
         add_custom_command(
             TARGET ${TGT}
             POST_BUILD

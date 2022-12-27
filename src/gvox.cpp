@@ -23,6 +23,14 @@
 #include <Windows.h>
 #endif
 
+using GVoxFormatCreateContextFunc = void *(*)();
+using GVoxFormatDestroyContextFunc = void (*)(void *);
+using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene);
+using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload);
+using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
+
+#include <formats.hpp>
+
 struct _GVoxContext {
     std::unordered_map<std::string, GVoxFormatLoader *> format_loader_table = {};
     std::vector<std::filesystem::path> root_paths = {};
@@ -58,11 +66,8 @@ auto get_exe_path() -> std::filesystem::path {
 
 auto gvox_create_context(void) -> GVoxContext * {
     auto *result = new GVoxContext;
-    gvox_load_format(result, "gvox_raw");
-    gvox_load_format(result, "gvox_u32");
-    gvox_load_format(result, "gvox_u32_palette");
-    gvox_load_format(result, "zlib");
-    gvox_load_format(result, "magicavoxel");
+    for (auto const name : format_names)
+        gvox_load_format(result, name);
     return result;
 }
 
@@ -99,14 +104,6 @@ void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader) {
     }
     ctx->format_loader_table[format_loader.name_str] = new GVoxFormatLoader{format_loader};
 }
-
-using GVoxFormatCreateContextFunc = void *(*)();
-using GVoxFormatDestroyContextFunc = void (*)(void *);
-using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene);
-using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload);
-using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
-
-#include <static_formats.hpp>
 
 void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
     std::string filename = std::string("gvox_format_") + format_loader_name;

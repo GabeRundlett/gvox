@@ -23,8 +23,8 @@
 
 static constexpr auto CHUNK_SIZE = 8;
 
-static auto ceil_log2(size_t x) -> uint32_t {
-    static auto const t = std::array<size_t, 6>{
+static constexpr auto ceil_log2(size_t x) -> uint32_t {
+    constexpr auto const t = std::array<size_t, 6>{
         0xFFFFFFFF00000000ull,
         0x00000000FFFF0000ull,
         0x000000000000FF00ull,
@@ -75,7 +75,6 @@ static auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t {
     // return palette_chunk_size; Why not this?
     palette_chunk_size = (palette_chunk_size + 3) / 4;
     auto size = palette_chunk_size * 4;
-    // WHY???
     size += 3;
     return size;
 }

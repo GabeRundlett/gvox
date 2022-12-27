@@ -14,7 +14,7 @@ void print_voxels(GVoxScene scene) {
         for (size_t zi = 0; zi < scene.nodes[node_i].size_z; ++zi) {
             for (size_t yi = 0; yi < scene.nodes[node_i].size_y; ++yi) {
                 for (size_t xi = 0; xi < scene.nodes[node_i].size_x; ++xi) {
-                    size_t i = xi + (scene.nodes[node_i].size_y - 1 - yi) * scene.nodes[node_i].size_x + (scene.nodes[node_i].size_z - 1 - zi) * scene.nodes[node_i].size_x * scene.nodes[node_i].size_y;
+                    size_t i = xi + yi * scene.nodes[node_i].size_x + (scene.nodes[node_i].size_z - 1 - zi) * scene.nodes[node_i].size_x * scene.nodes[node_i].size_y;
                     GVoxVoxel vox = scene.nodes[node_i].voxels[i];
 #if PRINT_MODE == 0
                     float brightness = (vox.color.x + vox.color.y + vox.color.z) * 1.0f / 3.0f;
