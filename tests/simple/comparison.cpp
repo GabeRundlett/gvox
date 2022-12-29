@@ -299,7 +299,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     }
 
 #if OUTPUT_COMPRESSED
-    GVoxScene gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.data = buffer_ptr, .size = 0}, "gvox_u32_palette");
+    GVoxScene gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
 #else
     GpuOutput &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
     std::cout << "GPU: " << std::dec << (8 * 8 * 8 * sizeof(uint32_t)) << ", " << gpu_output.palette_size << std::dec << std::endl;
