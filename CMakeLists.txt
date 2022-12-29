@@ -159,6 +159,8 @@ file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 @PACKAGE_INIT@
 include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
 check_required_components(gvox)
+find_package(ZLIB REQUIRED)
+find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
 ]=])
 
 configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
