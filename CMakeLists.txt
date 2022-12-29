@@ -159,6 +159,11 @@ file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 @PACKAGE_INIT@
 include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
 check_required_components(gvox)
+
+set(GVOX_DYNAMIC_FORMATS @GVOX_DYNAMIC_FORMATS@)
+set(GVOX_STATIC_FORMATS @GVOX_STATIC_FORMATS@)
+set(GVOX_FORMATS @GVOX_FORMATS@)
+
 find_package(ZLIB REQUIRED)
 find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
 ]=])
