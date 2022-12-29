@@ -6,7 +6,7 @@
 
 float sample_terrain(float x, float y, float z) {
     float r = (float)(rand() % 1000) * 0.001f;
-    return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 6.0f + r * 0.5f;
+    return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 7.0f + r * 0.5f;
 }
 
 float sample_terrain_i(int xi, int yi, int zi, size_t sx, size_t sy, size_t sz) {
@@ -31,17 +31,22 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
             for (size_t xi = 0; xi < sx; ++xi) {
                 size_t const i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = {.color = {0.6f, 0.7f, 0.9f}, .id = 0};
-                scene.nodes[0].voxels[i] = result;
+
                 float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi, sx, sy, sz);
                 if (val > -0.0f) {
-                    result.color.x = 0.33f;
-                    result.color.y = 0.32f;
-                    result.color.z = 0.30f;
+                    result.color.x = 0.25f;
+                    result.color.y = 0.24f;
+                    result.color.z = 0.23f;
                     // result.color.x = 1.f;
                     // result.color.y = 1.f;
                     // result.color.z = 1.f;
                     result.id = 1;
                 }
+
+                // result.color.x = (float)(xi >= sx / 2);
+                // result.color.y = (float)(yi >= sy / 2);
+                // result.color.z = (float)(zi >= sz / 2);
+
                 scene.nodes[0].voxels[i] = result;
             }
         }
@@ -60,22 +65,37 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                         }
                     }
                     if (si < 2) {
-                        result.color.x = 0.3f;
-                        result.color.y = 0.7f;
+                        result.color.x = 0.2f;
+                        result.color.y = 0.5f;
                         result.color.z = 0.1f;
                         result.id = 2;
                     } else if (si < 4) {
-                        result.color.x = 0.6f;
-                        result.color.y = 0.4f;
-                        result.color.z = 0.1f;
+                        result.color.x = 0.4f;
+                        result.color.y = 0.3f;
+                        result.color.z = 0.2f;
                         result.id = 3;
                     } else {
                         float const r = (float)(rand() % 1000) * 0.001f;
-                        if (r < 0.5f) {
-                            result.color.x = 0.30f;
-                            result.color.y = 0.29f;
-                            result.color.z = 0.28f;
+                        if (r < 0.2f) {
+                            result.color.x = 0.36f;
+                            result.color.y = 0.34f;
+                            result.color.z = 0.34f;
                             result.id = 4;
+                        } else if (r < 0.4f) {
+                            result.color.x = 0.9f;
+                            result.color.y = 0.34f;
+                            result.color.z = 0.34f;
+                            result.id = 5;
+                        } else if (r < 0.6f) {
+                            result.color.x = 0.36f;
+                            result.color.y = 0.9f;
+                            result.color.z = 0.34f;
+                            result.id = 6;
+                        } else if (r < 0.8f) {
+                            result.color.x = 0.36f;
+                            result.color.y = 0.34f;
+                            result.color.z = 0.9f;
+                            result.id = 7;
                         }
                     }
                     scene.nodes[0].voxels[i] = result;

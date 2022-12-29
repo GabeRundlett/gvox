@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 include(cmake/warnings.cmake)
 
+if(GVOX_ENABLE_TESTS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
+endif()
+
 project(gvox VERSION 0.0.1)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)

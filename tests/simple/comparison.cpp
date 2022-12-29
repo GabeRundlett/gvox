@@ -39,7 +39,7 @@ struct Timer {
     }
 };
 
-void run_gpu_version(GVoxScene const &scene);
+void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene);
 
 auto main() -> int {
     GVoxContext *gvox = gvox_create_context();
@@ -124,7 +124,7 @@ auto main() -> int {
     {
         Timer const timer{};
         gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
-        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+        // gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
         while (gvox_get_result(gvox) != GVOX_SUCCESS) {
             size_t msg_size = 0;
             gvox_get_result_message(gvox, nullptr, &msg_size);
@@ -138,13 +138,13 @@ auto main() -> int {
     }
     // std::cout << "generated scene content:" << std::endl;
     // print_voxels(scene);
-    run_gpu_version(scene);
+    run_gpu_version(gvox, scene);
 
     gvox_destroy_scene(scene);
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
-    std::cout << "\nloaded uncompressed scene content:" << std::endl;
-    print_voxels(scene);
-    gvox_destroy_scene(scene);
+    // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
+    // std::cout << "\nloaded uncompressed scene content:" << std::endl;
+    // print_voxels(scene);
+    // gvox_destroy_scene(scene);
     scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
     std::cout << "\nloaded compressed scene content:" << std::endl;
     print_voxels(scene);
@@ -155,7 +155,7 @@ auto main() -> int {
     gvox_destroy_context(gvox);
 }
 
-void run_gpu_version(GVoxScene const &scene) {
+void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     auto daxa_ctx = daxa::create_context({});
     auto device = daxa_ctx.create_device({});
     daxa::PipelineManager pipeline_manager = daxa::PipelineManager({
@@ -287,7 +287,8 @@ void run_gpu_version(GVoxScene const &scene) {
     task_list.complete();
     task_list.execute();
     device.wait_idle();
-    GpuOutput *buffer_ptr = device.get_host_address_as<GpuOutput>(staging_gpu_output_buffer);
+    uint8_t *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
+
     if (!buffer_ptr) {
         device.wait_idle();
         device.collect_garbage();
@@ -296,7 +297,11 @@ void run_gpu_version(GVoxScene const &scene) {
         device.destroy_buffer(staging_gpu_output_buffer);
         return;
     }
-    GpuOutput &gpu_output = *buffer_ptr;
+
+#if OUTPUT_COMPRESSED
+    GVoxScene gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.data = buffer_ptr, .size = 0}, "gvox_u32_palette");
+#else
+    GpuOutput &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
     std::cout << "GPU: " << std::dec << (8 * 8 * 8 * sizeof(uint32_t)) << ", " << gpu_output.palette_size << std::dec << std::endl;
     GVoxScene gpu_scene;
     gpu_scene.node_n = 1;
@@ -323,6 +328,8 @@ void run_gpu_version(GVoxScene const &scene) {
             }
         }
     }
+#endif
+
     print_voxels(gpu_scene);
     gvox_destroy_scene(gpu_scene);
 

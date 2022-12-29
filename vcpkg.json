@@ -5,18 +5,20 @@
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
     "zlib",
-    "gzip-hpp",
-    {
-      "name": "daxa",
-      "features": [
-        "glslang",
-        "utils"
-      ]
-    }
+    "gzip-hpp"
   ],
   "features": {
     "tests": {
-      "description": "Build Tests"
+      "description": "Build Tests",
+      "dependencies": [
+        {
+          "name": "daxa",
+          "features": [
+            "glslang",
+            "utils"
+          ]
+        }
+      ]
     }
   },
   "builtin-baseline": "5402d24c77889c7cb70691f0abb0df1a262b6f55"

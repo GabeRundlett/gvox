@@ -76,6 +76,8 @@ GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *form
 void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
 void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
 
+GVoxScene gvox_parse_raw(GVoxContext *ctx, GVoxPayload payload, char const *format);
+
 void gvox_destroy_scene(GVoxScene scene);
 
 #ifdef __cplusplus
