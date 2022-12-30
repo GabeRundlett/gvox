@@ -17,6 +17,7 @@
 #include <daxa/utils/task_list.hpp>
 
 #define TEST_ALL 0
+#define TEST_GPU 1
 
 using namespace daxa::types;
 // using namespace daxa::math_operators;
@@ -115,10 +116,10 @@ auto main() -> int {
     gvox_destroy_scene(loaded_scene);
 
     gvox_destroy_scene(scene);
-#else
+#elif TEST_GPU
     GVoxScene scene = []() {
         Timer const timer{};
-        auto const size = 8 * 1;
+        auto const size = CHUNK_AXIS_SIZE;
         return create_scene(size, size, size);
     }();
     {
@@ -149,7 +150,10 @@ auto main() -> int {
     std::cout << "\nloaded compressed scene content:" << std::endl;
     print_voxels(scene);
     gvox_destroy_scene(scene);
-
+#else
+    auto scene = gvox_load_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
+    gvox_save(gvox, scene, "tests/simple/phantom_mansion.gvox", "gvox_u32_palette");
+    gvox_destroy_scene(scene);
 #endif
 
     gvox_destroy_context(gvox);
@@ -170,10 +174,15 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         },
         .debug_name = "pipeline_manager",
     });
-    GpuInput gpu_input = {};
+    GpuInput *gpu_input_ptr = new GpuInput{};
+    GpuInput &gpu_input = *gpu_input_ptr;
     daxa::BufferId gpu_input_buffer = device.create_buffer(daxa::BufferInfo{
         .size = sizeof(GpuInput),
         .debug_name = "gpu_input_buffer",
+    });
+    daxa::BufferId gpu_compress_state_buffer = device.create_buffer(daxa::BufferInfo{
+        .size = sizeof(GpuCompressState),
+        .debug_name = "gpu_compress_state_buffer",
     });
     daxa::BufferId gpu_output_buffer = device.create_buffer(daxa::BufferInfo{
         .size = sizeof(GpuOutput),
@@ -195,10 +204,9 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         }
         return result.value();
     }();
-    uint32_t sx = 8;
-    uint32_t sy = 8;
-    uint32_t sz = 8;
-    uint32_t min_voxel = 0xffffffff;
+    uint32_t sx = CHUNK_AXIS_SIZE;
+    uint32_t sy = CHUNK_AXIS_SIZE;
+    uint32_t sz = CHUNK_AXIS_SIZE;
     for (size_t zi = 0; zi < sz; ++zi) {
         for (size_t yi = 0; yi < sy; ++yi) {
             for (size_t xi = 0; xi < sx; ++xi) {
@@ -215,8 +223,6 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
                 u32_voxel = u32_voxel | (b << 0x10);
                 u32_voxel = u32_voxel | (i << 0x18);
                 gpu_input.data[voxel_i] = u32_voxel;
-                if (u32_voxel < min_voxel)
-                    min_voxel = u32_voxel;
             }
         }
     }
@@ -226,6 +232,8 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     });
     auto task_gpu_input_buffer = task_list.create_task_buffer({.debug_name = "task_gpu_input_buffer"});
     task_list.add_runtime_buffer(task_gpu_input_buffer, gpu_input_buffer);
+    auto task_gpu_compress_state_buffer = task_list.create_task_buffer({.debug_name = "task_gpu_compress_state_buffer"});
+    task_list.add_runtime_buffer(task_gpu_compress_state_buffer, gpu_compress_state_buffer);
     auto task_gpu_output_buffer = task_list.create_task_buffer({.debug_name = "task_gpu_output_buffer"});
     task_list.add_runtime_buffer(task_gpu_output_buffer, gpu_output_buffer);
     auto task_staging_gpu_output_buffer = task_list.create_task_buffer({.debug_name = "task_staging_gpu_output_buffer"});
@@ -255,6 +263,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     task_list.add_task({
         .used_buffers = {
             {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            {task_gpu_compress_state_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
             {task_gpu_output_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_WRITE},
         },
         .task = [&](daxa::TaskRuntime task_runtime) {
@@ -262,6 +271,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
             cmd_list.set_pipeline(*gpu_comp_pipeline);
             cmd_list.push_constant(GpuCompPush{
                 .gpu_input = device.get_device_address(gpu_input_buffer),
+                .gpu_compress_state = device.get_device_address(gpu_compress_state_buffer),
                 .gpu_output = device.get_device_address(gpu_output_buffer),
             });
             cmd_list.dispatch(1, 1, 1);
@@ -293,42 +303,13 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         device.wait_idle();
         device.collect_garbage();
         device.destroy_buffer(gpu_input_buffer);
+        device.destroy_buffer(gpu_compress_state_buffer);
         device.destroy_buffer(gpu_output_buffer);
         device.destroy_buffer(staging_gpu_output_buffer);
         return;
     }
 
-#if OUTPUT_COMPRESSED
     GVoxScene gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
-#else
-    GpuOutput &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
-    std::cout << "GPU: " << std::dec << (8 * 8 * 8 * sizeof(uint32_t)) << ", " << gpu_output.palette_size << std::dec << std::endl;
-    GVoxScene gpu_scene;
-    gpu_scene.node_n = 1;
-    gpu_scene.nodes = (GVoxSceneNode *)malloc(sizeof(GVoxSceneNode) * gpu_scene.node_n);
-    gpu_scene.nodes[0].size_x = sx;
-    gpu_scene.nodes[0].size_y = sy;
-    gpu_scene.nodes[0].size_z = sz;
-    size_t const voxel_n = gpu_scene.nodes[0].size_x * gpu_scene.nodes[0].size_y * gpu_scene.nodes[0].size_z;
-    gpu_scene.nodes[0].voxels = (GVoxVoxel *)malloc(sizeof(GVoxVoxel) * voxel_n);
-    for (size_t zi = 0; zi < sz; ++zi) {
-        for (size_t yi = 0; yi < sy; ++yi) {
-            for (size_t xi = 0; xi < sx; ++xi) {
-                uint32_t const node_i = 0;
-                size_t const voxel_i = xi + yi * sx + zi * sx * sy;
-                uint32_t u32_voxel = gpu_output.data[voxel_i];
-                float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
-                float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;
-                float b = static_cast<float>((u32_voxel >> 0x10) & 0xff) / 255.0f;
-                uint32_t const i = (u32_voxel >> 0x18) & 0xff;
-                gpu_scene.nodes[node_i].voxels[voxel_i] = GVoxVoxel{
-                    .color = {r, g, b},
-                    .id = i,
-                };
-            }
-        }
-    }
-#endif
 
     print_voxels(gpu_scene);
     gvox_destroy_scene(gpu_scene);
@@ -336,6 +317,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     device.wait_idle();
     device.collect_garbage();
     device.destroy_buffer(gpu_input_buffer);
+    device.destroy_buffer(gpu_compress_state_buffer);
     device.destroy_buffer(gpu_output_buffer);
     device.destroy_buffer(staging_gpu_output_buffer);
 }

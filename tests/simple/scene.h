@@ -76,26 +76,11 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                         result.id = 3;
                     } else {
                         float const r = (float)(rand() % 1000) * 0.001f;
-                        if (r < 0.2f) {
+                        if (r < 0.5f) {
                             result.color.x = 0.36f;
                             result.color.y = 0.34f;
                             result.color.z = 0.34f;
                             result.id = 4;
-                        } else if (r < 0.4f) {
-                            result.color.x = 0.9f;
-                            result.color.y = 0.34f;
-                            result.color.z = 0.34f;
-                            result.id = 5;
-                        } else if (r < 0.6f) {
-                            result.color.x = 0.36f;
-                            result.color.y = 0.9f;
-                            result.color.z = 0.34f;
-                            result.id = 6;
-                        } else if (r < 0.8f) {
-                            result.color.x = 0.36f;
-                            result.color.y = 0.34f;
-                            result.color.z = 0.9f;
-                            result.id = 7;
                         }
                     }
                     scene.nodes[0].voxels[i] = result;
