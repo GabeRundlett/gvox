@@ -356,13 +356,13 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                     assert(bits_per_variant <= 9);
                     buffer_ptr += variants * sizeof(uint32_t);
 
-                    std::cout << variants << " variants\n";
-                    for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i) {
-                        auto u32_voxel = palette_begin[tile_i];
-                        print_voxel(u32_to_voxel(u32_voxel));
-                        std::cout << " (" << u32_voxel << ")\n";
-                    }
-                    std::cout << std::flush;
+                    // std::cout << variants << " variants\n";
+                    // for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i) {
+                    //     auto u32_voxel = palette_begin[tile_i];
+                    //     print_voxel(u32_to_voxel(u32_voxel));
+                    //     std::cout << " (" << u32_voxel << ")\n";
+                    // }
+                    // std::cout << std::flush;
 
                     if (variants == 1) {
                         for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
