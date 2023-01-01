@@ -13,6 +13,7 @@ shared u32 subgroup_mins[SUBGROUP_N];
 shared u32 palette_result[PALETTE_CHUNK_TOTAL_SIZE];
 shared u32 palette_barrier;
 shared u32 palette_size;
+shared u32 output_offset;
 
 u32 ceil_log2(u32 x) {
     u32 t[6] = u32[6](
@@ -38,6 +39,10 @@ u32 ceil_log2(u32 x) {
 
 layout(local_size_x = PALETTE_CHUNK_AXIS_SIZE, local_size_y = PALETTE_CHUNK_AXIS_SIZE, local_size_z = PALETTE_CHUNK_AXIS_SIZE) in;
 void main() {
+    u32 voxel_index =
+        gl_GlobalInvocationID.x +
+        gl_GlobalInvocationID.y * CHUNK_AXIS_SIZE +
+        gl_GlobalInvocationID.z * CHUNK_AXIS_SIZE * CHUNK_AXIS_SIZE;
     u32 palette_chunk_voxel_index =
         gl_LocalInvocationID.x +
         gl_LocalInvocationID.y * PALETTE_CHUNK_AXIS_SIZE +
@@ -47,16 +52,27 @@ void main() {
         gl_WorkGroupID.y * PALETTE_CHUNK_AXIS_N +
         gl_WorkGroupID.z * PALETTE_CHUNK_AXIS_N * PALETTE_CHUNK_AXIS_N;
 
-    u32 my_voxel = INPUT.data[palette_chunk_voxel_index];
+    u32 my_voxel = INPUT.data[voxel_index];
     u32 my_palette_index = 0;
 
     if (palette_chunk_voxel_index == 0) {
+        if (palette_chunk_index == 0) {
+            OUTPUT.data[0] = 1;
+            OUTPUT.data[1] = CHUNK_AXIS_SIZE;
+            OUTPUT.data[2] = CHUNK_AXIS_SIZE;
+            OUTPUT.data[3] = CHUNK_AXIS_SIZE;
+            atomicExchange(COMPRESS_STATE.current_size, 5);
+        }
+
         palette_size = 0;
         palette_barrier = 0;
     }
 
     for (u32 algo_i = 0; algo_i < PALETTE_CHUNK_TOTAL_SIZE; ++algo_i) {
+        // barrier();
+        // memoryBarrier();
         groupMemoryBarrier();
+        // memoryBarrierShared();
 
         // make the voxel value of my_voxel to be "considered" only
         // if my_palette_index == 0
@@ -66,7 +82,10 @@ void main() {
             subgroup_mins[gl_SubgroupID] = least_in_my_subgroup;
         }
 
+        // barrier();
+        // memoryBarrier();
         groupMemoryBarrier();
+        // memoryBarrierShared();
 
         /// Do an atomic min between subgroups
         const u32 LOG2_SUBGROUP_N = 4;
@@ -78,7 +97,10 @@ void main() {
             }
         }
 
+        // barrier();
+        // memoryBarrier();
         groupMemoryBarrier();
+        // memoryBarrierShared();
 
         u32 absolute_min = subgroup_mins[0];
 
@@ -112,48 +134,48 @@ void main() {
         }
     }
 
+    // barrier();
+    // memoryBarrier();
     groupMemoryBarrier();
+    // memoryBarrierShared();
 
     u32 bits_per_variant = ceil_log2(palette_size);
 
     // in sizeof u32
-    u32 p_data_offset = 1 + 3 + 1;
-    u32 v_data_offset = p_data_offset + 1 + palette_size;
+    u32 v_data_offset = 1 + palette_size;
+
+    // round up to nearest byte
+    u32 compressed_size = (bits_per_variant * PALETTE_CHUNK_TOTAL_SIZE + 7) / 8;
+    // round up to the nearest uint32_t, and add an extra
+    compressed_size = (compressed_size + 3) / 4 + 1;
+    // add the size of the palette data
+    compressed_size += v_data_offset;
 
     if (palette_chunk_voxel_index == 0) {
-
-        // round up to nearest byte
-        u32 compressed_size = (bits_per_variant * PALETTE_CHUNK_TOTAL_SIZE + 7) / 8;
-        // round up to the nearest uint32_t, and add an extra
-        compressed_size = ((compressed_size + 3) / 4) * 4 + 3;
-        // add the size of the palette
-        compressed_size += (1 + palette_size) * 4;
-
-        COMPRESS_STATE.offsets[palette_chunk_index] = atomicAdd(COMPRESS_STATE.current_size, 4 + compressed_size);
-
-        OUTPUT.data[0] = 1;
-
-        OUTPUT.data[1] = PALETTE_CHUNK_AXIS_SIZE;
-        OUTPUT.data[2] = PALETTE_CHUNK_AXIS_SIZE;
-        OUTPUT.data[3] = PALETTE_CHUNK_AXIS_SIZE;
-
-        OUTPUT.data[4] = compressed_size;
-
-        OUTPUT.data[p_data_offset + 0] = palette_size;
+        u32 var = atomicAdd(COMPRESS_STATE.current_size, compressed_size);
+        atomicExchange(output_offset, var);
+        atomicExchange(OUTPUT.data[4], (output_offset + compressed_size - 5) * 4);
+        OUTPUT.data[output_offset + 0] = palette_size;
         for (u32 i = 0; i < palette_size; ++i)
-            OUTPUT.data[p_data_offset + i + 1] = palette_result[i];
+            OUTPUT.data[output_offset + 1 + i] = palette_result[i];
     }
 
+    // barrier();
+    // memoryBarrier();
     groupMemoryBarrier();
+    // memoryBarrierShared();
 
-    if (my_palette_index == 0) {
-        // This should never happen... Maybe look into
-        // finding a way to crash the GPU if this gets hit.
-        // This also means that the for-loop reached `PALETTE_CHUNK_TOTAL_SIZE`
-        // iterations, which would probably be noticable
-        // based on the performance of compression.
-        OUTPUT.data[palette_chunk_voxel_index] = 0;
-    } else if (palette_size > 1) {
+    v_data_offset += output_offset;
+
+    // if (my_palette_index == 0) {
+    //     // This should never happen... Maybe look into
+    //     // finding a way to crash the GPU if this gets hit.
+    //     // This also means that the for-loop reached `PALETTE_CHUNK_TOTAL_SIZE`
+    //     // iterations, which would probably be noticable
+    //     // based on the performance of compression.
+    //     // OUTPUT.data[palette_chunk_voxel_index] = 0;
+    // } else
+    if (palette_size > 1) {
         u32 mask = (~0u) >> (32 - bits_per_variant);
         u32 bit_index = palette_chunk_voxel_index * bits_per_variant;
         u32 data_index = bit_index / 32;

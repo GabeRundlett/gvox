@@ -274,7 +274,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
                 .gpu_compress_state = device.get_device_address(gpu_compress_state_buffer),
                 .gpu_output = device.get_device_address(gpu_output_buffer),
             });
-            cmd_list.dispatch(1, 1, 1);
+            cmd_list.dispatch(PALETTE_CHUNK_AXIS_N, PALETTE_CHUNK_AXIS_N, PALETTE_CHUNK_AXIS_N);
         },
         .debug_name = "gpu",
     });
@@ -298,6 +298,9 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     task_list.execute();
     device.wait_idle();
     uint8_t *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
+
+    // auto &gpu_output = *reinterpret_cast<GpuOutput*>(buffer_ptr);
+    // std::cout << "offset = " << gpu_output.offset << std::endl;
 
     if (!buffer_ptr) {
         device.wait_idle();

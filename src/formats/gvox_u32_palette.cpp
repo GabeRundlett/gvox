@@ -79,11 +79,9 @@ constexpr auto value = (6u & get_mask(3)) >> (3 * 10 + 3 - 31);
 
 static auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t {
     auto palette_chunk_size = (bits_per_variant * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE + 7) / 8;
-    // return palette_chunk_size; Why not this?
     palette_chunk_size = (palette_chunk_size + 3) / 4;
-    auto size = palette_chunk_size * 4;
-    size += 3;
-    return size;
+    auto size = palette_chunk_size + 1;
+    return size * 4;
 }
 
 struct PaletteCompressor {

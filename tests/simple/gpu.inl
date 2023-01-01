@@ -19,7 +19,6 @@ DAXA_ENABLE_BUFFER_PTR(GpuInput)
 
 struct GpuCompressState {
     u32 current_size;
-    u32 offsets[PALETTE_CHUNK_TOTAL_N];
 };
 DAXA_ENABLE_BUFFER_PTR(GpuCompressState)
 
