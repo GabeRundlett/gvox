@@ -31,8 +31,8 @@ struct Timer {
     Timer() = default;
     Timer(Timer const &) = default;
     Timer(Timer &&) = default;
-    Timer &operator=(Timer const &) = default;
-    Timer &operator=(Timer &&) = default;
+    auto operator=(Timer const &) -> Timer & = default;
+    auto operator=(Timer &&) -> Timer & = default;
 
     ~Timer() {
         auto now = Clock::now();
@@ -174,7 +174,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         },
         .debug_name = "pipeline_manager",
     });
-    GpuInput *gpu_input_ptr = new GpuInput{};
+    auto *gpu_input_ptr = new GpuInput{};
     GpuInput &gpu_input = *gpu_input_ptr;
     daxa::BufferId gpu_input_buffer = device.create_buffer(daxa::BufferInfo{
         .size = sizeof(GpuInput),
@@ -204,20 +204,19 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         }
         return result.value();
     }();
-    uint32_t sx = CHUNK_AXIS_SIZE;
-    uint32_t sy = CHUNK_AXIS_SIZE;
-    uint32_t sz = CHUNK_AXIS_SIZE;
+    size_t const sx = CHUNK_AXIS_SIZE;
+    size_t const sy = CHUNK_AXIS_SIZE;
+    size_t const sz = CHUNK_AXIS_SIZE;
     for (size_t zi = 0; zi < sz; ++zi) {
         for (size_t yi = 0; yi < sy; ++yi) {
             for (size_t xi = 0; xi < sx; ++xi) {
-                uint32_t const node_i = 0;
-                uint32_t const voxel_i = xi + yi * sx + zi * sx * sy;
-                auto const &i_vox = scene.nodes[node_i].voxels[voxel_i];
-                uint32_t u32_voxel = 0;
-                uint32_t const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
-                uint32_t const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
-                uint32_t const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
-                uint32_t const i = i_vox.id;
+                auto const voxel_i = xi + yi * sx + zi * sx * sy;
+                auto const &i_vox = scene.nodes[0].voxels[voxel_i];
+                auto u32_voxel = 0u;
+                auto const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
+                auto const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
+                auto const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
+                auto const i = i_vox.id;
                 u32_voxel = u32_voxel | (r << 0x00);
                 u32_voxel = u32_voxel | (g << 0x08);
                 u32_voxel = u32_voxel | (b << 0x10);
@@ -250,7 +249,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
                 .debug_name = "staging_gpu_input_buffer",
             });
             cmd_list.destroy_buffer_deferred(staging_gpu_input_buffer);
-            GpuInput *buffer_ptr = device.get_host_address_as<GpuInput>(staging_gpu_input_buffer);
+            auto *buffer_ptr = device.get_host_address_as<GpuInput>(staging_gpu_input_buffer);
             *buffer_ptr = gpu_input;
             cmd_list.copy_buffer_to_buffer({
                 .src_buffer = staging_gpu_input_buffer,
@@ -297,12 +296,12 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     task_list.complete();
     task_list.execute();
     device.wait_idle();
-    uint8_t *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
+    auto *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
 
     // auto &gpu_output = *reinterpret_cast<GpuOutput*>(buffer_ptr);
     // std::cout << "offset = " << gpu_output.offset << std::endl;
 
-    if (!buffer_ptr) {
+    if (buffer_ptr == nullptr) {
         device.wait_idle();
         device.collect_garbage();
         device.destroy_buffer(gpu_input_buffer);
@@ -312,7 +311,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         return;
     }
 
-    GVoxScene gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
+    GVoxScene const gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
 
     print_voxels(gpu_scene);
     gvox_destroy_scene(gpu_scene);

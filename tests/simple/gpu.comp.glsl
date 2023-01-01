@@ -69,10 +69,7 @@ void main() {
     }
 
     for (u32 algo_i = 0; algo_i < PALETTE_CHUNK_TOTAL_SIZE; ++algo_i) {
-        // barrier();
-        // memoryBarrier();
         groupMemoryBarrier();
-        // memoryBarrierShared();
 
         // make the voxel value of my_voxel to be "considered" only
         // if my_palette_index == 0
@@ -82,10 +79,7 @@ void main() {
             subgroup_mins[gl_SubgroupID] = least_in_my_subgroup;
         }
 
-        // barrier();
-        // memoryBarrier();
-        groupMemoryBarrier();
-        // memoryBarrierShared();
+        memoryBarrierShared();
 
         /// Do an atomic min between subgroups
         const u32 LOG2_SUBGROUP_N = 4;
@@ -97,10 +91,8 @@ void main() {
             }
         }
 
-        // barrier();
-        // memoryBarrier();
+        memoryBarrier();
         groupMemoryBarrier();
-        // memoryBarrierShared();
 
         u32 absolute_min = subgroup_mins[0];
 
@@ -134,10 +126,7 @@ void main() {
         }
     }
 
-    // barrier();
-    // memoryBarrier();
-    groupMemoryBarrier();
-    // memoryBarrierShared();
+    memoryBarrierShared();
 
     u32 bits_per_variant = ceil_log2(palette_size);
 
@@ -160,10 +149,7 @@ void main() {
             OUTPUT.data[output_offset + 1 + i] = palette_result[i];
     }
 
-    // barrier();
-    // memoryBarrier();
-    groupMemoryBarrier();
-    // memoryBarrierShared();
+    barrier();
 
     v_data_offset += output_offset;
 

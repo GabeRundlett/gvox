@@ -66,8 +66,9 @@ auto get_exe_path() -> std::filesystem::path {
 
 auto gvox_create_context(void) -> GVoxContext * {
     auto *result = new GVoxContext;
-    for (auto const name : format_names)
+    for (const auto *const name : format_names) {
         gvox_load_format(result, name);
+    }
     return result;
 }
 
