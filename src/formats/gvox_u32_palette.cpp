@@ -72,6 +72,10 @@ static constexpr auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t
 struct PaletteCompressor {
     std::vector<uint8_t> data;
 
+    size_t o_size_x;
+    size_t o_size_y;
+    size_t o_size_z;
+
     auto chunk_variance(GVoxSceneNode const &node, size_t chunk_x, size_t chunk_y, size_t chunk_z) -> size_t {
         auto tile_set = std::unordered_set<uint32_t>{};
         auto const ox = chunk_x * CHUNK_SIZE;
@@ -86,18 +90,21 @@ struct PaletteCompressor {
                     auto const px = ox + xi;
                     auto const py = oy + yi;
                     auto const pz = oz + zi;
-                    auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
-                    auto const &i_vox = node.voxels[index];
 
                     auto u32_voxel = 0u;
-                    auto const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
-                    auto const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
-                    auto const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
-                    auto const i = i_vox.id;
-                    u32_voxel = u32_voxel | (r << 0x00);
-                    u32_voxel = u32_voxel | (g << 0x08);
-                    u32_voxel = u32_voxel | (b << 0x10);
-                    u32_voxel = u32_voxel | (i << 0x18);
+
+                    if (px < node.size_x && py < node.size_y && pz < node.size_z) {
+                        auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
+                        auto const &i_vox = node.voxels[index];
+                        auto const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
+                        auto const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
+                        auto const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
+                        auto const i = i_vox.id;
+                        u32_voxel = u32_voxel | (r << 0x00);
+                        u32_voxel = u32_voxel | (g << 0x08);
+                        u32_voxel = u32_voxel | (b << 0x10);
+                        u32_voxel = u32_voxel | (i << 0x18);
+                    }
 
                     tile_set.insert(u32_voxel);
                 }
@@ -160,18 +167,20 @@ struct PaletteCompressor {
                         auto const px = ox + xi;
                         auto const py = oy + yi;
                         auto const pz = oz + zi;
-                        auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
                         auto const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
-                        auto const &i_vox = node.voxels[index];
                         auto u32_voxel = 0u;
-                        auto const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
-                        auto const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
-                        auto const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
-                        auto const i = i_vox.id;
-                        u32_voxel = u32_voxel | (r << 0x00);
-                        u32_voxel = u32_voxel | (g << 0x08);
-                        u32_voxel = u32_voxel | (b << 0x10);
-                        u32_voxel = u32_voxel | (i << 0x18);
+                        if (px < node.size_x && py < node.size_y && pz < node.size_z) {
+                            auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
+                            auto const &i_vox = node.voxels[index];
+                            auto const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
+                            auto const g = static_cast<uint32_t>(std::max(std::min(i_vox.color.y, 1.0f), 0.0f) * 255.0f);
+                            auto const b = static_cast<uint32_t>(std::max(std::min(i_vox.color.z, 1.0f), 0.0f) * 255.0f);
+                            auto const i = i_vox.id;
+                            u32_voxel = u32_voxel | (r << 0x00);
+                            u32_voxel = u32_voxel | (g << 0x08);
+                            u32_voxel = u32_voxel | (b << 0x10);
+                            u32_voxel = u32_voxel | (i << 0x18);
+                        }
                         auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
                         assert(palette_iter != palette_end);
                         auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
@@ -204,14 +213,18 @@ struct PaletteCompressor {
         // for the size xyz
         size += sizeof(uint32_t) * 3;
 
-        assert((node.size_x % CHUNK_SIZE) == 0);
-        assert((node.size_y % CHUNK_SIZE) == 0);
-        assert((node.size_z % CHUNK_SIZE) == 0);
+        // assert((node.size_x % CHUNK_SIZE) == 0);
+        // assert((node.size_y % CHUNK_SIZE) == 0);
+        // assert((node.size_z % CHUNK_SIZE) == 0);
 
         // these can be inferred and therefore don't need to be stored
         size_t const chunk_nx = (node.size_x + CHUNK_SIZE - 1) / CHUNK_SIZE;
         size_t const chunk_ny = (node.size_y + CHUNK_SIZE - 1) / CHUNK_SIZE;
         size_t const chunk_nz = (node.size_z + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+        o_size_x = chunk_nx * CHUNK_SIZE;
+        o_size_y = chunk_ny * CHUNK_SIZE;
+        o_size_z = chunk_nz * CHUNK_SIZE;
 
         // for the node's whole size
         size += sizeof(uint32_t) * 1;
@@ -223,9 +236,9 @@ struct PaletteCompressor {
 
         {
             uint8_t *output_buffer = data.data() + old_size;
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(node.size_x));
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(node.size_y));
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(node.size_z));
+            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_x));
+            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_y));
+            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_z));
         }
 
         for (size_t zi = 0; zi < chunk_nz; ++zi) {
