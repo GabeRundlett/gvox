@@ -304,6 +304,9 @@ typedef struct ogt_vox_model {
     uint32_t size_x;           // number of voxels in the local x dimension
     uint32_t size_y;           // number of voxels in the local y dimension
     uint32_t size_z;           // number of voxels in the local z dimension
+    uint32_t offset_x;         // voxel offset in the local x dimension
+    uint32_t offset_y;         // voxel offset in the local y dimension
+    uint32_t offset_z;         // voxel offset in the local z dimension
     uint32_t voxel_hash;       // hash of the content of the grid.
     const uint8_t *voxel_data; // grid of voxel data comprising color indices in x -> y -> z order. a color index of 0 means empty, all other indices mean solid and can be used to index the scene's palette to obtain the color for the voxel.
 } ogt_vox_model;
@@ -1264,6 +1267,22 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
             uint32_t num_voxels_in_chunk = 0;
             _vox_file_read(fp, &num_voxels_in_chunk, sizeof(uint32_t));
             if (num_voxels_in_chunk != 0 || (read_flags & k_read_scene_flags_keep_empty_models_instances)) {
+                const uint8_t *packed_voxel_data = (const uint8_t *)_vox_file_data_pointer(fp);
+                const uint32_t voxels_to_read = _vox_min(_vox_file_bytes_remaining(fp) / 4, num_voxels_in_chunk);
+
+                // cut down on the size based on the max voxel coordinate in it
+                uint8_t min_x = 255, min_y = 255, min_z = 255;
+                uint8_t max_x = 0, max_y = 0, max_z = 0;
+                for (uint32_t i = 0; i < voxels_to_read; i++) {
+                    uint8_t x = packed_voxel_data[i * 4 + 0];
+                    uint8_t y = packed_voxel_data[i * 4 + 1];
+                    uint8_t z = packed_voxel_data[i * 4 + 2];
+                    ogt_assert(x < size_x && y < size_y && z < size_z, "invalid data in XYZI chunk");
+                    min_x = std::min(x, min_x), min_y = std::min(y, min_y), min_z = std::min(z, min_z);
+                    max_x = std::max(x, max_x), max_y = std::max(y, max_y), max_z = std::max(z, max_z);
+                }
+                size_x = max_x - min_x + 1, size_y = max_y - min_y + 1, size_z = max_z - min_z + 1;
+
                 uint32_t voxel_count = size_x * size_y * size_z;
                 ogt_vox_model *model = (ogt_vox_model *)_vox_calloc(sizeof(ogt_vox_model) + voxel_count); // 1 byte for each voxel
                 if (!model)
@@ -1277,6 +1296,9 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
                 model->size_x = size_x;
                 model->size_y = size_y;
                 model->size_z = size_z;
+                model->offset_x = min_x;
+                model->offset_y = min_y;
+                model->offset_z = min_z;
                 model->voxel_data = voxel_data;
 
                 // setup some strides for computing voxel index based on x/y/z
@@ -1285,12 +1307,10 @@ const ogt_vox_scene *ogt_vox_read_scene_with_flags(const uint8_t *buffer, uint32
                 const uint32_t k_stride_z = size_x * size_y;
 
                 // read this many voxels and store it in voxel data.
-                const uint8_t *packed_voxel_data = (const uint8_t *)_vox_file_data_pointer(fp);
-                const uint32_t voxels_to_read = _vox_min(_vox_file_bytes_remaining(fp) / 4, num_voxels_in_chunk);
                 for (uint32_t i = 0; i < voxels_to_read; i++) {
-                    uint8_t x = packed_voxel_data[i * 4 + 0];
-                    uint8_t y = packed_voxel_data[i * 4 + 1];
-                    uint8_t z = packed_voxel_data[i * 4 + 2];
+                    uint8_t x = packed_voxel_data[i * 4 + 0] - min_x;
+                    uint8_t y = packed_voxel_data[i * 4 + 1] - min_y;
+                    uint8_t z = packed_voxel_data[i * 4 + 2] - min_z;
                     uint8_t color_index = packed_voxel_data[i * 4 + 3];
                     ogt_assert(x < size_x && y < size_y && z < size_z, "invalid data in XYZI chunk");
                     voxel_data[(x * k_stride_x) + (y * k_stride_y) + (z * k_stride_z)] = color_index;
