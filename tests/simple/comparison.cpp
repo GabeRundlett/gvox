@@ -308,7 +308,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     }
     auto *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
 
-    auto &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
+    // auto &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
     // std::cout << "offset = " << gpu_output.offset << std::endl;
 
     if (buffer_ptr == nullptr) {

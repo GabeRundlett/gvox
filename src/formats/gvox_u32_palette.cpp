@@ -207,9 +207,9 @@ struct PaletteCompressor {
         size_t const old_size = data.size();
         data.reserve(old_size + (node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20);
 
-        region_nx = (node.size_x + REGION_SIZE - 1) / REGION_SIZE;
-        region_ny = (node.size_y + REGION_SIZE - 1) / REGION_SIZE;
-        region_nz = (node.size_z + REGION_SIZE - 1) / REGION_SIZE;
+        region_nx = static_cast<uint32_t>((node.size_x + REGION_SIZE - 1) / REGION_SIZE);
+        region_ny = static_cast<uint32_t>((node.size_y + REGION_SIZE - 1) / REGION_SIZE);
+        region_nz = static_cast<uint32_t>((node.size_z + REGION_SIZE - 1) / REGION_SIZE);
 
         size_t pre_size =
             sizeof(NodeHeader) +
@@ -308,7 +308,6 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     for (size_t node_i = 0; node_i < result.node_n; ++node_i) {
         auto &node = result.nodes[node_i];
-        auto *node_begin = buffer_ptr;
         auto const node_header = read_data<NodeHeader>(buffer_ptr);
         auto *region_headers_begin = buffer_ptr;
         node.size_x = node_header.region_count_x * REGION_SIZE;
