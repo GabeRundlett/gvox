@@ -139,6 +139,14 @@ auto main() -> int {
     }
     // std::cout << "generated scene content:" << std::endl;
     // print_voxels(scene);
+
+    {
+        auto cpu_scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
+        std::cout << "\nloaded cpu scene content:" << std::endl;
+        print_voxels(cpu_scene);
+        gvox_destroy_scene(cpu_scene);
+    }
+
     run_gpu_version(gvox, scene);
 
     gvox_destroy_scene(scene);
@@ -146,10 +154,6 @@ auto main() -> int {
     // std::cout << "\nloaded uncompressed scene content:" << std::endl;
     // print_voxels(scene);
     // gvox_destroy_scene(scene);
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
-    std::cout << "\nloaded compressed scene content:" << std::endl;
-    print_voxels(scene);
-    gvox_destroy_scene(scene);
 #else
     auto scene = gvox_load_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
     gvox_save(gvox, scene, "tests/simple/phantom_mansion.gvox", "gvox_u32_palette");
@@ -273,7 +277,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
                 .gpu_compress_state = device.get_device_address(gpu_compress_state_buffer),
                 .gpu_output = device.get_device_address(gpu_output_buffer),
             });
-            cmd_list.dispatch(PALETTE_CHUNK_AXIS_N, PALETTE_CHUNK_AXIS_N, PALETTE_CHUNK_AXIS_N);
+            cmd_list.dispatch(PALETTE_REGION_AXIS_N, PALETTE_REGION_AXIS_N, PALETTE_REGION_AXIS_N);
         },
         .debug_name = "gpu",
     });
@@ -298,7 +302,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
     device.wait_idle();
     auto *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
 
-    // auto &gpu_output = *reinterpret_cast<GpuOutput*>(buffer_ptr);
+    auto &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);
     // std::cout << "offset = " << gpu_output.offset << std::endl;
 
     if (buffer_ptr == nullptr) {

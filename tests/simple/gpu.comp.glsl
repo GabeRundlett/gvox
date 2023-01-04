@@ -3,14 +3,14 @@
 DAXA_USE_PUSH_CONSTANT(GpuCompPush)
 
 #define WARP_SIZE 32
-#if PALETTE_CHUNK_TOTAL_SIZE > (WARP_SIZE * WARP_SIZE)
+#if PALETTE_REGION_TOTAL_SIZE > (WARP_SIZE * WARP_SIZE)
 #error "why tho?"
 #endif
 
-#define SUBGROUP_N (PALETTE_CHUNK_TOTAL_SIZE / WARP_SIZE)
+#define SUBGROUP_N (PALETTE_REGION_TOTAL_SIZE / WARP_SIZE)
 
 shared u32 subgroup_mins[SUBGROUP_N];
-shared u32 palette_result[PALETTE_CHUNK_TOTAL_SIZE];
+shared u32 palette_result[PALETTE_REGION_TOTAL_SIZE];
 shared u32 palette_barrier;
 shared u32 palette_size;
 shared u32 output_offset;
@@ -37,38 +37,39 @@ u32 ceil_log2(u32 x) {
     return y;
 }
 
-layout(local_size_x = PALETTE_CHUNK_AXIS_SIZE, local_size_y = PALETTE_CHUNK_AXIS_SIZE, local_size_z = PALETTE_CHUNK_AXIS_SIZE) in;
+layout(local_size_x = PALETTE_REGION_AXIS_SIZE, local_size_y = PALETTE_REGION_AXIS_SIZE, local_size_z = PALETTE_REGION_AXIS_SIZE) in;
 void main() {
     u32 voxel_index =
         gl_GlobalInvocationID.x +
         gl_GlobalInvocationID.y * CHUNK_AXIS_SIZE +
         gl_GlobalInvocationID.z * CHUNK_AXIS_SIZE * CHUNK_AXIS_SIZE;
-    u32 palette_chunk_voxel_index =
+    u32 palette_region_voxel_index =
         gl_LocalInvocationID.x +
-        gl_LocalInvocationID.y * PALETTE_CHUNK_AXIS_SIZE +
-        gl_LocalInvocationID.z * PALETTE_CHUNK_AXIS_SIZE * PALETTE_CHUNK_AXIS_SIZE;
-    u32 palette_chunk_index =
+        gl_LocalInvocationID.y * PALETTE_REGION_AXIS_SIZE +
+        gl_LocalInvocationID.z * PALETTE_REGION_AXIS_SIZE * PALETTE_REGION_AXIS_SIZE;
+    u32 palette_region_index =
         gl_WorkGroupID.x +
-        gl_WorkGroupID.y * PALETTE_CHUNK_AXIS_N +
-        gl_WorkGroupID.z * PALETTE_CHUNK_AXIS_N * PALETTE_CHUNK_AXIS_N;
+        gl_WorkGroupID.y * PALETTE_REGION_AXIS_N +
+        gl_WorkGroupID.z * PALETTE_REGION_AXIS_N * PALETTE_REGION_AXIS_N;
 
     u32 my_voxel = INPUT.data[voxel_index];
     u32 my_palette_index = 0;
 
-    if (palette_chunk_voxel_index == 0) {
-        if (palette_chunk_index == 0) {
-            OUTPUT.data[0] = 1;
-            OUTPUT.data[1] = CHUNK_AXIS_SIZE;
-            OUTPUT.data[2] = CHUNK_AXIS_SIZE;
-            OUTPUT.data[3] = CHUNK_AXIS_SIZE;
-            atomicExchange(COMPRESS_STATE.current_size, 5);
+    if (palette_region_voxel_index == 0) {
+        if (palette_region_index == 0) {
+            OUTPUT.node_n = 1;
+            OUTPUT.node_header.node_full_size = 0;
+            OUTPUT.node_header.region_count_x = PALETTE_REGION_AXIS_N;
+            OUTPUT.node_header.region_count_y = PALETTE_REGION_AXIS_N;
+            OUTPUT.node_header.region_count_z = PALETTE_REGION_AXIS_N;
+            atomicExchange(COMPRESS_STATE.current_size, 0);
         }
 
         palette_size = 0;
         palette_barrier = 0;
     }
 
-    for (u32 algo_i = 0; algo_i < PALETTE_CHUNK_TOTAL_SIZE; ++algo_i) {
+    for (u32 algo_i = 0; algo_i < PALETTE_REGION_TOTAL_SIZE; ++algo_i) {
         groupMemoryBarrier();
 
         // make the voxel value of my_voxel to be "considered" only
@@ -84,10 +85,10 @@ void main() {
         /// Do an atomic min between subgroups
         const u32 LOG2_SUBGROUP_N = 4;
         for (u32 i = 0; i < LOG2_SUBGROUP_N; ++i) {
-            if (palette_chunk_voxel_index < SUBGROUP_N / (2 << i)) {
+            if (palette_region_voxel_index < SUBGROUP_N / (2 << i)) {
                 atomicMin(
-                    subgroup_mins[(palette_chunk_voxel_index * 2) * (1 << i)],
-                    subgroup_mins[(palette_chunk_voxel_index * 2 + 1) * (1 << i)]);
+                    subgroup_mins[(palette_region_voxel_index * 2) * (1 << i)],
+                    subgroup_mins[(palette_region_voxel_index * 2 + 1) * (1 << i)]);
             }
         }
 
@@ -116,7 +117,7 @@ void main() {
         }
 
         groupMemoryBarrier();
-        if (palette_chunk_voxel_index == 0) {
+        if (palette_region_voxel_index == 0) {
             palette_barrier = 0;
         }
         if (absolute_min == my_voxel) {
@@ -131,39 +132,37 @@ void main() {
     u32 bits_per_variant = ceil_log2(palette_size);
 
     // in sizeof u32
-    u32 v_data_offset = 1 + palette_size;
+    u32 v_data_offset = palette_size;
 
     // round up to nearest byte
-    u32 compressed_size = (bits_per_variant * PALETTE_CHUNK_TOTAL_SIZE + 7) / 8;
+    u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 7) / 8;
     // round up to the nearest uint32_t, and add an extra
     compressed_size = (compressed_size + 3) / 4 + 1;
     // add the size of the palette data
     compressed_size += v_data_offset;
 
-    if (palette_chunk_voxel_index == 0) {
-        u32 var = atomicAdd(COMPRESS_STATE.current_size, compressed_size);
-        atomicExchange(output_offset, var);
-        atomicExchange(OUTPUT.data[4], (output_offset + compressed_size - 5) * 4);
-        OUTPUT.data[output_offset + 0] = palette_size;
-        for (u32 i = 0; i < palette_size; ++i)
-            OUTPUT.data[output_offset + 1 + i] = palette_result[i];
+    if (palette_region_voxel_index == 0) {
+        if (palette_size > 1) {
+            u32 var = atomicAdd(COMPRESS_STATE.current_size, compressed_size);
+            atomicExchange(output_offset, var);
+            atomicExchange(OUTPUT.node_header.node_full_size, (var + compressed_size) * 4);
+            OUTPUT.region_headers[palette_region_index].variant_n = palette_size;
+            OUTPUT.region_headers[palette_region_index].blob_offset = var * 4;
+            for (u32 i = 0; i < palette_size; ++i)
+                OUTPUT.data[var + i] = palette_result[i];
+        } else {
+            OUTPUT.region_headers[palette_region_index].variant_n = 1;
+            OUTPUT.region_headers[palette_region_index].blob_offset = my_voxel;
+        }
     }
 
     barrier();
 
     v_data_offset += output_offset;
 
-    // if (my_palette_index == 0) {
-    //     // This should never happen... Maybe look into
-    //     // finding a way to crash the GPU if this gets hit.
-    //     // This also means that the for-loop reached `PALETTE_CHUNK_TOTAL_SIZE`
-    //     // iterations, which would probably be noticable
-    //     // based on the performance of compression.
-    //     // OUTPUT.data[palette_chunk_voxel_index] = 0;
-    // } else
     if (palette_size > 1) {
         u32 mask = (~0u) >> (32 - bits_per_variant);
-        u32 bit_index = palette_chunk_voxel_index * bits_per_variant;
+        u32 bit_index = palette_region_voxel_index * bits_per_variant;
         u32 data_index = bit_index / 32;
         u32 data_offset = bit_index - data_index * 32;
         u32 data = (my_palette_index - 1) & mask;

@@ -21,7 +21,7 @@
 #endif
 #endif
 
-static constexpr auto CHUNK_SIZE = 8;
+static constexpr auto REGION_SIZE = 8;
 
 static constexpr auto ceil_log2(uint32_t x) -> uint32_t {
     constexpr auto const t = std::array<uint32_t, 6>{
@@ -62,31 +62,50 @@ constexpr auto get_mask(uint32_t bits_per_variant) -> uint32_t {
     return (~0u) >> (32 - bits_per_variant);
 }
 
-static constexpr auto calc_palette_chunk_size(size_t bits_per_variant) -> size_t {
-    auto palette_chunk_size = (bits_per_variant * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE + 7) / 8;
-    palette_chunk_size = (palette_chunk_size + 3) / 4;
-    auto size = palette_chunk_size + 1;
+static constexpr auto calc_palette_region_size(size_t bits_per_variant) -> size_t {
+    auto palette_region_size = (bits_per_variant * REGION_SIZE * REGION_SIZE * REGION_SIZE + 7) / 8;
+    palette_region_size = (palette_region_size + 3) / 4;
+    auto size = palette_region_size + 1;
     return size * 4;
 }
+
+struct RegionHeader {
+    uint32_t variant_n;
+    uint32_t blob_offset; // if variant_n == 1, this is just the voxel
+};
+
+struct NodeHeader {
+    uint32_t node_full_size;
+
+    uint32_t region_count_x;
+    uint32_t region_count_y;
+    uint32_t region_count_z;
+};
+
+struct PaletteBuffer {
+    NodeHeader node_header;
+    // RegionHeader *region_headers;
+    // uint32_t *data;
+};
 
 struct PaletteCompressor {
     std::vector<uint8_t> data;
 
-    size_t o_size_x;
-    size_t o_size_y;
-    size_t o_size_z;
+    uint32_t region_nx;
+    uint32_t region_ny;
+    uint32_t region_nz;
 
-    auto chunk_variance(GVoxSceneNode const &node, size_t chunk_x, size_t chunk_y, size_t chunk_z) -> size_t {
+    auto region_variance(GVoxSceneNode const &node, size_t region_x, size_t region_y, size_t region_z) -> size_t {
         auto tile_set = std::unordered_set<uint32_t>{};
-        auto const ox = chunk_x * CHUNK_SIZE;
-        auto const oy = chunk_y * CHUNK_SIZE;
-        auto const oz = chunk_z * CHUNK_SIZE;
+        auto const ox = region_x * REGION_SIZE;
+        auto const oy = region_y * REGION_SIZE;
+        auto const oz = region_z * REGION_SIZE;
         // std::cout << "o: " << ox << " " << oy << " " << oz << "\t";
 
-        for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
-            for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
-                for (size_t xi = 0; xi < CHUNK_SIZE; ++xi) {
-                    // TODO: fix for non-multiple sizes of CHUNK_SIZE
+        for (size_t zi = 0; zi < REGION_SIZE; ++zi) {
+            for (size_t yi = 0; yi < REGION_SIZE; ++yi) {
+                for (size_t xi = 0; xi < REGION_SIZE; ++xi) {
+                    // TODO: fix for non-multiple sizes of REGION_SIZE
                     auto const px = ox + xi;
                     auto const py = oy + yi;
                     auto const pz = oz + zi;
@@ -116,58 +135,36 @@ struct PaletteCompressor {
 
         size_t size = 0;
 
-        // info (contains whether there's a palette chunk)
-        auto const chunk_info = static_cast<uint32_t>(variants);
-        size += sizeof(chunk_info);
-
-        // insert palette
-        size += sizeof(uint32_t) * variants;
-
-        // std::cout << variants << " | ";
-        // for (auto const tile : tile_set)
-        //     std::cout << tile << ", ";
-        // std::cout << std::endl;
-
-        if (variants != 1) {
-            // insert palette chunk
-            size += calc_palette_chunk_size(bits_per_variant);
-        }
-
-        size_t const old_size = data.size();
-        data.reserve(old_size + size);
-        for (size_t i = 0; i < size; ++i) {
-            data.push_back(0);
-        }
-
-        uint8_t *output_buffer = data.data() + old_size;
-        write_data<uint32_t>(output_buffer, chunk_info);
-
-        auto *palette_begin = (uint32_t *)output_buffer;
-        uint32_t *palette_end = palette_begin + variants;
-
-        // size_t vi = 0;
-        for (auto u32_voxel : tile_set) {
-            write_data<uint32_t>(output_buffer, u32_voxel);
-
-            // float r = float((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
-            // float g = float((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
-            // float b = float((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
-            // uint32_t i = (u32_voxel >> 0x18) & 0xff;
-            // std::cout << "rgbi: " << r << " " << g << " " << b << " " << i << " ";
-            // std::cout << "vi: " << vi << std::endl;
-            // ++vi;
-        }
-        // std::cout << "variants: " << variants << std::endl;
+        RegionHeader region_header{.variant_n = variants};
 
         if (variants > 1) {
-            for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
-                for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
-                    for (size_t xi = 0; xi < CHUNK_SIZE; ++xi) {
-                        // TODO: fix for non-multiple sizes of CHUNK_SIZE
+            // insert palette
+            size += sizeof(uint32_t) * variants;
+            // insert palette region
+            size += calc_palette_region_size(bits_per_variant);
+
+            auto const old_size = data.size();
+            region_header.blob_offset = static_cast<uint32_t>(old_size - (sizeof(NodeHeader) + (region_nx * region_ny * region_nz) * sizeof(RegionHeader)));
+
+            data.reserve(old_size + size);
+            for (size_t i = 0; i < size; ++i) {
+                data.push_back(0);
+            }
+            uint8_t *output_buffer = data.data() + old_size;
+
+            auto *palette_begin = (uint32_t *)output_buffer;
+            uint32_t *palette_end = palette_begin + variants;
+
+            for (auto u32_voxel : tile_set) {
+                write_data<uint32_t>(output_buffer, u32_voxel);
+            }
+            for (size_t zi = 0; zi < REGION_SIZE; ++zi) {
+                for (size_t yi = 0; yi < REGION_SIZE; ++yi) {
+                    for (size_t xi = 0; xi < REGION_SIZE; ++xi) {
                         auto const px = ox + xi;
                         auto const py = oy + yi;
                         auto const pz = oz + zi;
-                        auto const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
+                        auto const in_region_index = xi + yi * REGION_SIZE + zi * REGION_SIZE * REGION_SIZE;
                         auto u32_voxel = 0u;
                         if (px < node.size_x && py < node.size_y && pz < node.size_z) {
                             auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
@@ -184,50 +181,40 @@ struct PaletteCompressor {
                         auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
                         assert(palette_iter != palette_end);
                         auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
-                        auto const bit_index = static_cast<size_t>(in_chunk_index * bits_per_variant);
+                        auto const bit_index = static_cast<size_t>(in_region_index * bits_per_variant);
                         auto const byte_index = bit_index / 8;
                         auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                         auto const mask = get_mask(bits_per_variant);
                         assert(output_buffer + byte_index + 3 < data.data() + data.size());
-                        // std::cout << "bi: " << byte_index << "  " << std::flush;
                         auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                         output = output & ~(mask << bit_offset);
                         output = output | static_cast<uint32_t>(palette_id << bit_offset);
                     }
-                    // std::cout << std::endl;
                 }
             }
+        } else {
+            region_header.blob_offset = *tile_set.begin();
         }
+
+        auto region_header_ptr = data.data() + sizeof(NodeHeader) + (region_x + region_y * region_nx + region_z * region_nx * region_ny) * sizeof(RegionHeader);
+        write_data<RegionHeader>(region_header_ptr, region_header);
 
         return size;
     }
 
     auto node_precomp(GVoxSceneNode const &node) -> size_t {
         // allocate at least 5% of the original node
-        data.reserve((node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20);
-
-        size_t size = 0;
-
         size_t const old_size = data.size();
+        data.reserve(old_size + (node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20);
 
-        // for the size xyz
-        size += sizeof(uint32_t) * 3;
+        region_nx = (node.size_x + REGION_SIZE - 1) / REGION_SIZE;
+        region_ny = (node.size_y + REGION_SIZE - 1) / REGION_SIZE;
+        region_nz = (node.size_z + REGION_SIZE - 1) / REGION_SIZE;
 
-        // assert((node.size_x % CHUNK_SIZE) == 0);
-        // assert((node.size_y % CHUNK_SIZE) == 0);
-        // assert((node.size_z % CHUNK_SIZE) == 0);
-
-        // these can be inferred and therefore don't need to be stored
-        size_t const chunk_nx = (node.size_x + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        size_t const chunk_ny = (node.size_y + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        size_t const chunk_nz = (node.size_z + CHUNK_SIZE - 1) / CHUNK_SIZE;
-
-        o_size_x = chunk_nx * CHUNK_SIZE;
-        o_size_y = chunk_ny * CHUNK_SIZE;
-        o_size_z = chunk_nz * CHUNK_SIZE;
-
-        // for the node's whole size
-        size += sizeof(uint32_t) * 1;
+        size_t pre_size =
+            sizeof(NodeHeader) +
+            sizeof(RegionHeader) * (region_nx * region_ny * region_nz);
+        size_t size = pre_size;
 
         data.reserve(old_size + size);
         for (size_t i = 0; i < size; ++i) {
@@ -236,25 +223,21 @@ struct PaletteCompressor {
 
         {
             uint8_t *output_buffer = data.data() + old_size;
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_x));
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_y));
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(o_size_z));
+            write_data<NodeHeader>(output_buffer, NodeHeader{0u, region_nx, region_ny, region_nz});
         }
 
-        for (size_t zi = 0; zi < chunk_nz; ++zi) {
-            for (size_t yi = 0; yi < chunk_ny; ++yi) {
-                for (size_t xi = 0; xi < chunk_nx; ++xi) {
-                    size += chunk_variance(node, xi, yi, zi);
+        for (size_t zi = 0; zi < region_nz; ++zi) {
+            for (size_t yi = 0; yi < region_ny; ++yi) {
+                for (size_t xi = 0; xi < region_nx; ++xi) {
+                    size += region_variance(node, xi, yi, zi);
                 }
             }
         }
 
         {
-            uint8_t *output_buffer = data.data() + old_size + sizeof(uint32_t) * 3;
-            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(size - sizeof(uint32_t) * 4));
+            uint8_t *output_buffer = data.data() + old_size;
+            write_data<uint32_t>(output_buffer, static_cast<uint32_t>(size - pre_size));
         }
-
-        // std::cout << size << std::endl;
 
         return size;
     }
@@ -321,77 +304,84 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     auto *buffer_ptr = static_cast<uint8_t *>(payload.data);
     result.node_n = read_data<uint32_t>(buffer_ptr);
-    // std::cout << "node_n = " << result.node_n << std::endl;
 
     result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     for (size_t node_i = 0; node_i < result.node_n; ++node_i) {
         auto &node = result.nodes[node_i];
-        node.size_x = read_data<uint32_t>(buffer_ptr);
-        node.size_y = read_data<uint32_t>(buffer_ptr);
-        node.size_z = read_data<uint32_t>(buffer_ptr);
-        auto total_size = read_data<uint32_t>(buffer_ptr);
-        auto *next_node = buffer_ptr + total_size;
-        // std::cout << "imported " << node.size_x << " " << node.size_y << " " << node.size_z << std::endl;
-        // std::cout << "node_size = " << total_size << std::endl;
-        size_t const voxels_n = result.nodes[node_i].size_x * result.nodes[node_i].size_y * result.nodes[node_i].size_z;
+        auto *node_begin = buffer_ptr;
+        auto const node_header = read_data<NodeHeader>(buffer_ptr);
+        auto *region_headers_begin = buffer_ptr;
+        node.size_x = node_header.region_count_x * REGION_SIZE;
+        node.size_y = node_header.region_count_y * REGION_SIZE;
+        node.size_z = node_header.region_count_z * REGION_SIZE;
+        auto const region_n = node_header.region_count_x * node_header.region_count_y * node_header.region_count_z;
+        buffer_ptr += region_n * sizeof(RegionHeader);
+        auto *data_begin = buffer_ptr;
+
+        for (size_t region_i = 0; region_i < region_n; ++region_i) {
+            auto const &region_header = reinterpret_cast<RegionHeader *>(region_headers_begin)[region_i];
+            std::cout << region_header.variant_n << ", " << region_header.blob_offset << std::endl;
+        }
+        std::cout << std::flush;
+
+        auto *next_node = buffer_ptr + node_header.node_full_size;
+        size_t const voxels_n = node.size_x * node.size_y * node.size_z;
         size_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
-        size_t const chunk_nx = (node.size_x + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        size_t const chunk_ny = (node.size_y + CHUNK_SIZE - 1) / CHUNK_SIZE;
-        size_t const chunk_nz = (node.size_z + CHUNK_SIZE - 1) / CHUNK_SIZE;
         node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
-        for (size_t chunk_z = 0; chunk_z < chunk_nz; ++chunk_z) {
-            for (size_t chunk_y = 0; chunk_y < chunk_ny; ++chunk_y) {
-                for (size_t chunk_x = 0; chunk_x < chunk_nx; ++chunk_x) {
-                    size_t const ox = chunk_x * CHUNK_SIZE;
-                    size_t const oy = chunk_y * CHUNK_SIZE;
-                    size_t const oz = chunk_z * CHUNK_SIZE;
-                    auto chunk_info = read_data<uint32_t>(buffer_ptr);
-                    // for now, the only info encoded inside the `chunk_info` variable
-                    // is the number of variants inside the palette.
-                    auto variants = chunk_info;
-                    auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
-                    auto const bits_per_variant = ceil_log2(variants);
-                    assert(bits_per_variant <= 9);
-                    buffer_ptr += variants * sizeof(uint32_t);
-
-                    // std::cout << variants << " variants\n";
-                    // for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i) {
-                    //     auto u32_voxel = palette_begin[tile_i];
-                    //     print_voxel(u32_to_voxel(u32_voxel));
-                    //     std::cout << " (" << u32_voxel << ")\n";
-                    // }
-                    // std::cout << std::flush;
-
+        for (size_t region_z = 0; region_z < node_header.region_count_z; ++region_z) {
+            for (size_t region_y = 0; region_y < node_header.region_count_y; ++region_y) {
+                for (size_t region_x = 0; region_x < node_header.region_count_x; ++region_x) {
+                    size_t const ox = region_x * REGION_SIZE;
+                    size_t const oy = region_y * REGION_SIZE;
+                    size_t const oz = region_z * REGION_SIZE;
+                    auto *region_header_ptr = region_headers_begin + (region_x + region_y * node_header.region_count_x + region_z * node_header.region_count_x * node_header.region_count_y) * sizeof(RegionHeader);
+                    auto const &region_header = read_data<RegionHeader>(region_header_ptr);
+                    auto variants = region_header.variant_n;
                     if (variants == 1) {
-                        for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
-                            for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
-                                for (size_t xi = 0; xi < CHUNK_SIZE; ++xi) {
+                        auto const u32_voxel = region_header.blob_offset;
+                        auto const r = static_cast<float>((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
+                        auto const g = static_cast<float>((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
+                        auto const b = static_cast<float>((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
+                        auto const i = (u32_voxel >> 0x18) & 0xff;
+                        auto region_voxel = GVoxVoxel{
+                            .color = {r, g, b},
+                            .id = i,
+                        };
+                        for (size_t zi = 0; zi < REGION_SIZE; ++zi) {
+                            for (size_t yi = 0; yi < REGION_SIZE; ++yi) {
+                                for (size_t xi = 0; xi < REGION_SIZE; ++xi) {
                                     auto const px = ox + xi;
                                     auto const py = oy + yi;
                                     auto const pz = oz + zi;
                                     auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
-                                    auto const u32_voxel = palette_begin[0];
-                                    auto r = static_cast<float>((u32_voxel >> 0x00) & 0xff) * 1.0f / 255.0f;
-                                    auto g = static_cast<float>((u32_voxel >> 0x08) & 0xff) * 1.0f / 255.0f;
-                                    auto b = static_cast<float>((u32_voxel >> 0x10) & 0xff) * 1.0f / 255.0f;
-                                    auto const i = (u32_voxel >> 0x18) & 0xff;
-                                    node.voxels[index] = GVoxVoxel{
-                                        .color = {r, g, b},
-                                        .id = i,
-                                    };
+                                    node.voxels[index] = region_voxel;
                                 }
                             }
                         }
                     } else {
-                        for (size_t zi = 0; zi < CHUNK_SIZE; ++zi) {
-                            for (size_t yi = 0; yi < CHUNK_SIZE; ++yi) {
-                                for (size_t xi = 0; xi < CHUNK_SIZE; ++xi) {
+                        buffer_ptr = data_begin + region_header.blob_offset;
+                        auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
+                        auto const bits_per_variant = ceil_log2(variants);
+                        assert(bits_per_variant <= 9);
+                        buffer_ptr += variants * sizeof(uint32_t);
+
+                        // std::cout << variants << " variants\n";
+                        // for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i) {
+                        //     auto u32_voxel = palette_begin[tile_i];
+                        //     print_voxel(u32_to_voxel(u32_voxel));
+                        //     std::cout << " (" << u32_voxel << ")\n";
+                        // }
+                        // std::cout << std::flush;
+
+                        for (size_t zi = 0; zi < REGION_SIZE; ++zi) {
+                            for (size_t yi = 0; yi < REGION_SIZE; ++yi) {
+                                for (size_t xi = 0; xi < REGION_SIZE; ++xi) {
                                     auto const px = ox + xi;
                                     auto const py = oy + yi;
                                     auto const pz = oz + zi;
                                     auto const index = px + py * node.size_x + pz * node.size_x * node.size_y;
-                                    auto const in_chunk_index = xi + yi * CHUNK_SIZE + zi * CHUNK_SIZE * CHUNK_SIZE;
-                                    auto const bit_index = static_cast<uint32_t>(in_chunk_index * bits_per_variant);
+                                    auto const in_region_index = xi + yi * REGION_SIZE + zi * REGION_SIZE * REGION_SIZE;
+                                    auto const bit_index = static_cast<uint32_t>(in_region_index * bits_per_variant);
                                     auto const byte_index = bit_index / 8;
                                     auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                                     auto const mask = get_mask(bits_per_variant);
@@ -414,7 +404,7 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                 }
                             }
                         }
-                        buffer_ptr += calc_palette_chunk_size(bits_per_variant);
+                        // buffer_ptr += calc_palette_region_size(bits_per_variant);
                     }
                 }
             }
