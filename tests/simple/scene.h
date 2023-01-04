@@ -58,18 +58,18 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                 GVoxVoxel result = scene.nodes[0].voxels[i];
                 if (result.id == 1) {
                     int si = 0;
-                    for (si = 0; si < 6; ++si) {
+                    for (si = 0; si < 16; ++si) {
                         float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi + si, sx, sy, sz);
                         if (val < -0.0f) {
                             break;
                         }
                     }
-                    if (si < 2) {
+                    if (si < 6) {
                         result.color.x = 0.2f;
                         result.color.y = 0.5f;
                         result.color.z = 0.1f;
                         result.id = 2;
-                    } else if (si < 4) {
+                    } else if (si < 15) {
                         result.color.x = 0.4f;
                         result.color.y = 0.3f;
                         result.color.z = 0.2f;

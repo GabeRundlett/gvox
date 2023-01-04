@@ -142,10 +142,12 @@ auto main() -> int {
 
     {
         auto cpu_scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
-        std::cout << "\nloaded cpu scene content:" << std::endl;
+        std::cout << "loaded CPU scene content:" << std::endl;
         print_voxels(cpu_scene);
         gvox_destroy_scene(cpu_scene);
     }
+
+    std::cout << "\nloaded GPU scene content:" << std::endl;
 
     run_gpu_version(gvox, scene);
 
@@ -156,7 +158,8 @@ auto main() -> int {
     // gvox_destroy_scene(scene);
 #else
     auto scene = gvox_load_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
-    gvox_save(gvox, scene, "tests/simple/phantom_mansion.gvox", "gvox_u32_palette");
+    gvox_save(gvox, scene, "tests/simple/phantom_mansion_plt.gvox", "gvox_u32_palette");
+    gvox_save(gvox, scene, "tests/simple/phantom_mansion_u32.gvox", "gvox_u32");
     gvox_destroy_scene(scene);
 #endif
 
@@ -296,10 +299,13 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         },
         .debug_name = "Output Transfer",
     });
-    task_list.submit(&submit_info);
-    task_list.complete();
-    task_list.execute();
-    device.wait_idle();
+    {
+        Timer const timer{};
+        task_list.submit(&submit_info);
+        task_list.complete();
+        task_list.execute();
+        device.wait_idle();
+    }
     auto *buffer_ptr = device.get_host_address_as<uint8_t>(staging_gpu_output_buffer);
 
     auto &gpu_output = *reinterpret_cast<GpuOutput *>(buffer_ptr);

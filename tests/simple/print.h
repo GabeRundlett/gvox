@@ -7,13 +7,15 @@
 #define PRINT_MODE 3
 
 void print_voxels(GVoxScene scene) {
+    constexpr auto avg_region = 8u;
+
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)
             continue;
 
-        for (size_t zi = 0; zi < scene.nodes[node_i].size_z; ++zi) {
-            for (size_t yi = 0; yi < scene.nodes[node_i].size_y; ++yi) {
-                for (size_t xi = 0; xi < scene.nodes[node_i].size_x; ++xi) {
+        for (size_t zi = 0; zi < scene.nodes[node_i].size_z; zi += avg_region) {
+            for (size_t yi = 0; yi < scene.nodes[node_i].size_y; yi += avg_region) {
+                for (size_t xi = 0; xi < scene.nodes[node_i].size_x; xi += avg_region) {
                     size_t i = xi + yi * scene.nodes[node_i].size_x + (scene.nodes[node_i].size_z - 1 - zi) * scene.nodes[node_i].size_x * scene.nodes[node_i].size_y;
                     GVoxVoxel vox = scene.nodes[node_i].voxels[i];
 #if PRINT_MODE == 0
@@ -35,6 +37,26 @@ void print_voxels(GVoxScene scene) {
 #elif PRINT_MODE == 2
                     char c = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"[(size_t)(vox.id)];
 #elif PRINT_MODE == 3
+
+                    vox.color.x = 0.0f;
+                    vox.color.y = 0.0f;
+                    vox.color.z = 0.0f;
+                    for (size_t a_zi = 0; a_zi < avg_region; ++a_zi) {
+                        for (size_t a_yi = 0; a_yi < avg_region; ++a_yi) {
+                            for (size_t a_xi = 0; a_xi < avg_region; ++a_xi) {
+                                size_t i = (xi + a_xi) + (yi + a_yi) * scene.nodes[node_i].size_x + (scene.nodes[node_i].size_z - 1 - (zi + a_zi)) * scene.nodes[node_i].size_x * scene.nodes[node_i].size_y;
+                                GVoxVoxel temp_vox = scene.nodes[node_i].voxels[i];
+                                vox.color.x += temp_vox.color.x;
+                                vox.color.y += temp_vox.color.y;
+                                vox.color.z += temp_vox.color.z;
+                            }
+                        }
+                    }
+                    float factor = 1.0f / (avg_region * avg_region * avg_region);
+                    vox.color.x *= factor;
+                    vox.color.y *= factor;
+                    vox.color.z *= factor;
+
                     printf("\033[38;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
                     printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
                     char c = '_';

@@ -318,11 +318,11 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         buffer_ptr += region_n * sizeof(RegionHeader);
         auto *data_begin = buffer_ptr;
 
-        for (size_t region_i = 0; region_i < region_n; ++region_i) {
-            auto const &region_header = reinterpret_cast<RegionHeader *>(region_headers_begin)[region_i];
-            std::cout << region_header.variant_n << ", " << region_header.blob_offset << std::endl;
-        }
-        std::cout << std::flush;
+        // for (size_t region_i = 0; region_i < region_n; ++region_i) {
+        //     auto const &region_header = reinterpret_cast<RegionHeader *>(region_headers_begin)[region_i];
+        //     std::cout << region_header.variant_n << ", " << region_header.blob_offset << std::endl;
+        // }
+        // std::cout << std::flush;
 
         auto *next_node = buffer_ptr + node_header.node_full_size;
         size_t const voxels_n = node.size_x * node.size_y * node.size_z;
@@ -388,10 +388,10 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     auto &input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
                                     auto const palette_id = (input >> bit_offset) & mask;
                                     assert(palette_id < variants);
-                                    if (palette_id >= variants) {
-                                        std::cout << palette_id << "\n";
-                                        continue;
-                                    }
+                                    // if (palette_id >= variants) {
+                                    //     std::cout << palette_id << "\n";
+                                    //     continue;
+                                    // }
                                     auto const u32_voxel = palette_begin[palette_id];
                                     auto r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
                                     auto g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;
