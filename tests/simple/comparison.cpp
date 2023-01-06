@@ -157,9 +157,13 @@ auto main() -> int {
     // print_voxels(scene);
     // gvox_destroy_scene(scene);
 #else
-    auto scene = gvox_load_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
-    gvox_save(gvox, scene, "tests/simple/phantom_mansion_plt.gvox", "gvox_u32_palette");
-    gvox_save(gvox, scene, "tests/simple/phantom_mansion_u32.gvox", "gvox_u32");
+    // auto scene = gvox_load_from_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
+    // gvox_save(gvox, scene, "tests/simple/phantom_mansion_plt.gvox", "gvox_u32_palette");
+    auto scene = gvox_load_from_raw(gvox, "tests/simple/LostValleyArena.vxl", "ace_of_spades");
+    // gvox_save(gvox, scene, "tests/simple/Arab2.vxl", "ace_of_spades");
+    // gvox_destroy_scene(scene);
+    // scene = gvox_load_from_raw(gvox, "tests/simple/Arab2.vxl", "ace_of_spades");
+    gvox_save(gvox, scene, "tests/simple/arab.gvox", "gvox_u32_palette");
     gvox_destroy_scene(scene);
 #endif
 
@@ -321,7 +325,7 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         return;
     }
 
-    GVoxScene const gpu_scene = gvox_parse_raw(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
+    GVoxScene const gpu_scene = gvox_parse(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
 
     print_voxels(gpu_scene);
     gvox_destroy_scene(gpu_scene);

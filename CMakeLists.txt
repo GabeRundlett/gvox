@@ -55,7 +55,6 @@ target_include_directories(${PROJECT_NAME}
 set_project_warnings(${PROJECT_NAME})
 
 set(GVOX_DYNAMIC_FORMATS
-    magicavoxel
 )
 
 set(GVOX_STATIC_FORMATS
@@ -64,6 +63,8 @@ set(GVOX_STATIC_FORMATS
     gvox_u32_palette
     gzip
     zlib
+    ace_of_spades
+    magicavoxel
 )
 
 set(GVOX_FORMATS ${GVOX_DYNAMIC_FORMATS} ${GVOX_STATIC_FORMATS})

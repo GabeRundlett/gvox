@@ -59,7 +59,7 @@ int main(void) {
 #endif
     gvox_destroy_scene(scene);
 
-    scene = gvox_load_raw(gvox, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
+    scene = gvox_load_from_raw(gvox, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
 #if PRINT_RESULTS
     printf("\n magicavoxel\n");
     print_voxels(scene);

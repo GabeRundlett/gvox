@@ -72,11 +72,17 @@ void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *s
 void gvox_pop_result(GVoxContext *ctx);
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
-GVoxScene gvox_load_raw(GVoxContext *ctx, char const *filepath, char const *format);
-void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
-void gvox_save_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *format);
+GVoxScene gvox_load_from_raw(GVoxContext *ctx, char const *filepath, char const *src_format);
+void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *dst_format);
+void gvox_save_as_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *dst_format);
 
-GVoxScene gvox_parse_raw(GVoxContext *ctx, GVoxPayload payload, char const *format);
+GVoxScene gvox_parse(GVoxContext *ctx, GVoxPayload payload, char const *src_format);
+GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene scene, char const *dst_format);
+void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload payload, char const *format);
+
+size_t gvox_load_header(char const *filepath);
+void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene scene, char const *dst_format, uint8_t *dst_ptr);
+void gvox_serialize_into(GVoxContext *ctx, GVoxScene scene, char const *dst_format, uint8_t *dst_ptr);
 
 void gvox_destroy_scene(GVoxScene scene);
 

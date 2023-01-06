@@ -7,3 +7,4 @@ imgui.ini
 # Voxel files
 *.gvox
 *.vox
+*.vxl
