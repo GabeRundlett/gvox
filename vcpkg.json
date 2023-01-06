@@ -4,10 +4,23 @@
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
-    "zlib",
-    "gzip-hpp"
   ],
   "features": {
+    "file-io": {
+      "description": "Enable file IO library features"
+    },
+    "zlib": {
+      "description": "Build ZLIB format compressor",
+      "dependencies": [
+        "zlib"
+      ]
+    },
+    "gzip": {
+      "description": "Build GZIP format compressor",
+      "dependencies": [
+        "gzip-hpp"
+      ]
+    },
     "tests": {
       "description": "Build Tests",
       "dependencies": [

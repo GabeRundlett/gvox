@@ -41,22 +41,22 @@ auto AceOfSpadesContext::create_payload(GVoxScene scene) -> GVoxPayload {
         auto voxel_i = x + y * scene.nodes[0].size_x + z * scene.nodes[0].size_x * scene.nodes[0].size_y;
         return scene.nodes[0].voxels[voxel_i].id;
     };
-    auto is_surface = [&](int x, int y, int z) -> int {
+    auto is_surface = [&](size_t x, size_t y, size_t z) -> bool {
         if (sample_map(x, y, z) == 0)
-            return 0;
+            return false;
         if (x > 0 && sample_map(x - 1, y, z) == 0)
-            return 1;
+            return true;
         if (x + 1 < scene.nodes[0].size_x && sample_map(x + 1, y, z) == 0)
-            return 1;
+            return true;
         if (y > 0 && sample_map(x, y - 1, z) == 0)
-            return 1;
+            return true;
         if (y + 1 < scene.nodes[0].size_y && sample_map(x, y + 1, z) == 0)
-            return 1;
+            return true;
         if (z > 0 && sample_map(x, y, z - 1) == 0)
-            return 1;
+            return true;
         if (z + 1 < scene.nodes[0].size_z && sample_map(x, y, z + 1) == 0)
-            return 1;
-        return 0;
+            return true;
+        return false;
     };
     auto write_color = [](std::vector<uint8_t> &data, uint32_t color) -> void {
         // assume color is ARGB native, but endianness is unknown
@@ -67,25 +67,20 @@ auto AceOfSpadesContext::create_payload(GVoxScene scene) -> GVoxPayload {
         data.push_back((uint8_t)(color >> 16));
         data.push_back((uint8_t)(color >> 24));
     };
-    int i, j, k;
+    size_t i, j, k;
     for (j = 0; j < scene.nodes[0].size_x; ++j) {
         for (i = 0; i < scene.nodes[0].size_y; ++i) {
-            int written_colors = 0;
-            int backpatch_address = -1;
-            int previous_bottom_colors = 0;
-            int current_bottom_colors = 0;
-            int middle_start = 0;
             k = 0;
             while (k < MAP_Z) {
-                int z;
-                int air_start;
-                int top_colors_start;
-                int top_colors_end; // exclusive
-                int bottom_colors_start;
-                int bottom_colors_end; // exclusive
-                int top_colors_len;
-                int bottom_colors_len;
-                int colors;
+                size_t z;
+                size_t air_start;
+                size_t top_colors_start;
+                size_t top_colors_end; // exclusive
+                size_t bottom_colors_start;
+                size_t bottom_colors_end; // exclusive
+                size_t top_colors_len;
+                size_t bottom_colors_len;
+                size_t colors;
                 // find the air region
                 air_start = k;
                 while (k < MAP_Z && !sample_map(i, j, k))
@@ -122,11 +117,11 @@ auto AceOfSpadesContext::create_payload(GVoxScene scene) -> GVoxPayload {
                 if (k == MAP_Z) {
                     data.push_back(0); // last span
                 } else {
-                    data.push_back(colors + 1);
+                    data.push_back(static_cast<uint8_t>(colors + 1));
                 }
-                data.push_back(top_colors_start);
-                data.push_back(top_colors_end - 1);
-                data.push_back(air_start);
+                data.push_back(static_cast<uint8_t>(top_colors_start));
+                data.push_back(static_cast<uint8_t>(top_colors_end - 1));
+                data.push_back(static_cast<uint8_t>(air_start));
                 for (z = 0; z < top_colors_len; ++z)
                     write_color(data, sample_map(i, j, top_colors_start + z));
                 for (z = 0; z < bottom_colors_len; ++z)
@@ -171,7 +166,7 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     };
 
     auto *v = payload.data;
-    auto *base = v;
+    [[maybe_unused]] auto *base = v;
 
     size_t x, y, z;
     for (y = 0; y < result.nodes[0].size_y; ++y) {

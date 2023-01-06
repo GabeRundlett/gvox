@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.21)
 
 include(cmake/warnings.cmake)
 
+if(GVOX_ENABLE_FILE_IO)
+    list(APPEND VCPKG_MANIFEST_FEATURES "file-io")
+endif()
+if(GVOX_ENABLE_ZLIB)
+    list(APPEND VCPKG_MANIFEST_FEATURES "zlib")
+endif()
+if(GVOX_ENABLE_GZIP)
+    list(APPEND VCPKG_MANIFEST_FEATURES "gzip")
+endif()
 if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
@@ -33,18 +42,42 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
     endif()
 endif()
 
+set(GVOX_DYNAMIC_FORMATS
+)
+
+set(GVOX_STATIC_FORMATS
+    gvox_raw
+    gvox_u32
+    gvox_u32_palette
+    ace_of_spades
+    magicavoxel
+)
+
 add_library(${PROJECT_NAME} STATIC
     "src/gvox.cpp"
 )
+
+if(GVOX_ENABLE_FILE_IO)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
+endif()
+if(GVOX_ENABLE_ZLIB)
+    list(APPEND GVOX_STATIC_FORMATS zlib)
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+endif()
+if(GVOX_ENABLE_GZIP)
+    list(APPEND GVOX_STATIC_FORMATS gzip)
+    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
+endif()
+
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-find_package(ZLIB REQUIRED)
-find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     ${CMAKE_DL_LIBS}
-    ZLIB::ZLIB
 )
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -53,19 +86,6 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 set_project_warnings(${PROJECT_NAME})
-
-set(GVOX_DYNAMIC_FORMATS
-)
-
-set(GVOX_STATIC_FORMATS
-    gvox_raw
-    gvox_u32
-    gvox_u32_palette
-    gzip
-    zlib
-    ace_of_spades
-    magicavoxel
-)
 
 set(GVOX_FORMATS ${GVOX_DYNAMIC_FORMATS} ${GVOX_STATIC_FORMATS})
 
@@ -100,7 +120,7 @@ foreach(FORMAT_NAME ${GVOX_STATIC_FORMATS})
     target_sources(${PROJECT_NAME} PRIVATE "src/formats/${FORMAT_NAME}.cpp")
     string(MAKE_C_IDENTIFIER "${FORMAT_NAME}" FORMAT_NAME_UPPER)
     string(TOUPPER "${FORMAT_NAME_UPPER}" FORMAT_NAME_UPPER)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=true)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=1)
     set(formats_header_content "${formats_header_content}
 extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
 extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
@@ -139,7 +159,7 @@ function(set_project_sanitizers TARGET_NAME)
     endif()
 endfunction()
 
-set_project_sanitizers(${PROJECT_NAME})
+# set_project_sanitizers(${PROJECT_NAME})
 
 foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
     add_library(gvox_format_${FORMAT_NAME} SHARED
@@ -164,10 +184,18 @@ check_required_components(gvox)
 set(GVOX_DYNAMIC_FORMATS @GVOX_DYNAMIC_FORMATS@)
 set(GVOX_STATIC_FORMATS @GVOX_STATIC_FORMATS@)
 set(GVOX_FORMATS @GVOX_FORMATS@)
+]=])
 
+if(GVOX_ENABLE_ZLIB)
+    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 find_package(ZLIB REQUIRED)
+]=])
+endif()
+if(GVOX_ENABLE_GZIP)
+    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
 ]=])
+endif()
 
 configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/gvox-config.cmake
