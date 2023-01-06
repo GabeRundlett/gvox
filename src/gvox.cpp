@@ -1,6 +1,7 @@
 #include <gvox/gvox.h>
 
 #include <cassert>
+#include <cstring>
 #include <unordered_map>
 #include <string>
 #include <fstream>
@@ -80,7 +81,7 @@ static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *file
         format_loader->destroy_payload(format_loader->context, file_payload);
     }
     file_header.payload_size = file_payload.size;
-    file_header.format_name_size = strlen(dst_format);
+    file_header.format_name_size = std::strlen(dst_format);
     if (is_raw == 0u) {
         file.write(reinterpret_cast<char const *>(&file_header), sizeof(file_header));
         file.write(reinterpret_cast<char const *>(dst_format), static_cast<std::streamsize>(file_header.format_name_size));
