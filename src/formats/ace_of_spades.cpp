@@ -170,7 +170,8 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         result.nodes[0].voxels[voxel_i].color = {r, g, b};
     };
 
-    uint8_t *v = payload.data;
+    auto *v = payload.data;
+    auto *base = v;
 
     size_t x, y, z;
     for (y = 0; y < result.nodes[0].size_y; ++y) {
