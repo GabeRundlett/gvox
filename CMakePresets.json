@@ -63,6 +63,20 @@
             }
         },
         {
+            "name": "wasi-wasm32-unknown-unknown",
+            "displayName": "wasi wasm32",
+            "inherits": [
+                "defaults"
+            ],
+            "toolchainFile": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake",
+            "cacheVariables": {
+                "GVOX_ENABLE_FILE_IO": false,
+                "GVOX_ENABLE_ZLIB": false,
+                "GVOX_ENABLE_GZIP": false,
+                "GVOX_ENABLE_TESTS": false
+            }
+        },
+        {
             "name": "clang-x86_64-windows-msvc",
             "displayName": "Clang x86_64 Windows (MSVC ABI)",
             "inherits": [
@@ -120,6 +134,24 @@
             "name": "emscripten-wasm32-unknown-unknown-debug",
             "displayName": "Emscripten wasm32 Debug",
             "configurePreset": "emscripten-wasm32-unknown-unknown",
+            "configuration": "Debug"
+        },
+        {
+            "name": "wasi-wasm32-unknown-unknown-relwithdebinfo",
+            "displayName": "wasi wasm32 RelWithDebInfo",
+            "configurePreset": "wasi-wasm32-unknown-unknown",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "wasi-wasm32-unknown-unknown-release",
+            "displayName": "wasi wasm32 Release",
+            "configurePreset": "wasi-wasm32-unknown-unknown",
+            "configuration": "Release"
+        },
+        {
+            "name": "wasi-wasm32-unknown-unknown-debug",
+            "displayName": "wasi wasm32 Debug",
+            "configurePreset": "wasi-wasm32-unknown-unknown",
             "configuration": "Debug"
         },
         {

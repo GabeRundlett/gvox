@@ -1,5 +1,6 @@
 #include <gvox/gvox.h>
 
+#include <cstring>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -18,6 +19,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
+#endif
+
+#if __wasm32__
+#include "utils/patch_wasm.h"
 #endif
 
 using GVoxFormatCreateContextFunc = void *(*)();
