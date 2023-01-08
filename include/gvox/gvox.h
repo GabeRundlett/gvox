@@ -84,8 +84,8 @@ GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene const *scene, char const 
 void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene *scene, char const *dst_format, uint8_t *dst_ptr);
 void gvox_serialize_into(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format, uint8_t *dst_ptr);
 
-void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload *payload, char const *format);
-void gvox_destroy_scene(GVoxScene *scene);
+void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload const *payload, char const *format);
+void gvox_destroy_scene(GVoxScene const *scene);
 
 #ifdef __cplusplus
 }

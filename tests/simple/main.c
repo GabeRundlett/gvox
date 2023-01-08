@@ -15,13 +15,13 @@ int main(void) {
     printf("\n raw\n");
     print_voxels(scene);
 #endif
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_raw.gvox", "gvox_raw");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_zlib.gvox", "zlib");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_gzip.gvox", "gzip");
-    gvox_save(gvox, scene, "tests/simple/compare_scene0_magicavoxel.gvox", "magicavoxel");
-    gvox_destroy_scene(scene);
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_raw.gvox", "gvox_raw");
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_zlib.gvox", "zlib");
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gzip.gvox", "gzip");
+    gvox_save(gvox, &scene, "tests/simple/compare_scene0_magicavoxel.gvox", "magicavoxel");
+    gvox_destroy_scene(&scene);
 
 #if DO_LOAD
     scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_raw.gvox");

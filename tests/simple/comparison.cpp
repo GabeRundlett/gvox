@@ -123,7 +123,7 @@ auto main() -> int {
     }();
     {
         Timer const timer{};
-        gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
+        gvox_save_as_raw(gvox, &scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
         // gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
         while (gvox_get_result(gvox) != GVOX_SUCCESS) {
             size_t msg_size = 0;
@@ -132,25 +132,25 @@ auto main() -> int {
             msg.resize(msg_size);
             gvox_get_result_message(gvox, nullptr, &msg_size);
             gvox_pop_result(gvox);
-            gvox_destroy_scene(scene);
+            gvox_destroy_scene(&scene);
             return -1;
         }
     }
     // std::cout << "generated scene content:" << std::endl;
     // print_voxels(scene);
 
-    {
-        auto cpu_scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
-        std::cout << "loaded CPU scene content:" << std::endl;
-        print_voxels(cpu_scene);
-        gvox_destroy_scene(cpu_scene);
-    }
+    // {
+    //     auto cpu_scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
+    //     std::cout << "loaded CPU scene content:" << std::endl;
+    //     print_voxels(cpu_scene);
+    //     gvox_destroy_scene(cpu_scene);
+    // }
 
-    std::cout << "\nloaded GPU scene content:" << std::endl;
+    // std::cout << "\nloaded GPU scene content:" << std::endl;
 
-    run_gpu_version(gvox, scene);
+    // run_gpu_version(gvox, scene);
 
-    gvox_destroy_scene(scene);
+    gvox_destroy_scene(&scene);
     // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
     // std::cout << "\nloaded uncompressed scene content:" << std::endl;
     // print_voxels(scene);
@@ -324,10 +324,11 @@ void run_gpu_version(GVoxContext *gvox, GVoxScene const &scene) {
         return;
     }
 
-    GVoxScene const gpu_scene = gvox_parse(gvox, GVoxPayload{.size = 0, .data = buffer_ptr}, "gvox_u32_palette");
+    auto const payload = GVoxPayload{.size = 0, .data = buffer_ptr};
+    GVoxScene const gpu_scene = gvox_parse(gvox, &payload, "gvox_u32_palette");
 
     print_voxels(gpu_scene);
-    gvox_destroy_scene(gpu_scene);
+    gvox_destroy_scene(&gpu_scene);
 
     device.wait_idle();
     device.collect_garbage();
