@@ -124,9 +124,9 @@ foreach(FORMAT_NAME ${GVOX_STATIC_FORMATS})
     set(formats_header_content "${formats_header_content}
 extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
 extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload;
-extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload payload);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene;
+extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload;
+extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload const *payload);
+extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene;
 ")
     set(static_format_infos_content "${static_format_infos_content}
     StaticFormatInfo{

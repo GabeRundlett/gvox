@@ -47,14 +47,13 @@ typedef struct {
 
 typedef struct {
     char const *name_str;
-    void *context;
 
     void *(*create_context)(void);
     void (*destroy_context)(void *);
-    GVoxPayload (*create_payload)(void *, GVoxScene scene);
-    void (*destroy_payload)(void *, GVoxPayload payload);
-    GVoxScene (*parse_payload)(void *, GVoxPayload payload);
-} GVoxFormatLoader;
+    GVoxPayload (*create_payload)(void *, GVoxScene const *scene);
+    void (*destroy_payload)(void *, GVoxPayload const *payload);
+    GVoxScene (*parse_payload)(void *, GVoxPayload const *payload);
+} GVoxFormatLoaderInfo;
 
 typedef struct _GVoxContext GVoxContext;
 
@@ -69,24 +68,24 @@ void gvox_pop_root_path(GVoxContext *ctx);
 
 GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
 GVoxScene gvox_load_from_raw(GVoxContext *ctx, char const *filepath, char const *src_format);
-void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *dst_format);
-void gvox_save_as_raw(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *dst_format);
+void gvox_save(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
+void gvox_save_as_raw(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
 #endif
 
-void gvox_register_format(GVoxContext *ctx, GVoxFormatLoader format_loader);
+void gvox_register_format(GVoxContext *ctx, GVoxFormatLoaderInfo const *format_loader_info);
 void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
 
 GVoxResult gvox_get_result(GVoxContext *ctx);
 void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
 void gvox_pop_result(GVoxContext *ctx);
 
-GVoxScene gvox_parse(GVoxContext *ctx, GVoxPayload payload, char const *src_format);
-GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene scene, char const *dst_format);
-void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene scene, char const *dst_format, uint8_t *dst_ptr);
-void gvox_serialize_into(GVoxContext *ctx, GVoxScene scene, char const *dst_format, uint8_t *dst_ptr);
+GVoxScene gvox_parse(GVoxContext *ctx, GVoxPayload const *payload, char const *src_format);
+GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format);
+void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene *scene, char const *dst_format, uint8_t *dst_ptr);
+void gvox_serialize_into(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format, uint8_t *dst_ptr);
 
-void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload payload, char const *format);
-void gvox_destroy_scene(GVoxScene scene);
+void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload *payload, char const *format);
+void gvox_destroy_scene(GVoxScene *scene);
 
 #ifdef __cplusplus
 }

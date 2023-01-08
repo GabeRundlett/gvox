@@ -233,17 +233,17 @@ extern "C" EXPORT void gvox_format_zlib_destroy_context(void *context_ptr) {
     delete self;
 }
 
-extern "C" EXPORT auto gvox_format_zlib_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
+extern "C" EXPORT auto gvox_format_zlib_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload {
     auto *self = reinterpret_cast<ZlibContext *>(context_ptr);
-    return self->create_payload(scene);
+    return self->create_payload(*scene);
 }
 
-extern "C" EXPORT void gvox_format_zlib_destroy_payload(void *context_ptr, GVoxPayload payload) {
+extern "C" EXPORT void gvox_format_zlib_destroy_payload(void *context_ptr, GVoxPayload const *payload) {
     auto *self = reinterpret_cast<ZlibContext *>(context_ptr);
-    self->destroy_payload(payload);
+    self->destroy_payload(*payload);
 }
 
-extern "C" EXPORT auto gvox_format_zlib_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
+extern "C" EXPORT auto gvox_format_zlib_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene {
     auto *self = reinterpret_cast<ZlibContext *>(context_ptr);
-    return self->parse_payload(payload);
+    return self->parse_payload(*payload);
 }

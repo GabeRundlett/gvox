@@ -136,17 +136,17 @@ extern "C" EXPORT void gvox_format_gzip_destroy_context(void *context_ptr) {
     delete self;
 }
 
-extern "C" EXPORT auto gvox_format_gzip_create_payload(void *context_ptr, GVoxScene scene) -> GVoxPayload {
+extern "C" EXPORT auto gvox_format_gzip_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload {
     auto *self = reinterpret_cast<GzipContext *>(context_ptr);
     return self->create_payload(scene);
 }
 
-extern "C" EXPORT void gvox_format_gzip_destroy_payload(void *context_ptr, GVoxPayload payload) {
+extern "C" EXPORT void gvox_format_gzip_destroy_payload(void *context_ptr, GVoxPayload const *payload) {
     auto *self = reinterpret_cast<GzipContext *>(context_ptr);
     self->destroy_payload(payload);
 }
 
-extern "C" EXPORT auto gvox_format_gzip_parse_payload(void *context_ptr, GVoxPayload payload) -> GVoxScene {
+extern "C" EXPORT auto gvox_format_gzip_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene {
     auto *self = reinterpret_cast<GzipContext *>(context_ptr);
     return self->parse_payload(payload);
 }
