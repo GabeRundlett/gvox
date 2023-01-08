@@ -1,6 +1,5 @@
 #include <gvox/gvox.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
@@ -206,7 +205,7 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         }
     }
 
-    assert(v - base == payload.size);
+    assert(static_cast<size_t>(v - base) == payload.size);
 
     return result;
 }

@@ -17,7 +17,7 @@
                 "GVOX_ENABLE_ZLIB": true,
                 "GVOX_ENABLE_GZIP": true,
                 "GVOX_ENABLE_TESTS": true,
-                "GVOX_ENABLE_ASAN": true,
+                "GVOX_ENABLE_ASAN": false,
                 "GVOX_ENABLE_STATIC_ANALYSIS": false
             }
         },
@@ -46,6 +46,20 @@
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Linux"
+            }
+        },
+        {
+            "name": "emscripten-wasm32-unknown-unknown",
+            "displayName": "Emscripten wasm32",
+            "inherits": [
+                "defaults"
+            ],
+            "cacheVariables": {
+                "GVOX_ENABLE_FILE_IO": false,
+                "GVOX_ENABLE_ZLIB": false,
+                "GVOX_ENABLE_GZIP": false,
+                "GVOX_ENABLE_TESTS": false,
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake"
             }
         },
         {
@@ -90,6 +104,24 @@
         }
     ],
     "buildPresets": [
+        {
+            "name": "emscripten-wasm32-unknown-unknown-relwithdebinfo",
+            "displayName": "Emscripten wasm32 RelWithDebInfo",
+            "configurePreset": "emscripten-wasm32-unknown-unknown",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "emscripten-wasm32-unknown-unknown-release",
+            "displayName": "Emscripten wasm32 Release",
+            "configurePreset": "emscripten-wasm32-unknown-unknown",
+            "configuration": "Release"
+        },
+        {
+            "name": "emscripten-wasm32-unknown-unknown-debug",
+            "displayName": "Emscripten wasm32 Debug",
+            "configurePreset": "emscripten-wasm32-unknown-unknown",
+            "configuration": "Debug"
+        },
         {
             "name": "clang-x86_64-windows-msvc-debug",
             "displayName": "Clang x86_64 Windows (MSVC ABI) Debug",

@@ -1,16 +1,15 @@
 #include <gvox/gvox.h>
 
-#include <cassert>
-#include <cstring>
 #include <unordered_map>
 #include <string>
-#include <fstream>
-#include <filesystem>
 #include <vector>
 #include <iostream>
 #include <array>
 #include <algorithm>
 
+#if GVOX_ENABLE_FILE_IO
+#include <fstream>
+#include <filesystem>
 #if __linux__
 #include <unistd.h>
 #include <dlfcn.h>
@@ -18,6 +17,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 #endif
 
 using GVoxFormatCreateContextFunc = void *(*)();
@@ -30,7 +30,9 @@ using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload);
 
 struct _GVoxContext {
     std::unordered_map<std::string, GVoxFormatLoader *> format_loader_table = {};
+#if GVOX_ENABLE_FILE_IO
     std::vector<std::filesystem::path> root_paths = {};
+#endif
     std::vector<std::pair<std::string, GVoxResult>> errors = {};
 };
 
@@ -42,6 +44,33 @@ static auto gvox_context_find_loader(GVoxContext *ctx, std::string const &format
     }
     return iter->second;
 }
+void impl_gvox_unregister_format(GVoxContext *ctx, GVoxFormatLoader const &self) {
+    // basically the destructor for format_loader
+    if (self.context != nullptr) {
+        ctx->errors.emplace_back("Failed to destroy the context of format [" + std::string(self.name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
+        self.destroy_context(self.context);
+    }
+}
+
+auto gvox_create_context(void) -> GVoxContext * {
+    auto *result = new GVoxContext;
+    for (const auto *const name : format_names) {
+        gvox_load_format(result, name);
+    }
+    return result;
+}
+void gvox_destroy_context(GVoxContext *ctx) {
+    if (ctx == nullptr) {
+        return;
+    }
+    for (auto &[format_key, format_loader] : ctx->format_loader_table) {
+        impl_gvox_unregister_format(ctx, *format_loader);
+        delete format_loader;
+    }
+    delete ctx;
+}
+
+#if GVOX_ENABLE_FILE_IO
 auto get_exe_path() -> std::filesystem::path {
     char *out_str = new char[512];
     for (size_t i = 0; i < 512; ++i) {
@@ -59,15 +88,6 @@ auto get_exe_path() -> std::filesystem::path {
     delete[] out_str;
     return result;
 }
-void impl_gvox_unregister_format(GVoxContext *ctx, GVoxFormatLoader const &self) {
-    // basically the destructor for format_loader
-    if (self.context != nullptr) {
-        ctx->errors.emplace_back("Failed to destroy the context of format [" + std::string(self.name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
-        self.destroy_context(self.context);
-    }
-}
-
-#if GVOX_ENABLE_FILE_IO
 static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *filepath, char const *dst_format, uint8_t is_raw) {
     GVoxHeader file_header;
     GVoxPayload file_payload;
@@ -90,27 +110,7 @@ static inline void gvox_save(GVoxContext *ctx, GVoxScene scene, char const *file
     file.close();
     format_loader->destroy_payload(format_loader->context, file_payload);
 }
-#endif
 
-auto gvox_create_context(void) -> GVoxContext * {
-    auto *result = new GVoxContext;
-    for (const auto *const name : format_names) {
-        gvox_load_format(result, name);
-    }
-    return result;
-}
-void gvox_destroy_context(GVoxContext *ctx) {
-    if (ctx == nullptr) {
-        return;
-    }
-    for (auto &[format_key, format_loader] : ctx->format_loader_table) {
-        impl_gvox_unregister_format(ctx, *format_loader);
-        delete format_loader;
-    }
-    delete ctx;
-}
-
-#if GVOX_ENABLE_FILE_IO
 void gvox_push_root_path(GVoxContext *ctx, char const *path) {
     ctx->root_paths.emplace_back(path);
 }
@@ -283,7 +283,7 @@ auto gvox_get_result(GVoxContext *ctx) -> GVoxResult {
 }
 void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size) {
     if (str_buffer != nullptr) {
-        assert(str_size);
+        // assert(str_size);
         if (ctx->errors.empty()) {
             for (size_t i = 0; i < *str_size; ++i) {
                 str_buffer[i] = '\0';
@@ -291,7 +291,7 @@ void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *s
             return;
         }
         auto [msg, id] = ctx->errors.back();
-        assert(msg.size() <= *str_size);
+        // assert(msg.size() <= *str_size);
         std::copy(msg.begin(), msg.end(), str_buffer);
     } else if (str_size != nullptr) {
         if (ctx->errors.empty()) {

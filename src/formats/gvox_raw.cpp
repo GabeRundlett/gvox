@@ -1,6 +1,5 @@
 #include <gvox/gvox.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 

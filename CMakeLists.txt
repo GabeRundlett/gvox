@@ -59,6 +59,10 @@ add_library(${PROJECT_NAME} STATIC
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+        ${CMAKE_DL_LIBS}
+    )
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()
@@ -75,10 +79,6 @@ endif()
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-    ${CMAKE_DL_LIBS}
-)
 target_include_directories(${PROJECT_NAME}
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
@@ -159,7 +159,7 @@ function(set_project_sanitizers TARGET_NAME)
     endif()
 endfunction()
 
-# set_project_sanitizers(${PROJECT_NAME})
+set_project_sanitizers(${PROJECT_NAME})
 
 foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
     add_library(gvox_format_${FORMAT_NAME} SHARED
@@ -174,46 +174,6 @@ if(GVOX_ENABLE_TESTS)
 endif()
 
 # Packaging
-include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
-file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-@PACKAGE_INIT@
-include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
-check_required_components(gvox)
-
-set(GVOX_DYNAMIC_FORMATS @GVOX_DYNAMIC_FORMATS@)
-set(GVOX_STATIC_FORMATS @GVOX_STATIC_FORMATS@)
-set(GVOX_FORMATS @GVOX_FORMATS@)
-]=])
-
-if(GVOX_ENABLE_ZLIB)
-    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-find_package(ZLIB REQUIRED)
-]=])
+if(NOT GVOX_DISABLE_PACKAGING)
+    include(cmake/warnings.cmake)
 endif()
-if(GVOX_ENABLE_GZIP)
-    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-]=])
-endif()
-
-configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/gvox-config.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox
-    NO_SET_AND_CHECK_MACRO)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/gvox-config-version.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion)
-install(
-    FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/gvox-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/gvox-config-version.cmake
-    DESTINATION
-    ${CMAKE_INSTALL_DATADIR}/gvox)
-install(TARGETS gvox EXPORT gvox-targets)
-foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-    install(TARGETS gvox_format_${FORMAT_NAME} EXPORT gvox-targets)
-endforeach()
-install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ TYPE INCLUDE)

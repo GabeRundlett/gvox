@@ -1,7 +1,6 @@
 #include <gvox/gvox.h>
 
 #include <cassert>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
