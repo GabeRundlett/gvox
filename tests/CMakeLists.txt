@@ -22,15 +22,6 @@ function(GVOX_CREATE_TEST)
         endif()
     endif()
 
-    foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-        add_custom_command(
-            TARGET ${TGT}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                $<TARGET_FILE:gvox_format_${FORMAT_NAME}>
-                $<TARGET_FILE_DIR:${TGT}>
-        )
-    endforeach()
     set_project_sanitizers(${TGT})
 endfunction()
 
@@ -42,12 +33,11 @@ GVOX_CREATE_TEST(
     LANG c
     LIBS
 )
-GVOX_CREATE_TEST(
-    FOLDER simple
-    FILE comparison
-    LANG cpp
-    LIBS daxa::daxa
-)
-
-set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
-target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
+# GVOX_CREATE_TEST(
+#     FOLDER simple
+#     FILE comparison
+#     LANG cpp
+#     LIBS daxa::daxa
+# )
+# set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
+# target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")

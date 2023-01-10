@@ -69,198 +69,198 @@ struct MagicavoxelContext {
     MagicavoxelContext();
     ~MagicavoxelContext() = default;
 
-    static auto create_payload(GVoxScene scene) -> GVoxPayload;
-    static void destroy_payload(GVoxPayload payload);
-    static auto parse_payload(GVoxPayload payload) -> GVoxScene;
+    // static auto create_payload(GVoxScene scene) -> GVoxPayload;
+    // static void destroy_payload(GVoxPayload payload);
+    // static auto parse_payload(GVoxPayload payload) -> GVoxScene;
 };
 
 MagicavoxelContext::MagicavoxelContext() = default;
 
-auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
-    GVoxPayload result = {};
-    struct ChunkHeader {
-        MagicavoxelChunkID id;
-        int self_size;
-        int children_size;
-    };
-    int const version = 150;
-    result.size += sizeof(CHUNK_ID_VOX_);
-    result.size += sizeof(version);
-    // Main chunk
-    result.size += sizeof(ChunkHeader);
-    auto size_before_main_children = result.size;
-    // SIZE chunk
-    result.size += sizeof(ChunkHeader);
-    result.size += sizeof(int) * 3;
-    // XYZI chunk
-    result.size += sizeof(ChunkHeader);
-    int voxel_n = 0;
-    for (size_t i = 0; i < scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z; ++i) {
-        if (scene.nodes[0].voxels[i].id != 0) {
-            ++voxel_n;
-        }
-    }
-    result.size += sizeof(voxel_n);
-    result.size += sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n);
-    // RGBA chunk
-    result.size += sizeof(ChunkHeader);
-    result.size += sizeof(Palette);
-    result.data = new uint8_t[result.size];
-    memset(result.data, 0, result.size);
-    uint8_t *buffer_ptr = result.data;
-    write_data(&buffer_ptr, CHUNK_ID_VOX_);
-    write_data(&buffer_ptr, version);
-    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_MAIN, .self_size = 0, .children_size = static_cast<int>(result.size - size_before_main_children)});
-    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_SIZE, .self_size = sizeof(int) * 3, .children_size = 0});
-    write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x));
-    write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_y));
-    write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_z));
-    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n)), .children_size = 0});
-    write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z));
-    for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
-        for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
-            for (size_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
-                size_t const i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
-                auto const &i_voxel = scene.nodes[0].voxels[i];
-                if (i_voxel.id != 0) {
-                    MagicavoxelVoxel o_voxel{};
-                    o_voxel.x = static_cast<uint8_t>(xi);
-                    o_voxel.y = static_cast<uint8_t>(yi);
-                    o_voxel.z = static_cast<uint8_t>(zi);
-                    auto min_iter = std::min_element(default_palette.begin(), default_palette.end(), [&](uint32_t a_, uint32_t b_) {
-                        auto const a = std::array<float, 3>{
-                            static_cast<float>((a_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
-                            static_cast<float>((a_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
-                            static_cast<float>((a_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
-                        };
-                        auto const b = std::array<float, 3>{
-                            static_cast<float>((b_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
-                            static_cast<float>((b_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
-                            static_cast<float>((b_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
-                        };
-                        float const a_dist = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
-                        float const b_dist = b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
-                        return a_dist < b_dist;
-                    });
-                    o_voxel.color_index = static_cast<uint8_t>(min_iter - default_palette.begin());
-                    write_data(&buffer_ptr, o_voxel);
-                }
-            }
-        }
-    }
-    write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_RGBA, .self_size = static_cast<int>(sizeof(Palette)), .children_size = 0});
-    write_data(&buffer_ptr, default_palette);
-    return result;
-}
+// auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
+//     GVoxPayload result = {};
+//     struct ChunkHeader {
+//         MagicavoxelChunkID id;
+//         int self_size;
+//         int children_size;
+//     };
+//     int const version = 150;
+//     result.size += sizeof(CHUNK_ID_VOX_);
+//     result.size += sizeof(version);
+//     // Main chunk
+//     result.size += sizeof(ChunkHeader);
+//     auto size_before_main_children = result.size;
+//     // SIZE chunk
+//     result.size += sizeof(ChunkHeader);
+//     result.size += sizeof(int) * 3;
+//     // XYZI chunk
+//     result.size += sizeof(ChunkHeader);
+//     int voxel_n = 0;
+//     for (size_t i = 0; i < scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z; ++i) {
+//         if (scene.nodes[0].voxels[i].id != 0) {
+//             ++voxel_n;
+//         }
+//     }
+//     result.size += sizeof(voxel_n);
+//     result.size += sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n);
+//     // RGBA chunk
+//     result.size += sizeof(ChunkHeader);
+//     result.size += sizeof(Palette);
+//     result.data = new uint8_t[result.size];
+//     memset(result.data, 0, result.size);
+//     uint8_t *buffer_ptr = result.data;
+//     write_data(&buffer_ptr, CHUNK_ID_VOX_);
+//     write_data(&buffer_ptr, version);
+//     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_MAIN, .self_size = 0, .children_size = static_cast<int>(result.size - size_before_main_children)});
+//     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_SIZE, .self_size = sizeof(int) * 3, .children_size = 0});
+//     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x));
+//     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_y));
+//     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_z));
+//     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n)), .children_size = 0});
+//     write_data(&buffer_ptr, static_cast<int>(scene.nodes[0].size_x * scene.nodes[0].size_y * scene.nodes[0].size_z));
+//     for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
+//         for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
+//             for (size_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
+//                 size_t const i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
+//                 auto const &i_voxel = scene.nodes[0].voxels[i];
+//                 if (i_voxel.id != 0) {
+//                     MagicavoxelVoxel o_voxel{};
+//                     o_voxel.x = static_cast<uint8_t>(xi);
+//                     o_voxel.y = static_cast<uint8_t>(yi);
+//                     o_voxel.z = static_cast<uint8_t>(zi);
+//                     auto min_iter = std::min_element(default_palette.begin(), default_palette.end(), [&](uint32_t a_, uint32_t b_) {
+//                         auto const a = std::array<float, 3>{
+//                             static_cast<float>((a_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
+//                             static_cast<float>((a_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
+//                             static_cast<float>((a_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
+//                         };
+//                         auto const b = std::array<float, 3>{
+//                             static_cast<float>((b_ >> 0x00) & 0xff) * 1.0f / 255.0f - i_voxel.color.x,
+//                             static_cast<float>((b_ >> 0x08) & 0xff) * 1.0f / 255.0f - i_voxel.color.y,
+//                             static_cast<float>((b_ >> 0x10) & 0xff) * 1.0f / 255.0f - i_voxel.color.z,
+//                         };
+//                         float const a_dist = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+//                         float const b_dist = b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
+//                         return a_dist < b_dist;
+//                     });
+//                     o_voxel.color_index = static_cast<uint8_t>(min_iter - default_palette.begin());
+//                     write_data(&buffer_ptr, o_voxel);
+//                 }
+//             }
+//         }
+//     }
+//     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_RGBA, .self_size = static_cast<int>(sizeof(Palette)), .children_size = 0});
+//     write_data(&buffer_ptr, default_palette);
+//     return result;
+// }
 
-void MagicavoxelContext::destroy_payload(GVoxPayload payload) {
-    delete[] payload.data;
-}
+// void MagicavoxelContext::destroy_payload(GVoxPayload payload) {
+//     delete[] payload.data;
+// }
 
-constexpr auto transform_mul(const ogt_vox_transform &a, const vec3 &b) -> vec3 {
-    vec3 r;
-    r.x = (a.m00 * b.x) + (a.m10 * b.y) + (a.m20 * b.z) + (a.m30 * 1.0f);
-    r.y = (a.m01 * b.x) + (a.m11 * b.y) + (a.m21 * b.z) + (a.m31 * 1.0f);
-    r.z = (a.m02 * b.x) + (a.m12 * b.y) + (a.m22 * b.z) + (a.m32 * 1.0f);
-    return r;
-}
+// constexpr auto transform_mul(const ogt_vox_transform &a, const vec3 &b) -> vec3 {
+//     vec3 r;
+//     r.x = (a.m00 * b.x) + (a.m10 * b.y) + (a.m20 * b.z) + (a.m30 * 1.0f);
+//     r.y = (a.m01 * b.x) + (a.m11 * b.y) + (a.m21 * b.z) + (a.m31 * 1.0f);
+//     r.z = (a.m02 * b.x) + (a.m12 * b.y) + (a.m22 * b.z) + (a.m32 * 1.0f);
+//     return r;
+// }
 
-auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
-    GVoxScene result = {};
-    ogt_vox_scene const *scene = ogt_vox_read_scene(payload.data, static_cast<uint32_t>(payload.size));
-    result.node_n = 1;
-    result.nodes = new GVoxSceneNode[result.node_n];
-    auto inst_min = [scene](ogt_vox_instance const &inst) {
-        auto const &modl = *scene->models[inst.model_index];
-        vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
-        vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
-        return vec3{std::min(p0.x, p1.x), std::min(p0.y, p1.y), std::min(p0.z, p1.z)};
-    };
-    auto inst_max = [scene](ogt_vox_instance const &inst) {
-        auto const &modl = *scene->models[inst.model_index];
-        vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
-        vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
-        return vec3{std::max(p0.x, p1.x), std::max(p0.y, p1.y), std::max(p0.z, p1.z)};
-    };
-#define INSTANCES_MIN(axis)                                                                  \
-    static_cast<size_t>(                                                                     \
-        inst_min(                                                                            \
-            *std::min_element(                                                               \
-                scene->instances,                                                            \
-                scene->instances + scene->num_instances,                                     \
-                [inst_min](ogt_vox_instance const &inst_a, ogt_vox_instance const &inst_b) { \
-                    return inst_min(inst_a).axis < inst_min(inst_b).axis;                    \
-                }))                                                                          \
-            .axis)
-#define INSTANCES_MAX(axis)                                                                  \
-    static_cast<size_t>(                                                                     \
-        inst_max(                                                                            \
-            *std::max_element(                                                               \
-                scene->instances,                                                            \
-                scene->instances + scene->num_instances,                                     \
-                [inst_max](ogt_vox_instance const &inst_a, ogt_vox_instance const &inst_b) { \
-                    return inst_max(inst_a).axis < inst_max(inst_b).axis;                    \
-                }))                                                                          \
-            .axis)
-    auto min_x = INSTANCES_MIN(x), min_y = INSTANCES_MIN(y), min_z = INSTANCES_MIN(z);
-    auto max_x = INSTANCES_MAX(x), max_y = INSTANCES_MAX(y), max_z = INSTANCES_MAX(z);
-    auto size_x = max_x - min_x, size_y = max_y - min_y, size_z = max_z - min_z;
-    result.nodes[0].size_x = size_x;
-    result.nodes[0].size_y = size_y;
-    result.nodes[0].size_z = size_z;
-    auto size = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
-    result.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * size);
-    std::memset(result.nodes[0].voxels, 0, sizeof(GVoxVoxel) * size);
-    for (uint32_t instance_i = 0; instance_i < scene->num_instances; ++instance_i) {
-        auto const &inst = scene->instances[instance_i];
-        auto const &modl = *scene->models[inst.model_index];
-        for (size_t zi = 0; zi < modl.size_z; ++zi) {
-            for (size_t yi = 0; yi < modl.size_y; ++yi) {
-                for (size_t xi = 0; xi < modl.size_x; ++xi) {
-                    size_t const modl_voxel_i = xi + yi * modl.size_x + zi * modl.size_x * modl.size_y;
-                    vec3 p = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + xi), static_cast<float>(modl.offset_y + yi), static_cast<float>(modl.offset_z + zi)});
-                    size_t const final_voxel_i = (static_cast<size_t>(p.x) - min_x) + (static_cast<size_t>(p.y) - min_y) * result.nodes[0].size_x + (static_cast<size_t>(p.z) - min_z) * result.nodes[0].size_x * result.nodes[0].size_y;
-                    auto const &voxel = modl.voxel_data[modl_voxel_i];
-                    if (voxel != 0) {
-                        auto const &color = scene->palette.color[voxel];
-                        result.nodes[0].voxels[final_voxel_i] = GVoxVoxel{
-                            .color = {
-                                static_cast<float>(color.r) * 1.0f / 255.0f,
-                                static_cast<float>(color.g) * 1.0f / 255.0f,
-                                static_cast<float>(color.b) * 1.0f / 255.0f,
-                            },
-                            .id = 1,
-                        };
-                    }
-                }
-            }
-        }
-    }
-    ogt_vox_destroy_scene(scene);
-    return result;
-}
+// auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
+//     GVoxScene result = {};
+//     ogt_vox_scene const *scene = ogt_vox_read_scene(payload.data, static_cast<uint32_t>(payload.size));
+//     result.node_n = 1;
+//     result.nodes = new GVoxSceneNode[result.node_n];
+//     auto inst_min = [scene](ogt_vox_instance const &inst) {
+//         auto const &modl = *scene->models[inst.model_index];
+//         vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
+//         vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
+//         return vec3{std::min(p0.x, p1.x), std::min(p0.y, p1.y), std::min(p0.z, p1.z)};
+//     };
+//     auto inst_max = [scene](ogt_vox_instance const &inst) {
+//         auto const &modl = *scene->models[inst.model_index];
+//         vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
+//         vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
+//         return vec3{std::max(p0.x, p1.x), std::max(p0.y, p1.y), std::max(p0.z, p1.z)};
+//     };
+// #define INSTANCES_MIN(axis)                                                                  \
+//     static_cast<size_t>(                                                                     \
+//         inst_min(                                                                            \
+//             *std::min_element(                                                               \
+//                 scene->instances,                                                            \
+//                 scene->instances + scene->num_instances,                                     \
+//                 [inst_min](ogt_vox_instance const &inst_a, ogt_vox_instance const &inst_b) { \
+//                     return inst_min(inst_a).axis < inst_min(inst_b).axis;                    \
+//                 }))                                                                          \
+//             .axis)
+// #define INSTANCES_MAX(axis)                                                                  \
+//     static_cast<size_t>(                                                                     \
+//         inst_max(                                                                            \
+//             *std::max_element(                                                               \
+//                 scene->instances,                                                            \
+//                 scene->instances + scene->num_instances,                                     \
+//                 [inst_max](ogt_vox_instance const &inst_a, ogt_vox_instance const &inst_b) { \
+//                     return inst_max(inst_a).axis < inst_max(inst_b).axis;                    \
+//                 }))                                                                          \
+//             .axis)
+//     auto min_x = INSTANCES_MIN(x), min_y = INSTANCES_MIN(y), min_z = INSTANCES_MIN(z);
+//     auto max_x = INSTANCES_MAX(x), max_y = INSTANCES_MAX(y), max_z = INSTANCES_MAX(z);
+//     auto size_x = max_x - min_x, size_y = max_y - min_y, size_z = max_z - min_z;
+//     result.nodes[0].size_x = size_x;
+//     result.nodes[0].size_y = size_y;
+//     result.nodes[0].size_z = size_z;
+//     auto size = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
+//     result.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * size);
+//     std::memset(result.nodes[0].voxels, 0, sizeof(GVoxVoxel) * size);
+//     for (uint32_t instance_i = 0; instance_i < scene->num_instances; ++instance_i) {
+//         auto const &inst = scene->instances[instance_i];
+//         auto const &modl = *scene->models[inst.model_index];
+//         for (size_t zi = 0; zi < modl.size_z; ++zi) {
+//             for (size_t yi = 0; yi < modl.size_y; ++yi) {
+//                 for (size_t xi = 0; xi < modl.size_x; ++xi) {
+//                     size_t const modl_voxel_i = xi + yi * modl.size_x + zi * modl.size_x * modl.size_y;
+//                     vec3 p = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + xi), static_cast<float>(modl.offset_y + yi), static_cast<float>(modl.offset_z + zi)});
+//                     size_t const final_voxel_i = (static_cast<size_t>(p.x) - min_x) + (static_cast<size_t>(p.y) - min_y) * result.nodes[0].size_x + (static_cast<size_t>(p.z) - min_z) * result.nodes[0].size_x * result.nodes[0].size_y;
+//                     auto const &voxel = modl.voxel_data[modl_voxel_i];
+//                     if (voxel != 0) {
+//                         auto const &color = scene->palette.color[voxel];
+//                         result.nodes[0].voxels[final_voxel_i] = GVoxVoxel{
+//                             .color = {
+//                                 static_cast<float>(color.r) * 1.0f / 255.0f,
+//                                 static_cast<float>(color.g) * 1.0f / 255.0f,
+//                                 static_cast<float>(color.b) * 1.0f / 255.0f,
+//                             },
+//                             .id = 1,
+//                         };
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     ogt_vox_destroy_scene(scene);
+//     return result;
+// }
 
-extern "C" EXPORT auto gvox_format_magicavoxel_create_context() -> void * {
-    auto *result = new MagicavoxelContext{};
-    return result;
-}
+// extern "C" EXPORT auto gvox_format_magicavoxel_create_context() -> void * {
+//     auto *result = new MagicavoxelContext{};
+//     return result;
+// }
 
-extern "C" EXPORT void gvox_format_magicavoxel_destroy_context(void *context_ptr) {
-    auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
-    delete self;
-}
+// extern "C" EXPORT void gvox_format_magicavoxel_destroy_context(void *context_ptr) {
+//     auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
+//     delete self;
+// }
 
-extern "C" EXPORT auto gvox_format_magicavoxel_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload {
-    auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
-    return self->create_payload(*scene);
-}
+// extern "C" EXPORT auto gvox_format_magicavoxel_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload {
+//     auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
+//     return self->create_payload(*scene);
+// }
 
-extern "C" EXPORT void gvox_format_magicavoxel_destroy_payload(void *context_ptr, GVoxPayload const *payload) {
-    auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
-    self->destroy_payload(*payload);
-}
+// extern "C" EXPORT void gvox_format_magicavoxel_destroy_payload(void *context_ptr, GVoxPayload const *payload) {
+//     auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
+//     self->destroy_payload(*payload);
+// }
 
-extern "C" EXPORT auto gvox_format_magicavoxel_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene {
-    auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
-    return self->parse_payload(*payload);
-}
+// extern "C" EXPORT auto gvox_format_magicavoxel_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene {
+//     auto *self = reinterpret_cast<MagicavoxelContext *>(context_ptr);
+//     return self->parse_payload(*payload);
+// }

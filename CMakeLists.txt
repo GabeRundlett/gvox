@@ -42,15 +42,11 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
     endif()
 endif()
 
-set(GVOX_DYNAMIC_FORMATS
-)
-
-set(GVOX_STATIC_FORMATS
+set(GVOX_FORMATS
     gvox_raw
-    gvox_u32
-    gvox_u32_palette
-    ace_of_spades
-    magicavoxel
+    # gvox_u32_palette
+    # ace_of_spades
+    # magicavoxel
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -67,14 +63,14 @@ else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()
 if(GVOX_ENABLE_ZLIB)
-    list(APPEND GVOX_STATIC_FORMATS zlib)
-    find_package(ZLIB REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+    # list(APPEND GVOX_FORMATS zlib)
+    # find_package(ZLIB REQUIRED)
+    # target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 endif()
 if(GVOX_ENABLE_GZIP)
-    list(APPEND GVOX_STATIC_FORMATS gzip)
-    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-    target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
+    # list(APPEND GVOX_FORMATS gzip)
+    # find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+    # target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
 endif()
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -86,8 +82,6 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 set_project_warnings(${PROJECT_NAME})
-
-set(GVOX_FORMATS ${GVOX_DYNAMIC_FORMATS} ${GVOX_STATIC_FORMATS})
 
 foreach(FORMAT_NAME ${GVOX_FORMATS})
     set(format_names_content "${format_names_content}
@@ -106,41 +100,41 @@ static constexpr std::array format_names = {${format_names_content}
 set(formats_header_content "${formats_header_content}
 #pragma region STATIC_FORMATS
 
-struct StaticFormatInfo {
+struct FormatInfo {
     std::string_view name;
-    GVoxFormatCreateContextFunc create_context;
-    GVoxFormatDestroyContextFunc destroy_context;
-    GVoxFormatCreatePayloadFunc create_payload;
-    GVoxFormatDestroyPayloadFunc destroy_payload;
-    GVoxFormatParsePayloadFunc parse_payload;
+    // GVoxFormatCreateContextFunc create_context;
+    // GVoxFormatDestroyContextFunc destroy_context;
+    // GVoxFormatCreatePayloadFunc create_payload;
+    // GVoxFormatDestroyPayloadFunc destroy_payload;
+    // GVoxFormatParsePayloadFunc parse_payload;
 };
 ")
 
-foreach(FORMAT_NAME ${GVOX_STATIC_FORMATS})
+foreach(FORMAT_NAME ${GVOX_FORMATS})
     target_sources(${PROJECT_NAME} PRIVATE "src/formats/${FORMAT_NAME}.cpp")
     string(MAKE_C_IDENTIFIER "${FORMAT_NAME}" FORMAT_NAME_UPPER)
     string(TOUPPER "${FORMAT_NAME_UPPER}" FORMAT_NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=1)
     set(formats_header_content "${formats_header_content}
-extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
-extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload;
-extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload const *payload);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene;
+// extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
+// extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
+// extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload;
+// extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload const *payload);
+// extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene;
 ")
-    set(static_format_infos_content "${static_format_infos_content}
-    StaticFormatInfo{
+    set(format_infos_content "${format_infos_content}
+    FormatInfo{
         .name = \"gvox_format_${FORMAT_NAME}\",
-        .create_context = gvox_format_${FORMAT_NAME}_create_context,
-        .destroy_context = gvox_format_${FORMAT_NAME}_destroy_context,
-        .create_payload = gvox_format_${FORMAT_NAME}_create_payload,
-        .destroy_payload = gvox_format_${FORMAT_NAME}_destroy_payload,
-        .parse_payload = gvox_format_${FORMAT_NAME}_parse_payload,
+        // .create_context = gvox_format_${FORMAT_NAME}_create_context,
+        // .destroy_context = gvox_format_${FORMAT_NAME}_destroy_context,
+        // .create_payload = gvox_format_${FORMAT_NAME}_create_payload,
+        // .destroy_payload = gvox_format_${FORMAT_NAME}_destroy_payload,
+        // .parse_payload = gvox_format_${FORMAT_NAME}_parse_payload,
     },")
 endforeach()
 
 set(formats_header_content "${formats_header_content}
-static constexpr std::array static_format_infos = {${static_format_infos_content}
+static constexpr std::array format_infos = {${format_infos_content}
 };
 
 #pragma endregion
@@ -160,14 +154,6 @@ function(set_project_sanitizers TARGET_NAME)
 endfunction()
 
 set_project_sanitizers(${PROJECT_NAME})
-
-foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-    add_library(gvox_format_${FORMAT_NAME} SHARED
-        "src/formats/${FORMAT_NAME}.cpp"
-    )
-    target_link_libraries(gvox_format_${FORMAT_NAME} PRIVATE gvox::gvox)
-    set_project_sanitizers(gvox_format_${FORMAT_NAME})
-endforeach()
 
 if(GVOX_ENABLE_TESTS)
     add_subdirectory(tests)

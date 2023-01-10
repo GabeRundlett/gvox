@@ -6,8 +6,6 @@ file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
 check_required_components(gvox)
 
-set(GVOX_DYNAMIC_FORMATS @GVOX_DYNAMIC_FORMATS@)
-set(GVOX_STATIC_FORMATS @GVOX_STATIC_FORMATS@)
 set(GVOX_FORMATS @GVOX_FORMATS@)
 ]=])
 
@@ -37,8 +35,5 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_DATADIR}/gvox)
 install(TARGETS gvox EXPORT gvox-targets)
-foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-    install(TARGETS gvox_format_${FORMAT_NAME} EXPORT gvox-targets)
-endforeach()
 install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ TYPE INCLUDE)

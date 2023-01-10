@@ -15,77 +15,130 @@ typedef enum {
     GVOX_ERROR_INVALID_FORMAT = -3,
 } GVoxResult;
 
-typedef struct {
-    struct {
-        float x;
-        float y;
-        float z;
-    } color;
-    uint32_t id;
-} GVoxVoxel;
+typedef uint32_t GVoxVoxel;
 
 typedef struct {
-    // TODO: add a transform
-    size_t size_x, size_y, size_z;
-    GVoxVoxel *voxels;
-} GVoxSceneNode;
+    int32_t x;
+    int32_t y;
+    int32_t z;
+} GVoxOffset3D;
 
 typedef struct {
-    size_t node_n;
-    GVoxSceneNode *nodes;
-} GVoxScene;
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+} GVoxExtent3D;
+
+#define GVOX_REGION_IS_UNIFORM_BIT 0x00000001
 
 typedef struct {
-    size_t format_name_size;
-    size_t payload_size;
-} GVoxHeader;
+    GVoxOffset3D offset;
+    GVoxExtent3D extent;
+    uint32_t flags;
+} GVoxRegionMetadata;
 
 typedef struct {
-    size_t size;
-    uint8_t *data;
-} GVoxPayload;
+    GVoxRegionMetadata metadata;
+    GVoxVoxel *data;
+} GVoxRegion;
+
+typedef struct {
+    GVoxRegion *regions;
+    size_t region_n;
+} GVoxRegionList;
+
+typedef struct _GVoxContext GVoxContext;
+typedef struct _GVoxInputAdapter GVoxInputAdapter;
+typedef struct _GVoxOutputAdapter GVoxOutputAdapter;
+typedef struct _GVoxFormatAdapter GVoxFormatAdapter;
+
+typedef struct {
+    GVoxRegionList region_list;
+
+    GVoxInputAdapter *input_adapter;
+    void const *input_config;
+    void *input_user_ptr;
+
+    GVoxFormatAdapter *format_adapter;
+    void const *format_config;
+    void *format_user_ptr;
+} GVoxParseState;
+
+typedef struct {
+    GVoxRegionMetadata const *full_region_metadata;
+
+    GVoxOutputAdapter *output_adapter;
+    void const *output_config;
+    void *output_user_ptr;
+
+    GVoxFormatAdapter *format_adapter;
+    void const *format_config;
+    void *format_user_ptr;
+} GVoxSerializeState;
 
 typedef struct {
     char const *name_str;
 
+    void (*begin)(GVoxParseState *state);
+    void (*end)(GVoxParseState *state);
+
+    void (*read)(GVoxParseState *state, size_t position, size_t size, void **data);
+} GVoxInputAdapterInfo;
+
+typedef struct {
+    char const *name_str;
+
+    void (*begin)(GVoxSerializeState *state);
+    void (*end)(GVoxSerializeState *state);
+
+    void (*write)(GVoxSerializeState *state, size_t position, size_t size, void const *data);
+    void (*reserve)(GVoxSerializeState *state, size_t size);
+} GVoxOutputAdapterInfo;
+
+typedef struct {
+    char const *name_str;
     void *(*create_context)(void);
     void (*destroy_context)(void *);
-    GVoxPayload (*create_payload)(void *, GVoxScene const *scene);
-    void (*destroy_payload)(void *, GVoxPayload const *payload);
-    GVoxScene (*parse_payload)(void *, GVoxPayload const *payload);
-} GVoxFormatLoaderInfo;
 
-typedef struct _GVoxContext GVoxContext;
+    void (*serialize_begin)(GVoxSerializeState *state);
+    void (*serialize_end)(GVoxSerializeState *state);
+    void (*serialize_region)(GVoxSerializeState *state, GVoxRegion const *region);
+
+    void (*parse)(GVoxParseState *state);
+} GVoxFormatAdapterInfo;
 
 GVoxContext *gvox_create_context(void);
 void gvox_destroy_context(GVoxContext *ctx);
 
-#if GVOX_ENABLE_FILE_IO
-size_t gvox_load_header(char const *filepath);
+GVoxInputAdapter *gvox_register_input_adapter(GVoxContext *ctx, GVoxInputAdapterInfo const *adapter_info);
+GVoxInputAdapter *gvox_get_input_adapter(GVoxContext *ctx, char const *adapter_name);
 
-void gvox_push_root_path(GVoxContext *ctx, char const *path);
-void gvox_pop_root_path(GVoxContext *ctx);
+GVoxOutputAdapter *gvox_register_output_adapter(GVoxContext *ctx, GVoxOutputAdapterInfo const *adapter_info);
+GVoxOutputAdapter *gvox_get_output_adapter(GVoxContext *ctx, char const *adapter_name);
 
-GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
-GVoxScene gvox_load_from_raw(GVoxContext *ctx, char const *filepath, char const *src_format);
-void gvox_save(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
-void gvox_save_as_raw(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
-#endif
+GVoxFormatAdapter *gvox_register_format_adapter(GVoxContext *ctx, GVoxFormatAdapterInfo const *adapter_info);
+GVoxFormatAdapter *gvox_get_format_adapter(GVoxContext *ctx, char const *adapter_name);
 
-void gvox_register_format(GVoxContext *ctx, GVoxFormatLoaderInfo const *format_loader_info);
-void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
+GVoxVoxel gvox_region_sample_voxel(GVoxRegion const *region, GVoxExtent3D const *position);
+void gvox_serialize_write(GVoxSerializeState *state, size_t position, size_t size, void const *data);
+void gvox_serialize_reserve(GVoxSerializeState *state, size_t size);
 
 GVoxResult gvox_get_result(GVoxContext *ctx);
 void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
 void gvox_pop_result(GVoxContext *ctx);
 
-GVoxScene gvox_parse(GVoxContext *ctx, GVoxPayload const *payload, char const *src_format);
-GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format);
-void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene *scene, char const *dst_format, uint8_t *dst_ptr);
-void gvox_serialize_into(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format, uint8_t *dst_ptr);
+GVoxRegionList gvox_parse(
+    GVoxInputAdapter *input_adapter,
+    void const *input_config,
+    GVoxFormatAdapter *format_adapter,
+    void const *format_config);
 
-void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload const *payload, char const *format);
-void gvox_destroy_scene(GVoxScene const *scene);
+void gvox_serialize(
+    GVoxOutputAdapter *output_adapter,
+    void const *output_config,
+    GVoxFormatAdapter *format_adapter,
+    void const *format_config,
+    GVoxRegion const *region);
 
 #ifdef __cplusplus
 }
