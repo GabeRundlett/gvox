@@ -175,5 +175,5 @@ endif()
 
 # Packaging
 if(NOT GVOX_DISABLE_PACKAGING)
-    include(cmake/warnings.cmake)
+    include(cmake/packaging.cmake)
 endif()
