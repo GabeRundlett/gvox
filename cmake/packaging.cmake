@@ -1,6 +1,5 @@
 
 include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
 file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 @PACKAGE_INIT@
 include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
