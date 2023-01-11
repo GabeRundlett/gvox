@@ -26,9 +26,10 @@
       "dependencies": [
         {
           "name": "daxa",
+          "default-features": false,
           "features": [
-            "glslang",
-            "utils"
+            "utils-pipeline-manager-glslang",
+            "utils-task-list"
           ]
         }
       ]
