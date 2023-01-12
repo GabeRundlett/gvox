@@ -101,7 +101,7 @@ GVoxVoxel rgb2hsv(GVoxVoxel c) {
 
     float d = qx - std::min(qw, qy);
     float e = 1.0e-10f;
-    return GVoxVoxel{{std::fabsf(qz + (qw - qy) / (6.0f * d + e)), d / (qx + e), qx}, c.id};
+    return GVoxVoxel{{std::fabs(qz + (qw - qy) / (6.0f * d + e)), d / (qx + e), qx}, c.id};
 }
 
 GVoxVoxel hsv2rgb(GVoxVoxel c) {
@@ -110,9 +110,9 @@ GVoxVoxel hsv2rgb(GVoxVoxel c) {
     float ky = 2.0f / 3.0f;
     float kz = 1.0f / 3.0f;
     float kw = 3.0f;
-    float px = std::fabsf(std::fmodf(c.color.x + kx, 1.0f) * 6.0f - kw);
-    float py = std::fabsf(std::fmodf(c.color.x + ky, 1.0f) * 6.0f - kw);
-    float pz = std::fabsf(std::fmodf(c.color.x + kz, 1.0f) * 6.0f - kw);
+    float px = std::fabs(std::fmodf(c.color.x + kx, 1.0f) * 6.0f - kw);
+    float py = std::fabs(std::fmodf(c.color.x + ky, 1.0f) * 6.0f - kw);
+    float pz = std::fabs(std::fmodf(c.color.x + kz, 1.0f) * 6.0f - kw);
     return GVoxVoxel{
         {
             c.color.z * std::lerp(kx, std::clamp(px - kx, 0.0f, 1.0f), c.color.y),
