@@ -157,13 +157,16 @@ auto main() -> int {
     // gvox_destroy_scene(scene);
 #else
     // auto scene = gvox_load_from_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
-    // gvox_save(gvox, scene, "tests/simple/phantom_mansion_plt.gvox", "gvox_u32_palette");
-    auto scene = gvox_load_from_raw(gvox, "tests/simple/LostValleyArena.vxl", "ace_of_spades");
-    // gvox_save(gvox, scene, "tests/simple/Arab2.vxl", "ace_of_spades");
-    // gvox_destroy_scene(scene);
+    // auto scene = gvox_load_from_raw(gvox, "tests/simple/Ambassy.vxl", "ace_of_spades");
+    auto scene = gvox_load(gvox, "tests/simple/phantom_mansion.gvox");
+    // auto scene = gvox_load(gvox, "tests/simple/arab.gvox");
+    // gvox_save(gvox, &scene, "tests/simple/phantom_mansion.gvox_u32_palette", "gvox_u32_palette");
+    // gvox_save(gvox, &scene, "tests/simple/Arab2.vxl", "ace_of_spades");
+    gvox_save_as_raw(gvox, &scene, "tests/simple/arab.vox", "magicavoxel");
+    // gvox_destroy_scene(&scene);
     // scene = gvox_load_from_raw(gvox, "tests/simple/Arab2.vxl", "ace_of_spades");
-    gvox_save(gvox, scene, "tests/simple/arab.gvox", "gvox_u32_palette");
-    gvox_destroy_scene(scene);
+    // gvox_save(gvox, &scene, "tests/simple/ambassy.gvox", "gvox_u32_palette");
+    gvox_destroy_scene(&scene);
 #endif
 
     gvox_destroy_context(gvox);

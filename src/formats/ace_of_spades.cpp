@@ -17,6 +17,8 @@
 #endif
 #endif
 
+#define AOS_SOLID_INSIDES 0
+
 struct AceOfSpadesContext {
     AceOfSpadesContext();
     ~AceOfSpadesContext() = default;
@@ -146,17 +148,21 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
 
     result.nodes[0].size_x = 512;
     result.nodes[0].size_y = 512;
-    result.nodes[0].size_z = 256;
+    result.nodes[0].size_z = 64;
     size_t const voxels_n = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
     size_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
     result.nodes[0].voxels = (GVoxVoxel *)std::malloc(voxels_size);
 
     auto set_geom = [&result](size_t x, size_t y, size_t z, int t) {
+        if (z >= result.nodes[0].size_z)
+            return;
         auto voxel_i = x + (result.nodes[0].size_y - 1 - y) * result.nodes[0].size_x + (result.nodes[0].size_z - 1 - z) * result.nodes[0].size_x * result.nodes[0].size_y;
         result.nodes[0].voxels[voxel_i].id = static_cast<uint32_t>(t);
     };
 
     auto set_color = [&result](size_t x, size_t y, size_t z, uint32_t u32_voxel) {
+        if (z >= result.nodes[0].size_z)
+            return;
         float r = static_cast<float>((u32_voxel >> 0x10) & 0xff) / 255.0f;
         float g = static_cast<float>((u32_voxel >> 0x08) & 0xff) / 255.0f;
         float b = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;
@@ -171,7 +177,7 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     for (y = 0; y < result.nodes[0].size_y; ++y) {
         for (x = 0; x < result.nodes[0].size_x; ++x) {
             for (z = 0; z < result.nodes[0].size_z; ++z) {
-                set_geom(x, y, z, 1);
+                set_geom(x, y, z, AOS_SOLID_INSIDES);
             }
             z = 0;
             for (;;) {
@@ -180,11 +186,17 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 size_t top_color_start = v[1], top_color_end = v[2];
                 size_t bottom_color_start, bottom_color_end;
                 size_t len_top, len_bottom;
+#if AOS_SOLID_INSIDES
                 for (size_t i = z; i < top_color_start; i++)
                     set_geom(x, y, i, 0);
+#endif
                 color = (uint32_t *)(v + 4);
-                for (z = top_color_start; z <= top_color_end; z++)
+                for (z = top_color_start; z <= top_color_end; z++) {
+#if !AOS_SOLID_INSIDES
+                    set_geom(x, y, z, 1);
+#endif
                     set_color(x, y, z, *color++);
+                }
                 len_bottom = top_color_end - top_color_start + 1;
                 // check for end of data marker
                 if (number_4byte_chunks == 0) {
@@ -199,6 +211,9 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 bottom_color_end = v[3]; // aka air start
                 bottom_color_start = bottom_color_end - len_top;
                 for (z = bottom_color_start; z < bottom_color_end; ++z) {
+#if !AOS_SOLID_INSIDES
+                    set_geom(x, y, z, 1);
+#endif
                     set_color(x, y, z, *color++);
                 }
             }
