@@ -8,10 +8,14 @@
 #include <array>
 #include <variant>
 #include <vector>
+#include <string_view>
+#include <utility>
+#include <memory>
+#include <bit>
 
-#include <iostream>
-#include <fstream>
-#include <iomanip>
+// #include <iostream>
+// #include <fstream>
+// #include <iomanip>
 
 #include <zlib.h>
 
@@ -166,35 +170,35 @@ auto parse_nbt_tag(GVoxScene &scene, uint8_t *&buffer_ptr) -> NbtTag {
 void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
     switch (id) {
     case NbtTagId::End:
-        std::cout << "NbtTagId::End:        " << std::endl;
+        // std::cout << "NbtTagId::End:        " << std::endl;
         payload = std::monostate{};
         break;
     case NbtTagId::Byte:
-        std::cout << "NbtTagId::Byte:       " << name << std::endl;
+        // std::cout << "NbtTagId::Byte:       " << name << std::endl;
         payload = read_data<NbtTag::Byte>(buffer_ptr);
         break;
     case NbtTagId::Short:
-        std::cout << "NbtTagId::Short:      " << name << std::endl;
+        // std::cout << "NbtTagId::Short:      " << name << std::endl;
         payload = read_data<NbtTag::Short>(buffer_ptr);
         break;
     case NbtTagId::Int:
-        std::cout << "NbtTagId::Int:        " << name << std::endl;
+        // std::cout << "NbtTagId::Int:        " << name << std::endl;
         payload = read_data<NbtTag::Int>(buffer_ptr);
         break;
     case NbtTagId::Long:
-        std::cout << "NbtTagId::Long:       " << name << std::endl;
+        // std::cout << "NbtTagId::Long:       " << name << std::endl;
         payload = read_data<NbtTag::Long>(buffer_ptr);
         break;
     case NbtTagId::Float:
-        std::cout << "NbtTagId::Float:      " << name << std::endl;
+        // std::cout << "NbtTagId::Float:      " << name << std::endl;
         payload = read_data<NbtTag::Float>(buffer_ptr);
         break;
     case NbtTagId::Double:
-        std::cout << "NbtTagId::Double:     " << name << std::endl;
+        // std::cout << "NbtTagId::Double:     " << name << std::endl;
         payload = read_data<NbtTag::Double>(buffer_ptr);
         break;
     case NbtTagId::Byte_Array:
-        std::cout << "NbtTagId::Byte_Array: " << name << std::endl;
+        // std::cout << "NbtTagId::Byte_Array: " << name << std::endl;
         payload = NbtTag::Byte_Array{
             .size = as_le(read_data<NbtTag::Int>(buffer_ptr)),
             .data = reinterpret_cast<NbtTag::Byte *>(buffer_ptr),
@@ -202,7 +206,7 @@ void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
         buffer_ptr += static_cast<size_t>(std::get<NbtTag::Byte_Array>(payload).size) * sizeof(NbtTag::Byte);
         break;
     case NbtTagId::String: {
-        std::cout << "NbtTagId::String:     " << name << std::endl;
+        // std::cout << "NbtTagId::String:     " << name << std::endl;
         auto size = as_le(read_data<std::uint16_t>(buffer_ptr));
         payload = NbtTag::String{
             reinterpret_cast<char *>(buffer_ptr),
@@ -211,7 +215,7 @@ void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
         buffer_ptr += size;
     } break;
     case NbtTagId::List: {
-        std::cout << "NbtTagId::List:       " << name << std::endl;
+        // std::cout << "NbtTagId::List:       " << name << std::endl;
         auto result_list = std::make_shared<NbtTag::List>();
         result_list->payloads_tag_id = read_data<NbtTagId>(buffer_ptr);
         result_list->payload_n = as_le(read_data<std::int32_t>(buffer_ptr));
@@ -227,7 +231,7 @@ void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
         payload = std::move(result_list);
     } break;
     case NbtTagId::Compound: {
-        std::cout << "NbtTagId::Compound:   " << name << std::endl;
+        // std::cout << "NbtTagId::Compound:   " << name << std::endl;
         payload = std::monostate{};
         auto tag = NbtTag{};
         do {
@@ -235,7 +239,7 @@ void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
         } while (tag.id != NbtTagId::End);
     } break;
     case NbtTagId::Int_Array:
-        std::cout << "NbtTagId::Int_Array:  " << name << std::endl;
+        // std::cout << "NbtTagId::Int_Array:  " << name << std::endl;
         payload = NbtTag::Int_Array{
             .size = as_le(read_data<NbtTag::Int>(buffer_ptr)),
             .data = reinterpret_cast<NbtTag::Int *>(buffer_ptr),
@@ -243,7 +247,7 @@ void NbtTag::parse_nbt_payload(GVoxScene &scene, uint8_t *&buffer_ptr) {
         buffer_ptr += static_cast<size_t>(std::get<NbtTag::Byte_Array>(payload).size) * sizeof(NbtTag::Int);
         break;
     case NbtTagId::Long_Array:
-        std::cout << "NbtTagId::Long_Array: " << name << std::endl;
+        // std::cout << "NbtTagId::Long_Array: " << name << std::endl;
         payload = NbtTag::Long_Array{
             .size = as_le(read_data<NbtTag::Int>(buffer_ptr)),
             .data = reinterpret_cast<NbtTag::Long *>(buffer_ptr),
