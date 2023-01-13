@@ -288,14 +288,14 @@ auto u32_to_voxel(uint32_t u32_voxel) -> GVoxVoxel {
     };
 }
 
-void print_voxel(GVoxVoxel const &vox) {
-    printf("\033[38;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
-    printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
-    char const c = '_';
-    fputc(c, stdout);
-    fputc(c, stdout);
-    printf("\033[0m");
-}
+// void print_voxel(GVoxVoxel const &vox) {
+//     printf("\033[38;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
+//     printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(vox.color.x * 255), (uint32_t)(vox.color.y * 255), (uint32_t)(vox.color.z * 255));
+//     char const c = '_';
+//     fputc(c, stdout);
+//     fputc(c, stdout);
+//     printf("\033[0m");
+// }
 
 auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};

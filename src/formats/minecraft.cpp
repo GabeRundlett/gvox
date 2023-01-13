@@ -294,7 +294,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         auto add_size = static_cast<size_t>(uncompressed_size);
         auto new_size = uncompressed_size + add_size;
         uncompressed_data = static_cast<uint8_t *>(realloc(uncompressed_data, new_size));
-        infstream.avail_out = static_cast<uLong>(new_size - infstream.total_out);
+        infstream.avail_out = static_cast<uInt>(new_size - infstream.total_out);
         infstream.next_out = (Bytef *)(uncompressed_data + infstream.total_out);
         uncompressed_size = new_size;
     }
