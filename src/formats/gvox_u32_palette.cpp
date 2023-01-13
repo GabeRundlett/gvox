@@ -8,8 +8,6 @@
 #include <array>
 #include <vector>
 
-#include <iostream>
-
 #if GVOX_FORMAT_GVOX_U32_PALETTE_BUILT_STATIC
 #define EXPORT
 #else

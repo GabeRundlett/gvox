@@ -4,7 +4,6 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
-#include <iostream>
 #include <vector>
 
 #if GVOX_FORMAT_ACE_OF_SPADES_BUILT_STATIC

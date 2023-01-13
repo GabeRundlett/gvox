@@ -16,7 +16,7 @@
 #include <daxa/utils/task_list.hpp>
 
 #define TEST_ALL 0
-#define TEST_GPU 1
+#define TEST_GPU 0
 
 using namespace daxa::types;
 // using namespace daxa::math_operators;
@@ -158,11 +158,12 @@ auto main() -> int {
 #else
     // auto scene = gvox_load_from_raw(gvox, "tests/simple/#phantom_mansion.vox", "magicavoxel");
     // auto scene = gvox_load_from_raw(gvox, "tests/simple/Ambassy.vxl", "ace_of_spades");
-    auto scene = gvox_load(gvox, "tests/simple/phantom_mansion.gvox");
+    // auto scene = gvox_load(gvox, "tests/simple/phantom_mansion.gvox");
+    auto scene = gvox_load_from_raw(gvox, "C:/Users/gabe/AppData/Roaming/.minecraft/saves/gvox_testing_0/region/r.-1.-1.mca", "minecraft");
     // auto scene = gvox_load(gvox, "tests/simple/arab.gvox");
     // gvox_save(gvox, &scene, "tests/simple/phantom_mansion.gvox_u32_palette", "gvox_u32_palette");
     // gvox_save(gvox, &scene, "tests/simple/Arab2.vxl", "ace_of_spades");
-    gvox_save_as_raw(gvox, &scene, "tests/simple/arab.vox", "magicavoxel");
+    // gvox_save_as_raw(gvox, &scene, "tests/simple/arab.vox", "magicavoxel");
     // gvox_destroy_scene(&scene);
     // scene = gvox_load_from_raw(gvox, "tests/simple/Arab2.vxl", "ace_of_spades");
     // gvox_save(gvox, &scene, "tests/simple/ambassy.gvox", "gvox_u32_palette");

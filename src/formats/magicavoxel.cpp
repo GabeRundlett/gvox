@@ -255,8 +255,6 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
     write_data(&buffer_ptr, CHUNK_ID_VOX_);
     write_data(&buffer_ptr, version);
     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_MAIN, .self_size = 0, .children_size = static_cast<int>(result.size - size_before_main_children)});
-    auto min_dist = std::numeric_limits<std::ptrdiff_t>::max();
-    auto max_dist = std::numeric_limits<std::ptrdiff_t>::min();
     for (size_t node_zi = 0; node_zi < node_nz; ++node_zi) {
         for (size_t node_yi = 0; node_yi < node_ny; ++node_yi) {
             for (size_t node_xi = 0; node_xi < node_nx; ++node_xi) {

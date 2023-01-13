@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
-#include <iostream>
 #include <array>
 #include <algorithm>
 
@@ -225,7 +224,6 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
             .parse_payload = static_format_iter->parse_payload,
         };
         gvox_register_format(ctx, &format_loader);
-        return;
     }
 #if GVOX_ENABLE_FILE_IO
     else {
@@ -274,11 +272,8 @@ void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
         };
 #endif
         gvox_register_format(ctx, &format_loader_info);
-        return;
     }
 #endif
-
-    ctx->errors.push_back({"Failed to load Format at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT});
 }
 
 auto gvox_get_result(GVoxContext *ctx) -> GVoxResult {

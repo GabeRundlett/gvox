@@ -8,3 +8,5 @@ imgui.ini
 *.gvox
 *.vox
 *.vxl
+*.mca
+*.nbt

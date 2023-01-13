@@ -4,7 +4,6 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
-#include <iostream>
 
 #include <gzip/compress.hpp>
 #include <gzip/decompress.hpp>

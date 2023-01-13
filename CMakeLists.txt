@@ -51,6 +51,7 @@ set(GVOX_STATIC_FORMATS
     gvox_u32_palette
     ace_of_spades
     magicavoxel
+    minecraft
 )
 
 add_library(${PROJECT_NAME} STATIC
