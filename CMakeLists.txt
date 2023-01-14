@@ -5,6 +5,9 @@ include(cmake/warnings.cmake)
 if(GVOX_ENABLE_FILE_IO)
     list(APPEND VCPKG_MANIFEST_FEATURES "file-io")
 endif()
+if(GVOX_ENABLE_MINECRAFT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "minecraft")
+endif()
 if(GVOX_ENABLE_ZLIB)
     list(APPEND VCPKG_MANIFEST_FEATURES "zlib")
 endif()
@@ -51,7 +54,6 @@ set(GVOX_STATIC_FORMATS
     gvox_u32_palette
     ace_of_spades
     magicavoxel
-    minecraft
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -66,6 +68,14 @@ if(GVOX_ENABLE_FILE_IO)
     )
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
+endif()
+if(GVOX_ENABLE_MINECRAFT)
+    list(APPEND GVOX_STATIC_FORMATS minecraft)
+    find_package(minizip CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
+    find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} PRIVATE minizip::minizip nlohmann_json::nlohmann_json)
 endif()
 if(GVOX_ENABLE_ZLIB)
     list(APPEND GVOX_STATIC_FORMATS zlib)

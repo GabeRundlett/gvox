@@ -15,6 +15,15 @@
         "zlib"
       ]
     },
+    "minecraft": {
+      "description": "Parse and Serialize Minecraft World Data",
+      "dependencies": [
+        "zlib",
+        "minizip",
+        "stb",
+        "nlohmann-json"
+      ]
+    },
     "gzip": {
       "description": "Build GZIP format compressor",
       "dependencies": [
