@@ -2,7 +2,7 @@
   "registries": [
     {
       "kind": "git",
-      "baseline": "53361912c3f8c19e94a83be986f879124206d770",
+      "baseline": "e1bfc67b7e94f6a00ccd74a4ee56084ca5ef44da",
       "repository": "https://github.com/GabeRundlett/vcpkg-registry",
       "packages": [
         "daxa",

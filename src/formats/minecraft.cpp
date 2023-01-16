@@ -348,27 +348,58 @@ struct Pixel {
     uint8_t a;
 };
 
-void print_pixels(Pixel *pixels, size_t size_x, size_t size_y) {
+// void print_pixels(Pixel *pixels, size_t size_x, size_t size_y) {
+//     for (size_t yi = 0; yi < size_y; yi += 1) {
+//         for (size_t xi = 0; xi < size_x; xi += 1) {
+//             size_t i = xi + yi * size_x;
+//             auto &pixel = pixels[i];
+//             printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(pixel.r), (uint32_t)(pixel.g), (uint32_t)(pixel.b));
+//             char c = ' ';
+//             fputc(c, stdout);
+//             fputc(c, stdout);
+//         }
+//         printf("\033[0m\n");
+//     }
+// }
+
+auto avg_pixels(Pixel *pixels, size_t size_x, size_t size_y) -> Pixel {
+    size_t avg_r = 0;
+    size_t avg_g = 0;
+    size_t avg_b = 0;
     for (size_t yi = 0; yi < size_y; yi += 1) {
         for (size_t xi = 0; xi < size_x; xi += 1) {
             size_t i = xi + yi * size_x;
             auto &pixel = pixels[i];
-            printf("\033[48;2;%03d;%03d;%03dm", (uint32_t)(pixel.r), (uint32_t)(pixel.g), (uint32_t)(pixel.b));
-            char c = ' ';
-            fputc(c, stdout);
-            fputc(c, stdout);
+            avg_r += pixel.r;
+            avg_g += pixel.g;
+            avg_b += pixel.b;
         }
-        printf("\033[0m\n");
     }
+    auto pixel_n = size_x * size_y;
+    return Pixel{
+        static_cast<uint8_t>(avg_r / pixel_n),
+        static_cast<uint8_t>(avg_g / pixel_n),
+        static_cast<uint8_t>(avg_b / pixel_n),
+        255,
+    };
 }
+
+struct BlockTag {
+    std::string name;
+    NbtTag::Compound properties;
+};
 
 auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     result.node_n = 1;
     result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     auto &node = result.nodes[0];
-    node.size_x = 16;
-    node.size_y = 16;
+    size_t start_chunk_xi = 0;
+    size_t chunk_xn = 32;
+    size_t start_chunk_zi = 0;
+    size_t chunk_zn = 32;
+    node.size_x = chunk_xn * 16;
+    node.size_y = chunk_zn * 16;
     node.size_z = 384;
     size_t const voxels_size = node.size_x * node.size_y * node.size_z * sizeof(GVoxVoxel);
     node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
@@ -390,12 +421,12 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         file_data.resize(file_info.uncompressed_size);
         err = unzOpenCurrentFile(jar_zip);
         assert(err == UNZ_OK);
-        err = unzReadCurrentFile(jar_zip, file_data.data(), file_data.size());
+        err = unzReadCurrentFile(jar_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
         assert(err == file_data.size());
         return file_data;
     };
     struct BlockInfo {
-        size_t model_variant_n{};
+        bool has_avg_color{};
         Pixel avg_color{};
     };
     auto load_json_from_jar = [&](std::string const &path) -> nlohmann::json {
@@ -403,45 +434,84 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         auto json_string = std::string_view{reinterpret_cast<char *>(json_data.data()), json_data.size()};
         return nlohmann::json::parse(json_string);
     };
-    auto make_blockstate_json_path = [](std::string const block_name_str) -> std::string {
-        return "assets/minecraft/blockstates/" + block_name_str + ".json";
+    auto handle_textures = [&](std::vector<std::string> &texture_names, BlockInfo &block_info) {
+        if (texture_names.size() > 0) {
+            size_t avg_r = 0;
+            size_t avg_g = 0;
+            size_t avg_b = 0;
+            for (auto &texture_name : texture_names) {
+                if (std::find(texture_name.begin(), texture_name.end(), ':') != texture_name.end())
+                    texture_name = texture_name.substr(10, texture_name.size() - 10);
+                auto texture_path = "assets/minecraft/textures/" + texture_name + ".png";
+                auto png_data = load_from_jar(texture_path.c_str());
+                int size_x{}, size_y{}, channel_n{};
+                auto *pixels = reinterpret_cast<Pixel *>(stbi_load_from_memory(png_data.data(), static_cast<int>(png_data.size()), &size_x, &size_y, &channel_n, 4));
+                // print_pixels(pixels, size_x, size_y);
+                auto pixel = avg_pixels(pixels, size_x, size_y);
+                avg_r += pixel.r;
+                avg_g += pixel.g;
+                avg_b += pixel.b;
+            }
+            block_info.avg_color.r = static_cast<uint8_t>(avg_r / texture_names.size());
+            block_info.avg_color.g = static_cast<uint8_t>(avg_g / texture_names.size());
+            block_info.avg_color.b = static_cast<uint8_t>(avg_b / texture_names.size());
+            block_info.has_avg_color = true;
+        }
     };
-    auto block_infos = std::unordered_map<std::string, BlockInfo>{};
-    auto lookup_block_info = [&](std::string_view block_name) -> BlockInfo const & {
-        auto block_name_str = std::string{block_name};
-        auto result_iter = block_infos.find(block_name_str);
-        if (result_iter == block_infos.end()) {
-            auto &block_info = block_infos[block_name_str] = {};
-            auto blockstate_json = load_json_from_jar(make_blockstate_json_path(block_name_str));
-            if (blockstate_json.contains("variants")) {
-                auto const &variants = blockstate_json.at("variants");
-                for (auto const &item : variants.items()) {
-                    ++block_info.model_variant_n;
-                }
-                if (block_info.model_variant_n == 1) {
-                    // auto model_name = variants.at("")[0].at("model").get<std::string>();
-                    // auto block_model_json = load_json_from_jar("assets/minecraft/models/" + model_name.substr(10, model_name.size() - 10) + ".json");
-                    // auto parent = variants[0].at("parent").get<std::string>();
-                    // std::cout << parent << " -> ";
+    auto handle_block_model_json = [&](std::string const &model_name, BlockInfo &block_info) {
+        auto block_model_json = load_json_from_jar("assets/minecraft/models/" + model_name.substr(10, model_name.size() - 10) + ".json");
+        // auto parent = block_model_json.at("parent").get<std::string>();
+        auto texture_names = std::vector<std::string>{};
+        if (block_model_json.contains("textures")) {
+            for (auto const &[tex_case, texture_name] : block_model_json.at("textures").items()) {
+                if (tex_case != "particle") {
+                    texture_names.push_back(texture_name.get<std::string>());
                 }
             }
-            // std::cout << block_name << ": " << block_info.model_variant_n << std::endl;
+        } else {
+            assert(false && "What block model doesn't have 'textures'?");
+        }
+        handle_textures(texture_names, block_info);
+    };
+    auto block_infos = std::unordered_map<std::string, BlockInfo>{};
+    auto handle_variant = [&](nlohmann::json const &variants, BlockInfo &block_info, std::string const &variant_name) {
+        if (variants.at(variant_name).is_object()) {
+            auto model_name = variants.at(variant_name).at("model").get<std::string>();
+            handle_block_model_json(model_name, block_info);
+        } else if (variants.at(variant_name).is_array()) {
+            auto model_name = variants.at(variant_name)[0].at("model").get<std::string>();
+            handle_block_model_json(model_name, block_info);
+        } else {
+            assert(false && "What block has variants, but it's not an object or array?");
+        }
+    };
+    auto lookup_block_info = [&](BlockTag block_tag) -> BlockInfo const & {
+        auto result_iter = block_infos.find(block_tag.name);
+        if (result_iter == block_infos.end()) {
+            auto &block_info = (block_infos[block_tag.name] = {});
+            auto blockstate_json = load_json_from_jar("assets/minecraft/blockstates/" + block_tag.name + ".json");
+            if (blockstate_json.contains("variants")) {
+                auto const &variants = blockstate_json.at("variants");
+                if (block_tag.properties.tags.size() == 1 && variants.contains(std::string{block_tag.properties.tags.begin()->first} + "=" + std::string{std::get<NbtTag::String>(block_tag.properties.tags.begin()->second->payload)})) {
+                    handle_variant(variants, block_info, std::string{block_tag.properties.tags.begin()->first} + "=" + std::string{std::get<NbtTag::String>(block_tag.properties.tags.begin()->second->payload)});
+                } else if (variants.contains("")) {
+                    handle_variant(variants, block_info, "");
+                } else {
+                    // printf("\033[38;2;250;020;160m");
+                }
+            } else {
+                // printf("\033[38;2;250;220;050m");
+            }
+            if (!block_info.has_avg_color) {
+                // std::cout << block_tag.name << "\033[0m\n";
+                // printf("\033[48;2;%03d;%03d;%03dm  \033[0m", (uint32_t)(block_info.avg_color.r), (uint32_t)(block_info.avg_color.g), (uint32_t)(block_info.avg_color.b));
+                // std::cout << std::endl;
+            }
             return block_info;
         } else {
             return result_iter->second;
         }
     };
-    // auto const &block_tex_info = lookup_block_tex_info("diamond_ore");
-
-    // auto png_data = load_from_jar("assets/minecraft/textures/block/diamond_ore.png");
-    // int size_x{}, size_y{}, channel_n{};
-    // auto *pixels = reinterpret_cast<Pixel *>(stbi_load_from_memory(png_data.data(), png_data.size(), &size_x, &size_y, &channel_n, 4));
-    // print_pixels(pixels, size_x, size_y);
-
-    size_t start_chunk_xi = 0;
-    size_t chunk_xn = 1;
-    size_t start_chunk_zi = 0;
-    size_t chunk_zn = 1;
     for (size_t chunk_zi = 0; chunk_zi < chunk_zn; ++chunk_zi) {
         for (size_t chunk_xi = 0; chunk_xi < chunk_xn; ++chunk_xi) {
             auto const chunk_i = (chunk_xi + start_chunk_xi) + (chunk_zi + start_chunk_zi) * 32;
@@ -451,8 +521,10 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             offset = offset >> 0x08;
             buffer_ptr = payload.data + offset * 4096;
             auto compressed_size = as_le(read_data<uint32_t>(buffer_ptr));
-            auto compression_type = read_data<uint8_t>(buffer_ptr);
-            assert(compression_type == 2);
+            [[maybe_unused]] auto compression_type = read_data<uint8_t>(buffer_ptr);
+            if (compression_type != 2) {
+                continue;
+            }
             z_stream infstream;
             size_t uncompressed_size = compressed_size;
             auto *uncompressed_data = static_cast<uint8_t *>(realloc(NULL, uncompressed_size));
@@ -501,24 +573,37 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                     auto &block_states = std::get<NbtTag::Compound>(section.tags["block_states"]->payload);
                     auto &palette = *std::get<std::shared_ptr<NbtTag::List>>(block_states.tags["palette"]->payload);
                     size_t const PALETTED_REGION_SIZE = 16;
+                    auto get_voxel = [&](NbtTag::Compound const &block_data) -> GVoxVoxel {
+                        auto &block_name_id = std::get<NbtTag::String>(block_data.tags.at("Name")->payload);
+                        auto block_properties = NbtTag::Compound{};
+                        if (block_data.tags.contains("Properties")) {
+                            block_properties = std::get<NbtTag::Compound>(block_data.tags.at("Properties")->payload);
+                        }
+                        auto block_name = block_name_id.substr(10, block_name_id.size() - 10);
+                        auto const &block_info = lookup_block_info(BlockTag{std::string{block_name}, block_properties});
+                        auto result = GVoxVoxel{
+                            .color = {0.0f, 0.0f, 0.0f},
+                            .id = 1,
+                        };
+                        if (block_info.has_avg_color) {
+                            result.color.x = static_cast<float>(block_info.avg_color.r) / 255.0f;
+                            result.color.y = static_cast<float>(block_info.avg_color.g) / 255.0f;
+                            result.color.z = static_cast<float>(block_info.avg_color.b) / 255.0f;
+                        }
+                        return result;
+                    };
                     if (palette.payloads.size() == 1) {
                         auto &block_data = std::get<NbtTag::Compound>(palette.payloads[0]);
                         auto &block_name_id = std::get<NbtTag::String>(block_data.tags["Name"]->payload);
                         // only one block-type in the chunk
                         // std::cout << block_name << std::endl;
-                        if (block_name_id != "minecraft:air") {
-
-                            auto block_name = block_name_id.substr(10, block_name_id.size() - 10);
-                            auto const &block_info = lookup_block_info(block_name);
-
+                        if (block_name_id != "minecraft:air" && block_name_id != "minecraft:cave_air") {
+                            auto voxel_result = get_voxel(block_data);
                             for (size_t element_zi = 0; element_zi < PALETTED_REGION_SIZE; ++element_zi) {
                                 for (size_t element_yi = 0; element_yi < PALETTED_REGION_SIZE; ++element_yi) {
                                     for (size_t element_xi = 0; element_xi < PALETTED_REGION_SIZE; ++element_xi) {
                                         auto const o_index = (element_xi + x_off) + (element_yi + y_off) * node.size_x + (element_zi + z_off) * node.size_x * node.size_y;
-                                        node.voxels[o_index] = GVoxVoxel{
-                                            .color = {0.5f, 0.5f, 0.5f},
-                                            .id = static_cast<uint32_t>(1),
-                                        };
+                                        node.voxels[o_index] = voxel_result;
                                     }
                                 }
                             }
@@ -540,16 +625,9 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     assert(palette_index < variant_n);
                                     auto &block_data = std::get<NbtTag::Compound>(palette.payloads[palette_index]);
                                     auto &block_name_id = std::get<NbtTag::String>(block_data.tags["Name"]->payload);
-                                    if (block_name_id != "minecraft:air") {
-
-                                        auto block_name = block_name_id.substr(10, block_name_id.size() - 10);
-                                        auto const &block_info = lookup_block_info(block_name);
-
-                                        node.voxels[o_index] = GVoxVoxel{
-                                            .color = {0.5f, 0.5f, 0.5f},
-                                            .id = static_cast<uint32_t>(palette_index),
-                                        };
-                                        // std::cout << palette_index << " ";
+                                    if (block_name_id != "minecraft:air" && block_name_id != "minecraft:cave_air") {
+                                        auto voxel_result = get_voxel(block_data);
+                                        node.voxels[o_index] = voxel_result;
                                     }
                                 }
                                 // std::cout << " ";
@@ -562,9 +640,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             free(uncompressed_data);
         }
     }
-
     unzClose(jar_zip);
-
     return result;
 }
 
