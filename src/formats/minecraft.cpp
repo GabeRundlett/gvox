@@ -306,8 +306,9 @@ void NbtTag::parse_nbt_payload(uint8_t *&buffer_ptr PARSE_INDENT_ARG) {
         auto tag = NbtTag{};
         while (true) {
             tag = parse_nbt_tag(buffer_ptr PARSE_INDENT_ARG_VAL_ADD);
-            if (tag.id == NbtTagId::End)
+            if (tag.id == NbtTagId::End) {
                 break;
+            }
             std::get<NbtTag::Compound>(payload).tags[tag.name] = std::make_shared<NbtTag>(tag);
         }
 #if PRINT_PARSE
@@ -368,7 +369,7 @@ auto avg_pixels(Pixel *pixels, size_t size_x, size_t size_y) -> Pixel {
     size_t avg_b = 0;
     for (size_t yi = 0; yi < size_y; yi += 1) {
         for (size_t xi = 0; xi < size_x; xi += 1) {
-            size_t i = xi + yi * size_x;
+            size_t const i = xi + yi * size_x;
             auto &pixel = pixels[i];
             avg_r += pixel.r;
             avg_g += pixel.g;
@@ -389,15 +390,20 @@ struct BlockTag {
     NbtTag::Compound properties;
 };
 
+struct BlockInfo {
+    bool has_avg_color{};
+    Pixel avg_color{};
+};
+
 auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     result.node_n = 1;
     result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
     auto &node = result.nodes[0];
-    size_t start_chunk_xi = 0;
-    size_t chunk_xn = 32;
-    size_t start_chunk_zi = 0;
-    size_t chunk_zn = 32;
+    size_t const start_chunk_xi = 0;
+    size_t const chunk_xn = 32;
+    size_t const start_chunk_zi = 0;
+    size_t const chunk_zn = 32;
     node.size_x = chunk_xn * 16;
     node.size_y = chunk_zn * 16;
     node.size_z = 384;
@@ -408,10 +414,11 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     auto *buffer_ptr = payload.data;
     auto const &header = read_data_ref<McrHeader>(buffer_ptr);
     auto jar_filepath = std::filesystem::path{"C:/Users/gabe/AppData/Roaming/.minecraft/versions/1.19.3/1.19.3.jar"};
-    auto jar_zip = unzOpen(jar_filepath.string().c_str());
-    assert(jar_zip != NULL);
+    auto *jar_zip = unzOpen(jar_filepath.string().c_str());
+    assert(jar_zip != nullptr);
+    auto block_infos = std::unordered_map<std::string, BlockInfo>{};
     auto load_from_jar = [&](char const *path) {
-        int err;
+        int err = 0;
         err = unzLocateFile(jar_zip, path, 1);
         assert(err == UNZ_OK);
         auto file_info = unz_file_info{};
@@ -425,26 +432,25 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         assert(err == file_data.size());
         return file_data;
     };
-    struct BlockInfo {
-        bool has_avg_color{};
-        Pixel avg_color{};
-    };
     auto load_json_from_jar = [&](std::string const &path) -> nlohmann::json {
         auto json_data = load_from_jar(path.c_str());
         auto json_string = std::string_view{reinterpret_cast<char *>(json_data.data()), json_data.size()};
         return nlohmann::json::parse(json_string);
     };
     auto handle_textures = [&](std::vector<std::string> &texture_names, BlockInfo &block_info) {
-        if (texture_names.size() > 0) {
+        if (!texture_names.empty()) {
             size_t avg_r = 0;
             size_t avg_g = 0;
             size_t avg_b = 0;
             for (auto &texture_name : texture_names) {
-                if (std::find(texture_name.begin(), texture_name.end(), ':') != texture_name.end())
+                if (std::find(texture_name.begin(), texture_name.end(), ':') != texture_name.end()) {
                     texture_name = texture_name.substr(10, texture_name.size() - 10);
+                }
                 auto texture_path = "assets/minecraft/textures/" + texture_name + ".png";
                 auto png_data = load_from_jar(texture_path.c_str());
-                int size_x{}, size_y{}, channel_n{};
+                int size_x{};
+                int size_y{};
+                int channel_n{};
                 auto *pixels = reinterpret_cast<Pixel *>(stbi_load_from_memory(png_data.data(), static_cast<int>(png_data.size()), &size_x, &size_y, &channel_n, 4));
                 // print_pixels(pixels, size_x, size_y);
                 auto pixel = avg_pixels(pixels, size_x, size_y);
@@ -473,7 +479,6 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         }
         handle_textures(texture_names, block_info);
     };
-    auto block_infos = std::unordered_map<std::string, BlockInfo>{};
     auto handle_variant = [&](nlohmann::json const &variants, BlockInfo &block_info, std::string const &variant_name) {
         if (variants.at(variant_name).is_object()) {
             auto model_name = variants.at(variant_name).at("model").get<std::string>();
@@ -527,7 +532,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             }
             z_stream infstream;
             size_t uncompressed_size = compressed_size;
-            auto *uncompressed_data = static_cast<uint8_t *>(realloc(NULL, uncompressed_size));
+            auto *uncompressed_data = static_cast<uint8_t *>(realloc(nullptr, uncompressed_size));
             infstream.zalloc = Z_NULL;
             infstream.zfree = Z_NULL;
             infstream.opaque = Z_NULL;
@@ -553,7 +558,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             }
             inflateEnd(&infstream);
             assert(inflate_err >= 0);
-            auto chunk_buffer_ptr = uncompressed_data;
+            auto *chunk_buffer_ptr = uncompressed_data;
             auto root_tag = parse_nbt_tag(chunk_buffer_ptr);
             assert(root_tag.id == NbtTagId::Compound);
             auto &root = std::get<NbtTag::Compound>(root_tag.payload);

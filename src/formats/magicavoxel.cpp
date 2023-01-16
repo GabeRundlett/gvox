@@ -78,41 +78,41 @@ struct MagicavoxelContext {
 
 MagicavoxelContext::MagicavoxelContext() = default;
 
-GVoxVoxel rgb2hsv(GVoxVoxel c) {
+auto rgb2hsv(GVoxVoxel c) -> GVoxVoxel {
     // return c;
-    float kx = 0.0f;
-    float ky = -1.0f / 3.0f;
-    float kz = 2.0f / 3.0f;
-    float kw = -1.0f;
+    float const kx = 0.0f;
+    float const ky = -1.0f / 3.0f;
+    float const kz = 2.0f / 3.0f;
+    float const kw = -1.0f;
 
     auto step = [](float y, float x) -> float {
         return static_cast<float>(x >= y);
     };
 
-    float px = std::lerp(c.color.z, c.color.y, step(c.color.z, c.color.y));
-    float py = std::lerp(c.color.y, c.color.z, step(c.color.z, c.color.y));
-    float pz = std::lerp(kw, kx, step(c.color.z, c.color.y));
-    float pw = std::lerp(kz, ky, step(c.color.z, c.color.y));
+    float const px = std::lerp(c.color.z, c.color.y, step(c.color.z, c.color.y));
+    float const py = std::lerp(c.color.y, c.color.z, step(c.color.z, c.color.y));
+    float const pz = std::lerp(kw, kx, step(c.color.z, c.color.y));
+    float const pw = std::lerp(kz, ky, step(c.color.z, c.color.y));
 
     float qx = std::lerp(px, c.color.x, step(px, c.color.x));
-    float qy = std::lerp(py, py, step(px, c.color.x));
-    float qz = std::lerp(pw, pz, step(px, c.color.x));
-    float qw = std::lerp(c.color.x, px, step(px, c.color.x));
+    float const qy = std::lerp(py, py, step(px, c.color.x));
+    float const qz = std::lerp(pw, pz, step(px, c.color.x));
+    float const qw = std::lerp(c.color.x, px, step(px, c.color.x));
 
-    float d = qx - std::min(qw, qy);
-    float e = 1.0e-10f;
+    float const d = qx - std::min(qw, qy);
+    float const e = 1.0e-10f;
     return GVoxVoxel{{std::fabs(qz + (qw - qy) / (6.0f * d + e)), d / (qx + e), qx}, c.id};
 }
 
-GVoxVoxel hsv2rgb(GVoxVoxel c) {
+auto hsv2rgb(GVoxVoxel c) -> GVoxVoxel {
     // return c;
-    float kx = 1.0f;
-    float ky = 2.0f / 3.0f;
-    float kz = 1.0f / 3.0f;
-    float kw = 3.0f;
-    float px = std::fabs(fmodf(c.color.x + kx, 1.0f) * 6.0f - kw);
-    float py = std::fabs(fmodf(c.color.x + ky, 1.0f) * 6.0f - kw);
-    float pz = std::fabs(fmodf(c.color.x + kz, 1.0f) * 6.0f - kw);
+    float const kx = 1.0f;
+    float const ky = 2.0f / 3.0f;
+    float const kz = 1.0f / 3.0f;
+    float const kw = 3.0f;
+    float const px = std::fabs(fmodf(c.color.x + kx, 1.0f) * 6.0f - kw);
+    float const py = std::fabs(fmodf(c.color.x + ky, 1.0f) * 6.0f - kw);
+    float const pz = std::fabs(fmodf(c.color.x + kz, 1.0f) * 6.0f - kw);
     return GVoxVoxel{
         {
             c.color.z * std::lerp(kx, std::clamp(px - kx, 0.0f, 1.0f), c.color.y),
@@ -167,8 +167,8 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
     };
     int voxel_n = 0;
     bool palette_overflown = false;
-    GVoxVoxel min_voxel = GVoxVoxel{{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}, 1u};
-    GVoxVoxel max_voxel = GVoxVoxel{{std::numeric_limits<float>::min(), std::numeric_limits<float>::min(), std::numeric_limits<float>::min()}, 1u};
+    auto min_voxel = GVoxVoxel{{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}, 1u};
+    auto max_voxel = GVoxVoxel{{std::numeric_limits<float>::min(), std::numeric_limits<float>::min(), std::numeric_limits<float>::min()}, 1u};
     for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
         for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
             for (size_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
@@ -176,18 +176,24 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
                 GVoxVoxel const &v = scene.nodes[0].voxels[i];
                 if (v.id != 0) {
                     auto hsv_v = rgb2hsv(v);
-                    if (v.color.x != 0.0f)
+                    if (v.color.x != 0.0f) {
                         min_voxel.color.x = std::min(min_voxel.color.x, hsv_v.color.x);
-                    if (v.color.y != 0.0f)
+                    }
+                    if (v.color.y != 0.0f) {
                         min_voxel.color.y = std::min(min_voxel.color.y, hsv_v.color.y);
-                    if (v.color.z != 0.0f)
+                    }
+                    if (v.color.z != 0.0f) {
                         min_voxel.color.z = std::min(min_voxel.color.z, hsv_v.color.z);
-                    if (v.color.x != 1.0f)
+                    }
+                    if (v.color.x != 1.0f) {
                         max_voxel.color.x = std::max(max_voxel.color.x, hsv_v.color.x);
-                    if (v.color.y != 1.0f)
+                    }
+                    if (v.color.y != 1.0f) {
                         max_voxel.color.y = std::max(max_voxel.color.y, hsv_v.color.y);
-                    if (v.color.z != 1.0f)
+                    }
+                    if (v.color.z != 1.0f) {
                         max_voxel.color.z = std::max(max_voxel.color.z, hsv_v.color.z);
+                    }
                     if (out_palette.size() < 255) {
                         auto u32_voxel = voxel_to_u32(v);
                         auto palette_iter = out_palette.find(u32_voxel);
@@ -218,19 +224,19 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
             o_palette[i + 0] = voxel_to_u32(hsv2rgb(GVoxVoxel{{0.5f, 0.1f, static_cast<float>(i) / 7.0f}, 1u}));
             o_palette[i + 7] = voxel_to_u32(hsv2rgb(GVoxVoxel{{0.9f, 0.1f, static_cast<float>(i) / 7.0f}, 1u}));
         }
-        float del_r = max_voxel.color.x - min_voxel.color.x;
-        float del_g = max_voxel.color.y - min_voxel.color.y;
-        float del_b = max_voxel.color.z - min_voxel.color.z;
-        float off_r = min_voxel.color.x;
-        float off_g = min_voxel.color.y;
-        float off_b = min_voxel.color.z;
-        uint32_t rn = 8;
-        uint32_t gn = 5;
-        uint32_t bn = 6;
+        float const del_r = max_voxel.color.x - min_voxel.color.x;
+        float const del_g = max_voxel.color.y - min_voxel.color.y;
+        float const del_b = max_voxel.color.z - min_voxel.color.z;
+        float const off_r = min_voxel.color.x;
+        float const off_g = min_voxel.color.y;
+        float const off_b = min_voxel.color.z;
+        uint32_t const rn = 8;
+        uint32_t const gn = 5;
+        uint32_t const bn = 6;
         for (uint32_t bi = 0; bi < bn; ++bi) {
             for (uint32_t gi = 0; gi < gn; ++gi) {
                 for (uint32_t ri = 0; ri < rn; ++ri) {
-                    uint32_t i = ri + gi * rn + bi * rn * gn + 15;
+                    uint32_t const i = ri + gi * rn + bi * rn * gn + 15;
                     float r = del_r * static_cast<float>(ri) / static_cast<float>(rn) + off_r;
                     float g = del_g * static_cast<float>(gi) / static_cast<float>(gn - 1) + off_g;
                     float b = del_b * static_cast<float>(bi) / static_cast<float>(bn - 1) + off_b;
@@ -324,7 +330,7 @@ void MagicavoxelContext::destroy_payload(GVoxPayload payload) {
 }
 
 constexpr auto transform_mul(const ogt_vox_transform &a, const vec3 &b) -> vec3 {
-    vec3 r;
+    vec3 r{};
     r.x = (a.m00 * b.x) + (a.m10 * b.y) + (a.m20 * b.z) + (a.m30 * 1.0f);
     r.y = (a.m01 * b.x) + (a.m11 * b.y) + (a.m21 * b.z) + (a.m31 * 1.0f);
     r.z = (a.m02 * b.x) + (a.m12 * b.y) + (a.m22 * b.z) + (a.m32 * 1.0f);
@@ -338,14 +344,14 @@ auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     result.nodes = new GVoxSceneNode[result.node_n];
     auto inst_min = [scene](ogt_vox_instance const &inst) {
         auto const &modl = *scene->models[inst.model_index];
-        vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
-        vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
+        vec3 const p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
+        vec3 const p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
         return vec3{std::min(p0.x, p1.x), std::min(p0.y, p1.y), std::min(p0.z, p1.z)};
     };
     auto inst_max = [scene](ogt_vox_instance const &inst) {
         auto const &modl = *scene->models[inst.model_index];
-        vec3 p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
-        vec3 p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
+        vec3 const p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
+        vec3 const p1 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + modl.size_x), static_cast<float>(modl.offset_y + modl.size_y), static_cast<float>(modl.offset_z + modl.size_z)});
         return vec3{std::max(p0.x, p1.x), std::max(p0.y, p1.y), std::max(p0.z, p1.z)};
     };
 #define INSTANCES_MIN(axis)                                                                  \
@@ -368,9 +374,15 @@ auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                     return inst_max(inst_a).axis < inst_max(inst_b).axis;                    \
                 }))                                                                          \
             .axis)
-    auto min_x = INSTANCES_MIN(x), min_y = INSTANCES_MIN(y), min_z = INSTANCES_MIN(z);
-    auto max_x = INSTANCES_MAX(x), max_y = INSTANCES_MAX(y), max_z = INSTANCES_MAX(z);
-    auto size_x = max_x - min_x, size_y = max_y - min_y, size_z = max_z - min_z;
+    auto min_x = INSTANCES_MIN(x);
+    auto min_y = INSTANCES_MIN(y);
+    auto min_z = INSTANCES_MIN(z);
+    auto max_x = INSTANCES_MAX(x);
+    auto max_y = INSTANCES_MAX(y);
+    auto max_z = INSTANCES_MAX(z);
+    auto size_x = max_x - min_x;
+    auto size_y = max_y - min_y;
+    auto size_z = max_z - min_z;
     result.nodes[0].size_x = size_x;
     result.nodes[0].size_y = size_y;
     result.nodes[0].size_z = size_z;
@@ -384,7 +396,7 @@ auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             for (size_t yi = 0; yi < modl.size_y; ++yi) {
                 for (size_t xi = 0; xi < modl.size_x; ++xi) {
                     size_t const modl_voxel_i = xi + yi * modl.size_x + zi * modl.size_x * modl.size_y;
-                    vec3 p = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + xi), static_cast<float>(modl.offset_y + yi), static_cast<float>(modl.offset_z + zi)});
+                    vec3 const p = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + xi), static_cast<float>(modl.offset_y + yi), static_cast<float>(modl.offset_z + zi)});
                     size_t const final_voxel_i = (static_cast<size_t>(p.x) - min_x) + (static_cast<size_t>(p.y) - min_y) * result.nodes[0].size_x + (static_cast<size_t>(p.z) - min_z) * result.nodes[0].size_x * result.nodes[0].size_y;
                     auto const &voxel = modl.voxel_data[modl_voxel_i];
                     if (voxel != 0) {

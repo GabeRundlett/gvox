@@ -88,9 +88,9 @@ struct PaletteBuffer {
 struct PaletteCompressor {
     std::vector<uint8_t> data;
 
-    uint32_t region_nx;
-    uint32_t region_ny;
-    uint32_t region_nz;
+    uint32_t region_nx{};
+    uint32_t region_ny{};
+    uint32_t region_nz{};
 
     auto region_variance(GVoxSceneNode const &node, size_t region_x, size_t region_y, size_t region_z) -> size_t {
         auto tile_set = std::unordered_set<uint32_t>{};
@@ -193,7 +193,7 @@ struct PaletteCompressor {
             region_header.blob_offset = *tile_set.begin();
         }
 
-        auto region_header_ptr = data.data() + sizeof(NodeHeader) + (region_x + region_y * region_nx + region_z * region_nx * region_ny) * sizeof(RegionHeader);
+        auto *region_header_ptr = data.data() + sizeof(NodeHeader) + (region_x + region_y * region_nx + region_z * region_nx * region_ny) * sizeof(RegionHeader);
         write_data<RegionHeader>(region_header_ptr, region_header);
 
         return size;
@@ -208,7 +208,7 @@ struct PaletteCompressor {
         region_ny = static_cast<uint32_t>((node.size_y + REGION_SIZE - 1) / REGION_SIZE);
         region_nz = static_cast<uint32_t>((node.size_z + REGION_SIZE - 1) / REGION_SIZE);
 
-        size_t pre_size =
+        size_t const pre_size =
             sizeof(NodeHeader) +
             sizeof(RegionHeader) * (region_nx * region_ny * region_nz);
         size_t size = pre_size;

@@ -35,7 +35,7 @@ jobs:
       - name: run-vcpkg
         uses: lukka/run-vcpkg@v10.5
         with:
-          vcpkgGitCommitId: f9bea5d58186dc14e7e33132e43b52222147f51e
+          vcpkgGitCommitId: 1e9facc7992107ad639b4dcc87bd9a7ade1594e8
       - name: Configure CMake Clang
         run: cmake --preset=clang-x86_64-linux-gnu
       - name: Build Clang Debug
