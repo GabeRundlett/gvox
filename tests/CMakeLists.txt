@@ -36,6 +36,8 @@ endfunction()
 
 find_package(daxa CONFIG REQUIRED)
 
+set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
+
 GVOX_CREATE_TEST(
     FOLDER simple
     FILE main
@@ -48,6 +50,12 @@ GVOX_CREATE_TEST(
     LANG cpp
     LIBS daxa::daxa
 )
-
-set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
+
+GVOX_CREATE_TEST(
+    FOLDER raster
+    FILE main
+    LANG cpp
+    LIBS daxa::daxa
+)
+target_compile_definitions(${PROJECT_NAME}_test_raster_main PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
