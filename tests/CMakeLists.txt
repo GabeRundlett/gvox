@@ -35,6 +35,8 @@ function(GVOX_CREATE_TEST)
 endfunction()
 
 find_package(daxa CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
+find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 
@@ -56,6 +58,7 @@ GVOX_CREATE_TEST(
     FOLDER raster
     FILE main
     LANG cpp
-    LIBS daxa::daxa
+    LIBS daxa::daxa assimp::assimp
 )
 target_compile_definitions(${PROJECT_NAME}_test_raster_main PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
+target_include_directories(${PROJECT_NAME}_test_raster_main PRIVATE ${STB_INCLUDE_DIRS})

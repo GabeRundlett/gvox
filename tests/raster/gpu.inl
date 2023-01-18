@@ -1,11 +1,13 @@
 #pragma once
 
+#define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #include <daxa/daxa.inl>
 
 struct Vertex {
     f32vec3 pos;
-    f32vec3 col;
+    f32vec2 tex;
+    u32 rotation;
 };
 DAXA_ENABLE_BUFFER_PTR(Vertex)
 
@@ -16,14 +18,22 @@ DAXA_ENABLE_BUFFER_PTR(GpuInput)
 
 struct Voxel {
     f32vec3 col;
+    u32 id;
 };
 DAXA_ENABLE_BUFFER_PTR(Voxel)
 
 struct RasterPush {
+    f32mat4x4 modl_mat;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(Vertex) vertex_buffer;
     daxa_RWBufferPtr(Voxel) voxel_buffer;
-    u32 out_z;
+    daxa_Image2Df32 texture_id;
+    daxa_SamplerId texture_sampler;
+};
+
+struct PreprocessPush {
+    daxa_BufferPtr(GpuInput) gpu_input;
+    daxa_BufferPtr(Vertex) vertex_buffer;
 };
 
 #define VERTS(i) deref(daxa_push_constant.vertex_buffer[i])
