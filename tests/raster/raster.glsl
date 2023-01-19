@@ -9,7 +9,7 @@ layout(location = 1) out u32 v_rotation;
 
 void main() {
     Vertex vert = VERTS(gl_VertexIndex);
-    gl_Position = daxa_push_constant.modl_mat * f32vec4(vert.pos * f32vec3(1, 1, 1), 1);
+    gl_Position = f32vec4(vert.pos, 1);
     gl_Position.xyz = gl_Position.xyz * f32vec3(1, 1, 0.5) + f32vec3(0, 0, 0.5);
     v_tex = vert.tex;
     v_rotation = vert.rotation;
@@ -28,10 +28,17 @@ void main() {
     case 2: break;
     }
     u32 o_index = u32(p.x) + u32(p.y) * INPUT.size.x + u32(p.z) * INPUT.size.x * INPUT.size.y;
-    Voxel result;
     f32vec4 tex0_col = texture(daxa_push_constant.texture_id, daxa_push_constant.texture_sampler, v_tex);
-    VOXELS(o_index).col = tex0_col.rgb;
-    atomicExchange(VOXELS(o_index).id, 1);
+    u32 r = u32(tex0_col.r * 255);
+    u32 g = u32(tex0_col.g * 255);
+    u32 b = u32(tex0_col.b * 255);
+    u32 i = 1;
+    u32 u32_voxel = 0;
+    u32_voxel = u32_voxel | (r << 0x00);
+    u32_voxel = u32_voxel | (g << 0x08);
+    u32_voxel = u32_voxel | (b << 0x10);
+    u32_voxel = u32_voxel | (i << 0x18);
+    atomicExchange(VOXELS(o_index), u32_voxel);
 }
 
 #endif

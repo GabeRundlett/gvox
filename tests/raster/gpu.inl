@@ -16,22 +16,16 @@ struct GpuInput {
 };
 DAXA_ENABLE_BUFFER_PTR(GpuInput)
 
-struct Voxel {
-    f32vec3 col;
-    u32 id;
-};
-DAXA_ENABLE_BUFFER_PTR(Voxel)
-
 struct RasterPush {
-    f32mat4x4 modl_mat;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(Vertex) vertex_buffer;
-    daxa_RWBufferPtr(Voxel) voxel_buffer;
+    daxa_RWBufferPtr(daxa_u32) voxel_buffer;
     daxa_Image2Df32 texture_id;
     daxa_SamplerId texture_sampler;
 };
 
 struct PreprocessPush {
+    f32mat4x4 modl_mat;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(Vertex) vertex_buffer;
 };

@@ -7,9 +7,9 @@ void main() {
     u32 tri_i = gl_GlobalInvocationID.x;
     u32 vert_off = tri_i * 3;
     f32vec3 pos[3];
-    pos[0] = VERTS(vert_off + 0).pos;
-    pos[1] = VERTS(vert_off + 1).pos;
-    pos[2] = VERTS(vert_off + 2).pos;
+    pos[0] = (daxa_push_constant.modl_mat * f32vec4(VERTS(vert_off + 0).pos, 1)).xyz;
+    pos[1] = (daxa_push_constant.modl_mat * f32vec4(VERTS(vert_off + 1).pos, 1)).xyz;
+    pos[2] = (daxa_push_constant.modl_mat * f32vec4(VERTS(vert_off + 2).pos, 1)).xyz;
 
     f32vec3 del_a = pos[1] - pos[0];
     f32vec3 del_b = pos[2] - pos[0];
@@ -49,7 +49,9 @@ void main() {
         VERTS(vert_off + 2).pos = pos[2].xzy;
         break;
     case 2:
-        // do nothing
+        VERTS(vert_off + 0).pos = pos[0].xyz;
+        VERTS(vert_off + 1).pos = pos[1].xyz;
+        VERTS(vert_off + 2).pos = pos[2].xyz;
         break;
     }
 }
