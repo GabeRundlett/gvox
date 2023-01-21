@@ -108,6 +108,7 @@ static inline void gvox_save(GVoxContext *ctx, GVoxScene const &scene, char cons
     auto file = std::ofstream(filepath, std::ios::binary);
     if (!file.is_open()) {
         format_loader->info.destroy_payload(format_loader->context, &file_payload);
+        return;
     }
     file_header.payload_size = file_payload.size;
     file_header.format_name_size = std::strlen(dst_format);

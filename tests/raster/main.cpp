@@ -99,12 +99,12 @@ auto main() -> int {
                 .source = daxa::ShaderFile{"raster.glsl"},
                 .compile_options = {.defines = {{"RASTER_FRAG", "1"}}},
             },
-            .raster = {
-                .conservative_raster_info = daxa::ConservativeRasterInfo{
-                    .mode = daxa::ConservativeRasterizationMode::OVERESTIMATE,
-                    .size = 0.01f,
-                },
-            },
+            // .raster = {
+            //     .conservative_raster_info = daxa::ConservativeRasterInfo{
+            //         .mode = daxa::ConservativeRasterizationMode::OVERESTIMATE,
+            //         .size = 0.01f,
+            //     },
+            // },
             .push_constant_size = sizeof(RasterPush),
             .debug_name = "raster_pipeline",
         });

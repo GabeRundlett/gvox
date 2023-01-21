@@ -16,7 +16,7 @@
 #include <daxa/utils/task_list.hpp>
 
 #define TEST_ALL 0
-#define TEST_GPU 0
+#define TEST_GPU 1
 
 using namespace daxa::types;
 // using namespace daxa::math_operators;
@@ -136,8 +136,8 @@ auto main() -> int {
             return -1;
         }
     }
-    // std::cout << "generated scene content:" << std::endl;
-    // print_voxels(scene);
+    std::cout << "generated scene content:" << std::endl;
+    print_voxels(scene);
 
     // {
     //     auto cpu_scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
@@ -147,8 +147,7 @@ auto main() -> int {
     // }
 
     // std::cout << "\nloaded GPU scene content:" << std::endl;
-
-    // run_gpu_version(gvox, scene);
+    run_gpu_version(gvox, scene);
 
     gvox_destroy_scene(&scene);
     // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");

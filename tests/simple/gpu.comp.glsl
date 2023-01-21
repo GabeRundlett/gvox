@@ -144,54 +144,69 @@ void main() {
     memoryBarrierShared();
     groupMemoryBarrier();
 
-    u32 bits_per_variant = ceil_log2(palette_size);
-
-    // in sizeof u32
-    u32 v_data_offset = palette_size;
-
-    // round up to nearest byte
-    u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 7) / 8;
-    // round up to the nearest uint32_t, and add an extra
-    compressed_size = (compressed_size + 3) / 4 + 1;
-    // add the size of the palette data
-    compressed_size += v_data_offset;
-
-    if (palette_region_voxel_index == 0) {
-        if (palette_size > 1) {
+    if (palette_size > 367) {
+        u32 compressed_size = PALETTE_REGION_TOTAL_SIZE;
+        if (palette_region_voxel_index == 0) {
             u32 var = atomicAdd(COMPRESS_STATE.current_size, compressed_size);
             atomicExchange(output_offset, var);
             atomicExchange(OUTPUT.node_header.node_full_size, (var + compressed_size) * 4);
             OUTPUT.region_headers[palette_region_index].variant_n = palette_size;
             OUTPUT.region_headers[palette_region_index].blob_offset = var * 4;
-            for (u32 i = 0; i < palette_size; ++i)
-                OUTPUT.data[var + i] = palette_result[i];
-        } else {
-            OUTPUT.region_headers[palette_region_index].variant_n = 1;
-            OUTPUT.region_headers[palette_region_index].blob_offset = my_voxel;
         }
-    }
 
-    barrier();
-    memoryBarrier();
-    memoryBarrierShared();
-    groupMemoryBarrier();
+        barrier();
+        memoryBarrier();
+        memoryBarrierShared();
+        groupMemoryBarrier();
 
-    v_data_offset += output_offset;
-
-    if (palette_size > 1) {
-        u32 mask = (~0u) >> (32 - bits_per_variant);
-        u32 bit_index = palette_region_voxel_index * bits_per_variant;
-        u32 data_index = bit_index / 32;
-        u32 data_offset = bit_index - data_index * 32;
-        u32 data = (my_palette_index - 1) & mask;
-        // clang-format off
-        atomicAnd(OUTPUT.data[v_data_offset + data_index + 0], ~(mask << data_offset));
-        atomicOr (OUTPUT.data[v_data_offset + data_index + 0],   data << data_offset);
-        if (data_offset + bits_per_variant > 32) {
-            u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
-            atomicAnd(OUTPUT.data[v_data_offset + data_index + 1], ~(mask >> shift));
-            atomicOr (OUTPUT.data[v_data_offset + data_index + 1],   data >> shift);
+        OUTPUT.data[COMPRESS_STATE.current_size - compressed_size + palette_region_voxel_index] = my_voxel;
+    } else {
+        u32 v_data_offset = palette_size;
+        u32 bits_per_variant = ceil_log2(palette_size);
+        if (palette_region_voxel_index == 0) {
+            // in sizeof u32
+            if (palette_size > 1) {
+                // round up to nearest byte
+                u32 compressed_size = (bits_per_variant * PALETTE_REGION_TOTAL_SIZE + 7) / 8;
+                // round up to the nearest uint32_t, and add an extra
+                compressed_size = (compressed_size + 3) / 4 + 1;
+                // add the size of the palette data
+                compressed_size += v_data_offset;
+                u32 var = atomicAdd(COMPRESS_STATE.current_size, compressed_size);
+                atomicExchange(output_offset, var);
+                atomicExchange(OUTPUT.node_header.node_full_size, (var + compressed_size) * 4);
+                OUTPUT.region_headers[palette_region_index].variant_n = palette_size;
+                OUTPUT.region_headers[palette_region_index].blob_offset = var * 4;
+                for (u32 i = 0; i < palette_size; ++i) {
+                    OUTPUT.data[var + i] = palette_result[i];
+                }
+            } else {
+                OUTPUT.region_headers[palette_region_index].variant_n = 1;
+                OUTPUT.region_headers[palette_region_index].blob_offset = my_voxel;
+            }
         }
-        // clang-format on
+
+        barrier();
+        memoryBarrier();
+        memoryBarrierShared();
+        groupMemoryBarrier();
+
+        if (palette_size > 1) {
+            v_data_offset += output_offset;
+            u32 mask = (~0u) >> (32 - bits_per_variant);
+            u32 bit_index = palette_region_voxel_index * bits_per_variant;
+            u32 data_index = bit_index / 32;
+            u32 data_offset = bit_index - data_index * 32;
+            u32 data = (my_palette_index - 1) & mask;
+            // clang-format off
+            atomicAnd(OUTPUT.data[v_data_offset + data_index + 0], ~(mask << data_offset));
+            atomicOr (OUTPUT.data[v_data_offset + data_index + 0],   data << data_offset);
+            if (data_offset + bits_per_variant > 32) {
+                u32 shift = bits_per_variant - ((data_offset + bits_per_variant) & 0x1f);
+                atomicAnd(OUTPUT.data[v_data_offset + data_index + 1], ~(mask >> shift));
+                atomicOr (OUTPUT.data[v_data_offset + data_index + 1],   data >> shift);
+            }
+            // clang-format on
+        }
     }
 }
