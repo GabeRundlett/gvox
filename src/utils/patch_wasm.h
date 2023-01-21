@@ -25,4 +25,9 @@ int32_t __imported_wasi_snapshot_preview1_fd_write(int32_t, int32_t, int32_t, in
     assert(false);
     return -1;
 }
+
+int sscanf(const char *, const char *, ...) {
+    assert(false);
+    return 0;
+}
 }
