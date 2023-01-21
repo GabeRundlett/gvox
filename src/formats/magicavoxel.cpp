@@ -165,14 +165,14 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
         float b = static_cast<float>((u32_voxel >> 0x10) & 0xff) / 255.0f;
         return GVoxVoxel{{r, g, b}, 1u};
     };
-    int voxel_n = 0;
+    uint64_t voxel_n = 0;
     bool palette_overflown = false;
     auto min_voxel = GVoxVoxel{{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}, 1u};
     auto max_voxel = GVoxVoxel{{std::numeric_limits<float>::min(), std::numeric_limits<float>::min(), std::numeric_limits<float>::min()}, 1u};
-    for (size_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
-        for (size_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
-            for (size_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
-                size_t const i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
+    for (uint64_t zi = 0; zi < scene.nodes[0].size_z; ++zi) {
+        for (uint64_t yi = 0; yi < scene.nodes[0].size_y; ++yi) {
+            for (uint64_t xi = 0; xi < scene.nodes[0].size_x; ++xi) {
+                uint64_t const i = xi + yi * scene.nodes[0].size_x + zi * scene.nodes[0].size_x * scene.nodes[0].size_y;
                 GVoxVoxel const &v = scene.nodes[0].voxels[i];
                 if (v.id != 0) {
                     auto hsv_v = rgb2hsv(v);
@@ -251,35 +251,35 @@ auto MagicavoxelContext::create_payload(GVoxScene scene) -> GVoxPayload {
             ++i;
         }
     }
-    result.size += sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n);
+    result.size += sizeof(MagicavoxelVoxel) * voxel_n;
     // RGBA chunk
     result.size += sizeof(ChunkHeader);
     result.size += sizeof(Palette);
-    result.data = new uint8_t[result.size];
-    memset(result.data, 0, result.size);
+    result.data = new uint8_t[static_cast<size_t>(result.size)];
+    memset(result.data, 0, static_cast<size_t>(result.size));
     uint8_t *buffer_ptr = result.data;
     write_data(&buffer_ptr, CHUNK_ID_VOX_);
     write_data(&buffer_ptr, version);
     write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_MAIN, .self_size = 0, .children_size = static_cast<int>(result.size - size_before_main_children)});
-    for (size_t node_zi = 0; node_zi < node_nz; ++node_zi) {
-        for (size_t node_yi = 0; node_yi < node_ny; ++node_yi) {
-            for (size_t node_xi = 0; node_xi < node_nx; ++node_xi) {
+    for (uint64_t node_zi = 0; node_zi < node_nz; ++node_zi) {
+        for (uint64_t node_yi = 0; node_yi < node_ny; ++node_yi) {
+            for (uint64_t node_xi = 0; node_xi < node_nx; ++node_xi) {
                 auto node_offset_x = node_xi * 256;
                 auto node_offset_y = node_yi * 256;
                 auto node_offset_z = node_zi * 256;
-                auto out_size_x = std::min<size_t>(scene.nodes[0].size_x - node_offset_x, 256);
-                auto out_size_y = std::min<size_t>(scene.nodes[0].size_y - node_offset_y, 256);
-                auto out_size_z = std::min<size_t>(scene.nodes[0].size_z - node_offset_z, 256);
+                auto out_size_x = std::min<uint64_t>(scene.nodes[0].size_x - node_offset_x, 256);
+                auto out_size_y = std::min<uint64_t>(scene.nodes[0].size_y - node_offset_y, 256);
+                auto out_size_z = std::min<uint64_t>(scene.nodes[0].size_z - node_offset_z, 256);
                 write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_SIZE, .self_size = sizeof(int) * 3, .children_size = 0});
                 write_data(&buffer_ptr, static_cast<int>(out_size_x));
                 write_data(&buffer_ptr, static_cast<int>(out_size_y));
                 write_data(&buffer_ptr, static_cast<int>(out_size_z));
-                write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * static_cast<size_t>(voxel_n)), .children_size = 0});
+                write_data(&buffer_ptr, ChunkHeader{.id = CHUNK_XYZI, .self_size = static_cast<int>(sizeof(int) + sizeof(MagicavoxelVoxel) * voxel_n), .children_size = 0});
                 write_data(&buffer_ptr, static_cast<int>(out_size_x * out_size_y * out_size_z));
-                for (size_t zi = 0; zi < out_size_z; ++zi) {
-                    for (size_t yi = 0; yi < out_size_y; ++yi) {
-                        for (size_t xi = 0; xi < out_size_x; ++xi) {
-                            size_t const voxel_i = (xi + node_offset_x) + (yi + node_offset_y) * scene.nodes[0].size_x + (zi + node_offset_z) * scene.nodes[0].size_x * scene.nodes[0].size_y;
+                for (uint64_t zi = 0; zi < out_size_z; ++zi) {
+                    for (uint64_t yi = 0; yi < out_size_y; ++yi) {
+                        for (uint64_t xi = 0; xi < out_size_x; ++xi) {
+                            uint64_t const voxel_i = (xi + node_offset_x) + (yi + node_offset_y) * scene.nodes[0].size_x + (zi + node_offset_z) * scene.nodes[0].size_x * scene.nodes[0].size_y;
                             auto const &i_voxel = scene.nodes[0].voxels[voxel_i];
                             if (i_voxel.id != 0) {
                                 MagicavoxelVoxel o_voxel{};
@@ -341,7 +341,7 @@ auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     ogt_vox_scene const *scene = ogt_vox_read_scene(payload.data, static_cast<uint32_t>(payload.size));
     result.node_n = 1;
-    result.nodes = new GVoxSceneNode[result.node_n];
+    result.nodes = new GVoxSceneNode[static_cast<size_t>(result.node_n)];
     auto inst_min = [scene](ogt_vox_instance const &inst) {
         auto const &modl = *scene->models[inst.model_index];
         vec3 const p0 = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + 0), static_cast<float>(modl.offset_y + 0), static_cast<float>(modl.offset_z + 0)});
@@ -387,17 +387,17 @@ auto MagicavoxelContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     result.nodes[0].size_y = size_y;
     result.nodes[0].size_z = size_z;
     auto size = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
-    result.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * size);
-    std::memset(result.nodes[0].voxels, 0, sizeof(GVoxVoxel) * size);
+    result.nodes[0].voxels = (GVoxVoxel *)std::malloc(sizeof(GVoxVoxel) * static_cast<size_t>(size));
+    std::memset(result.nodes[0].voxels, 0, sizeof(GVoxVoxel) * static_cast<size_t>(size));
     for (uint32_t instance_i = 0; instance_i < scene->num_instances; ++instance_i) {
         auto const &inst = scene->instances[instance_i];
         auto const &modl = *scene->models[inst.model_index];
-        for (size_t zi = 0; zi < modl.size_z; ++zi) {
-            for (size_t yi = 0; yi < modl.size_y; ++yi) {
-                for (size_t xi = 0; xi < modl.size_x; ++xi) {
-                    size_t const modl_voxel_i = xi + yi * modl.size_x + zi * modl.size_x * modl.size_y;
+        for (uint64_t zi = 0; zi < modl.size_z; ++zi) {
+            for (uint64_t yi = 0; yi < modl.size_y; ++yi) {
+                for (uint64_t xi = 0; xi < modl.size_x; ++xi) {
+                    uint64_t const modl_voxel_i = xi + yi * modl.size_x + zi * modl.size_x * modl.size_y;
                     vec3 const p = transform_mul(inst.transform, vec3{static_cast<float>(modl.offset_x + xi), static_cast<float>(modl.offset_y + yi), static_cast<float>(modl.offset_z + zi)});
-                    size_t const final_voxel_i = (static_cast<size_t>(p.x) - min_x) + (static_cast<size_t>(p.y) - min_y) * result.nodes[0].size_x + (static_cast<size_t>(p.z) - min_z) * result.nodes[0].size_x * result.nodes[0].size_y;
+                    uint64_t const final_voxel_i = (static_cast<uint64_t>(p.x) - min_x) + (static_cast<uint64_t>(p.y) - min_y) * result.nodes[0].size_x + (static_cast<uint64_t>(p.z) - min_z) * result.nodes[0].size_x * result.nodes[0].size_y;
                     auto const &voxel = modl.voxel_data[modl_voxel_i];
                     if (voxel != 0) {
                         auto const &color = scene->palette.color[voxel];

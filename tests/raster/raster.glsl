@@ -21,7 +21,8 @@ layout(location = 0) in f32vec2 v_tex;
 layout(location = 1) flat in u32 v_rotation;
 
 void main() {
-    f32vec3 p = gl_FragCoord.xyz * f32vec3(1, 1, INPUT.size.z);
+    f32vec3 p = gl_FragCoord.xyz;
+    p.z *= INPUT.size.z;
     switch (v_rotation) {
     case 0: p = p.zyx; break;
     case 1: p = p.xzy; break;

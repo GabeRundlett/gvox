@@ -31,19 +31,19 @@ GzipContext::GzipContext() = default;
 
 auto GzipContext::create_payload(GVoxScene scene) -> GVoxPayload {
     GVoxPayload result = {};
-    result.size += sizeof(size_t);
-    for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
+    result.size += sizeof(uint64_t);
+    for (uint64_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (scene.nodes[node_i].voxels == nullptr) {
             continue;
         }
-        result.size += sizeof(size_t) * 3;
+        result.size += sizeof(uint64_t) * 3;
         result.size += scene.nodes[node_i].size_x * scene.nodes[node_i].size_y * scene.nodes[node_i].size_z * sizeof(uint32_t);
     }
     result.data = new uint8_t[result.size];
     auto *buffer_ptr = (uint8_t *)result.data;
     std::memcpy(buffer_ptr, &scene.node_n, sizeof(scene.node_n));
     buffer_ptr += sizeof(scene.node_n);
-    for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
+    for (uint64_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (scene.nodes[node_i].voxels == nullptr) {
             continue;
         }
@@ -53,9 +53,9 @@ auto GzipContext::create_payload(GVoxScene scene) -> GVoxPayload {
         buffer_ptr += sizeof(scene.nodes[node_i].size_y);
         std::memcpy(buffer_ptr, &scene.nodes[node_i].size_z, sizeof(scene.nodes[node_i].size_z));
         buffer_ptr += sizeof(scene.nodes[node_i].size_z);
-        size_t const voxels_n = scene.nodes[node_i].size_x * scene.nodes[node_i].size_y * scene.nodes[node_i].size_z;
-        size_t const voxels_size = voxels_n * sizeof(uint32_t);
-        for (size_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
+        uint64_t const voxels_n = scene.nodes[node_i].size_x * scene.nodes[node_i].size_y * scene.nodes[node_i].size_z;
+        uint64_t const voxels_size = voxels_n * sizeof(uint32_t);
+        for (uint64_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
             auto const &i_vox = scene.nodes[node_i].voxels[voxel_i];
             uint32_t u32_voxel = 0;
             uint32_t const r = static_cast<uint32_t>(std::max(std::min(i_vox.color.x, 1.0f), 0.0f) * 255.0f);
@@ -74,9 +74,9 @@ auto GzipContext::create_payload(GVoxScene scene) -> GVoxPayload {
         auto compressed_result = gzip::compress(reinterpret_cast<char const *>(result.data), result.size);
         size_t const compressed_size = compressed_result.size();
         delete[] result.data;
-        result.data = new uint8_t[compressed_size + sizeof(size_t)];
+        result.data = new uint8_t[compressed_size + sizeof(uint64_t)];
         result.size = compressed_size;
-        std::copy(compressed_result.begin(), compressed_result.end(), result.data + sizeof(size_t));
+        std::copy(compressed_result.begin(), compressed_result.end(), result.data + sizeof(uint64_t));
     }
     return result;
 }
@@ -93,21 +93,21 @@ auto GzipContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     auto *buffer_ptr = reinterpret_cast<uint8_t *>(uncompressed_result.data());
     auto *buffer_sentinel = buffer_ptr + uncompressed_size;
 
-    result.node_n = *(size_t *)buffer_ptr;
+    result.node_n = *(uint64_t *)buffer_ptr;
     buffer_ptr += sizeof(result.node_n);
     result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
-    size_t node_i = 0;
+    uint64_t node_i = 0;
     while (buffer_ptr < buffer_sentinel) {
-        result.nodes[node_i].size_x = *(size_t *)buffer_ptr;
+        result.nodes[node_i].size_x = *(uint64_t *)buffer_ptr;
         buffer_ptr += sizeof(result.nodes[node_i].size_x);
-        result.nodes[node_i].size_y = *(size_t *)buffer_ptr;
+        result.nodes[node_i].size_y = *(uint64_t *)buffer_ptr;
         buffer_ptr += sizeof(result.nodes[node_i].size_y);
-        result.nodes[node_i].size_z = *(size_t *)buffer_ptr;
+        result.nodes[node_i].size_z = *(uint64_t *)buffer_ptr;
         buffer_ptr += sizeof(result.nodes[node_i].size_z);
-        size_t const voxels_n = result.nodes[node_i].size_x * result.nodes[node_i].size_y * result.nodes[node_i].size_z;
-        size_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
+        uint64_t const voxels_n = result.nodes[node_i].size_x * result.nodes[node_i].size_y * result.nodes[node_i].size_z;
+        uint64_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
         result.nodes[node_i].voxels = (GVoxVoxel *)std::malloc(voxels_size);
-        for (size_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
+        for (uint64_t voxel_i = 0; voxel_i < voxels_n; ++voxel_i) {
             uint32_t u32_voxel = 0;
             std::memcpy(&u32_voxel, buffer_ptr + voxel_i * sizeof(uint32_t), sizeof(uint32_t));
             float r = static_cast<float>((u32_voxel >> 0x00) & 0xff) / 255.0f;

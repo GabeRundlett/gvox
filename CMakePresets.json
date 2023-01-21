@@ -57,6 +57,7 @@
             ],
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
+                "GVOX_ENABLE_MINECRAFT": false,
                 "GVOX_ENABLE_ZLIB": false,
                 "GVOX_ENABLE_GZIP": false,
                 "GVOX_ENABLE_TESTS": false,
@@ -72,6 +73,7 @@
             "toolchainFile": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake",
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
+                "GVOX_ENABLE_MINECRAFT": false,
                 "GVOX_ENABLE_ZLIB": false,
                 "GVOX_ENABLE_GZIP": false,
                 "GVOX_ENABLE_TESTS": false

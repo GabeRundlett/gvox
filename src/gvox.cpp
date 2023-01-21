@@ -333,7 +333,7 @@ void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload const *payload, char con
     }
 }
 void gvox_destroy_scene(GVoxScene const *scene) {
-    for (size_t node_i = 0; node_i < scene->node_n; ++node_i) {
+    for (uint64_t node_i = 0; node_i < scene->node_n; ++node_i) {
         if (scene->nodes[node_i].voxels != nullptr) {
             std::free(scene->nodes[node_i].voxels);
         }

@@ -1,6 +1,6 @@
 #include <gvox/gvox.h>
 
-// #include <cassert>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -223,7 +223,7 @@ struct PaletteCompressor {
     auto node_precomp(GVoxSceneNode const &node) -> size_t {
         // allocate at least 5% of the original node
         size_t const old_size = data.size();
-        data.reserve(old_size + (node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20);
+        data.reserve(old_size + static_cast<size_t>((node.size_x * node.size_y * node.size_z * sizeof(uint32_t)) / 20));
         region_nx = static_cast<uint32_t>((node.size_x + REGION_SIZE - 1) / REGION_SIZE);
         region_ny = static_cast<uint32_t>((node.size_y + REGION_SIZE - 1) / REGION_SIZE);
         region_nz = static_cast<uint32_t>((node.size_z + REGION_SIZE - 1) / REGION_SIZE);
@@ -263,10 +263,10 @@ struct PaletteCompressor {
             }
             result.size += node_precomp(scene.nodes[node_i]);
         }
-        result.data = new uint8_t[result.size];
+        result.data = new uint8_t[static_cast<size_t>(result.size)];
         auto *buffer_ptr = result.data;
         write_data<uint32_t>(buffer_ptr, static_cast<uint32_t>(scene.node_n));
-        std::memcpy(buffer_ptr, data.data(), result.size - pre_node_size);
+        std::memcpy(buffer_ptr, data.data(), static_cast<size_t>(result.size - pre_node_size));
         return result;
     }
 };
@@ -316,7 +316,7 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     auto *buffer_ptr = static_cast<uint8_t *>(payload.data);
     result.node_n = read_data<uint32_t>(buffer_ptr);
 
-    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
+    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * static_cast<size_t>(result.node_n));
     for (size_t node_i = 0; node_i < result.node_n; ++node_i) {
         auto &node = result.nodes[node_i];
         auto const node_header = read_data<NodeHeader>(buffer_ptr);
@@ -333,9 +333,9 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         // }
         // std::cout << std::flush;
         auto *next_node = buffer_ptr + node_header.node_full_size;
-        size_t const voxels_n = node.size_x * node.size_y * node.size_z;
-        size_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
-        node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
+        uint64_t const voxels_n = node.size_x * node.size_y * node.size_z;
+        uint64_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
+        node.voxels = (GVoxVoxel *)std::malloc(static_cast<size_t>(voxels_size));
         for (size_t region_z = 0; region_z < node_header.region_count_z; ++region_z) {
             for (size_t region_y = 0; region_y < node_header.region_count_y; ++region_y) {
                 for (size_t region_x = 0; region_x < node_header.region_count_x; ++region_x) {

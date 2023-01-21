@@ -159,12 +159,12 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
 
     result.node_n = 1;
-    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
+    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * static_cast<size_t>(result.node_n));
 
     result.nodes[0].size_x = 512;
     result.nodes[0].size_y = 512;
     result.nodes[0].size_z = 64;
-    size_t const voxels_n = result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z;
+    size_t const voxels_n = static_cast<size_t>(result.nodes[0].size_x * result.nodes[0].size_y * result.nodes[0].size_z);
     size_t const voxels_size = voxels_n * sizeof(GVoxVoxel);
     result.nodes[0].voxels = (GVoxVoxel *)std::malloc(voxels_size);
 

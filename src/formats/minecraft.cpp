@@ -52,21 +52,21 @@
 #endif
 #endif
 
-static constexpr auto ceil_log2(size_t x) -> size_t {
-    constexpr auto const t = std::array<size_t, 6>{
-        0xFFFFFFFF00000000u,
-        0x00000000FFFF0000u,
-        0x000000000000FF00u,
-        0x00000000000000F0u,
-        0x000000000000000Cu,
-        0x0000000000000002u};
+static constexpr auto ceil_log2(uint32_t x) -> uint32_t {
+    constexpr auto const t = std::array<uint32_t, 6>{
+        0x00000000u,
+        0xFFFF0000u,
+        0x0000FF00u,
+        0x000000F0u,
+        0x0000000Cu,
+        0x00000002u};
 
-    size_t y = (((x & (x - 1)) == 0) ? 0 : 1);
+    uint32_t y = (((x & (x - 1)) == 0) ? 0 : 1);
     int j = 32;
 
-    for (size_t const i : t) {
+    for (uint32_t const i : t) {
         int const k = (((x & i) == 0) ? 0 : j);
-        y += static_cast<size_t>(k);
+        y += static_cast<uint32_t>(k);
         x >>= k;
         j >>= 1;
     }
@@ -398,7 +398,7 @@ struct BlockInfo {
 auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     GVoxScene result = {};
     result.node_n = 1;
-    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * result.node_n);
+    result.nodes = (GVoxSceneNode *)std::malloc(sizeof(GVoxSceneNode) * static_cast<size_t>(result.node_n));
     auto &node = result.nodes[0];
     size_t const start_chunk_xi = 0;
     size_t const chunk_xn = 32;
@@ -407,7 +407,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     node.size_x = chunk_xn * 16;
     node.size_y = chunk_zn * 16;
     node.size_z = 384;
-    size_t const voxels_size = node.size_x * node.size_y * node.size_z * sizeof(GVoxVoxel);
+    size_t const voxels_size = static_cast<size_t>(node.size_x * node.size_y * node.size_z) * sizeof(GVoxVoxel);
     node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
     std::memset(node.voxels, 0, voxels_size);
     // assert(payload.size > sizeof(McrHeader));
@@ -615,7 +615,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                         }
                     } else {
                         auto const variant_n = palette.payloads.size();
-                        auto const bits_per_element = std::max<size_t>(4, ceil_log2(variant_n));
+                        auto const bits_per_element = std::max<size_t>(4, ceil_log2(static_cast<uint32_t>(variant_n)));
                         auto const elem_per_u64 = 64 / bits_per_element;
                         auto elements = std::get<NbtTag::Long_Array>(block_states.tags["data"]->payload);
                         for (size_t element_zi = 0; element_zi < PALETTED_REGION_SIZE; ++element_zi) {
@@ -628,7 +628,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     auto const o_index = (node.size_x - 1 - (element_xi + x_off)) + (element_yi + z_off) * node.size_x + (element_zi + y_off) * node.size_x * node.size_y;
                                     auto palette_index = (static_cast<size_t>(as_le(elements.data[u64_index])) >> (in_64_index * bits_per_element)) & mask;
                                     // assert(palette_index < variant_n);
-                                    auto &block_data = std::get<NbtTag::Compound>(palette.payloads[palette_index]);
+                                    auto &block_data = std::get<NbtTag::Compound>(palette.payloads[static_cast<size_t>(palette_index)]);
                                     auto &block_name_id = std::get<NbtTag::String>(block_data.tags["Name"]->payload);
                                     if (block_name_id != "minecraft:air" && block_name_id != "minecraft:cave_air") {
                                         auto voxel_result = get_voxel(block_data);

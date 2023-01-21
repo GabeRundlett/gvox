@@ -26,22 +26,22 @@ typedef struct {
 
 typedef struct {
     // TODO: add a transform
-    size_t size_x, size_y, size_z;
+    uint64_t size_x, size_y, size_z;
     GVoxVoxel *voxels;
 } GVoxSceneNode;
 
 typedef struct {
-    size_t node_n;
+    uint64_t node_n;
     GVoxSceneNode *nodes;
 } GVoxScene;
 
 typedef struct {
-    size_t format_name_size;
-    size_t payload_size;
+    uint64_t format_name_size;
+    uint64_t payload_size;
 } GVoxHeader;
 
 typedef struct {
-    size_t size;
+    uint64_t size;
     uint8_t *data;
 } GVoxPayload;
 
