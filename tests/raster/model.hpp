@@ -9,7 +9,7 @@
 #include <assimp/scene.h>
 
 #include <stb_image.h>
-#include <cassert>
+// #include <cassert>
 
 using namespace daxa::types;
 #include "gpu.inl"
@@ -118,7 +118,7 @@ void open_model(daxa::Device device, Model &model, std::filesystem::path const &
         return;
     }
     model.textures["#default_texture"] = std::make_shared<Texture>();
-    process_node(device, model, scene->mRootNode, scene, filepath.parent_path(), {1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1});
+    process_node(device, model, scene->mRootNode, scene, filepath.parent_path(), {f32vec4{1, 0, 0, 0}, f32vec4{0, 0, 1, 0}, f32vec4{0, -1, 0, 0}, f32vec4{0, 0, 0, 1}});
     auto texture_staging_buffers = std::vector<daxa::BufferId>{};
     for (auto &[key, texture] : model.textures) {
         i32 size_x{}, size_y{};
@@ -128,7 +128,7 @@ void open_model(daxa::Device device, Model &model, std::filesystem::path const &
             texture->size_y = static_cast<u32>(16);
         } else {
             texture->pixels = stbi_load(texture->path.string().c_str(), &size_x, &size_y, &texture->channel_n, 4);
-            assert(texture->pixels != nullptr && "Failed to load image");
+            // assert(texture->pixels != nullptr && "Failed to load image");
             texture->size_x = static_cast<u32>(size_x);
             texture->size_y = static_cast<u32>(size_y);
         }

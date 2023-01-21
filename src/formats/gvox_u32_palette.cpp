@@ -1,6 +1,6 @@
 #include <gvox/gvox.h>
 
-#include <cassert>
+// #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -67,7 +67,7 @@ static constexpr auto calc_palette_region_size(size_t bits_per_variant) -> size_
 }
 
 static constexpr auto calc_block_size(size_t variant_n) -> size_t {
-    return calc_palette_region_size(ceil_log2(variant_n)) + sizeof(uint32_t) * variant_n;
+    return calc_palette_region_size(ceil_log2(static_cast<uint32_t>(variant_n))) + sizeof(uint32_t) * variant_n;
 }
 
 static constexpr auto MAX_REGION_ALLOCATION_SIZE = REGION_SIZE * REGION_SIZE * REGION_SIZE * sizeof(uint32_t);
@@ -199,13 +199,13 @@ struct PaletteCompressor {
                             u32_voxel = u32_voxel | (i << 0x18);
                         }
                         auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
-                        assert(palette_iter != palette_end);
+                        // assert(palette_iter != palette_end);
                         auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
                         auto const bit_index = static_cast<size_t>(in_region_index * bits_per_variant);
                         auto const byte_index = bit_index / 8;
                         auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                         auto const mask = get_mask(bits_per_variant);
-                        assert(output_buffer + byte_index + 3 < data.data() + data.size());
+                        // assert(output_buffer + byte_index + 3 < data.data() + data.size());
                         auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                         output = output & ~(mask << bit_offset);
                         output = output | static_cast<uint32_t>(palette_id << bit_offset);
@@ -392,7 +392,7 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                         buffer_ptr = data_begin + region_header.blob_offset;
                         auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
                         auto const bits_per_variant = ceil_log2(variants);
-                        assert(bits_per_variant <= 9);
+                        // assert(bits_per_variant <= 9);
                         buffer_ptr += variants * sizeof(uint32_t);
                         // std::cout << variants << " variants\n";
                         // for (size_t tile_i = 0; tile_i < static_cast<size_t>(variants); ++tile_i) {
@@ -415,7 +415,7 @@ auto GVoxU32PaletteContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     auto const mask = get_mask(bits_per_variant);
                                     auto &input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
                                     auto const palette_id = (input >> bit_offset) & mask;
-                                    assert(palette_id < variants);
+                                    // assert(palette_id < variants);
                                     // if (palette_id >= variants) {
                                     //     std::cout << palette_id << "\n";
                                     //     continue;

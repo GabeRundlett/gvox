@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
+// #include <cassert>
 #include <algorithm>
 #include <vector>
 
@@ -31,10 +31,10 @@ AceOfSpadesContext::AceOfSpadesContext() = default;
 
 auto AceOfSpadesContext::create_payload(GVoxScene scene) -> GVoxPayload {
     GVoxPayload result = {};
-    assert(scene.node_n == 1);
-    assert(scene.nodes[0].size_x == 512);
-    assert(scene.nodes[0].size_y == 512);
-    assert((scene.nodes[0].size_z % 64) == 0);
+    // assert(scene.node_n == 1);
+    // assert(scene.nodes[0].size_x == 512);
+    // assert(scene.nodes[0].size_y == 512);
+    // assert((scene.nodes[0].size_z % 64) == 0);
     auto data = std::vector<uint8_t>{};
     auto const MAP_Z = scene.nodes[0].size_z;
     auto sample_map = [&](size_t x, size_t y, size_t z) -> uint32_t {
@@ -242,7 +242,7 @@ auto AceOfSpadesContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         }
     }
 
-    assert(static_cast<size_t>(v - base) == payload.size);
+    // assert(static_cast<size_t>(v - base) == payload.size);
 
     return result;
 }

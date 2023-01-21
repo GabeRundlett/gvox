@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
+// #include <cassert>
 #include <algorithm>
 
 #include <zlib.h>
@@ -118,7 +118,7 @@ auto ZlibContext::create_payload(GVoxScene scene) -> GVoxPayload {
     deflate(&defstream, Z_FINISH);
     deflateEnd(&defstream);
 
-    assert(defstream.msg == nullptr);
+    // assert(defstream.msg == nullptr);
 
     size_t const compressed_size = defstream.total_out;
 
@@ -163,8 +163,8 @@ auto ZlibContext::parse_payload(GVoxPayload payload) -> GVoxScene {
         inflate(&infstream, Z_NO_FLUSH);
         inflateEnd(&infstream);
 
-        assert(infstream.msg == nullptr);
-        assert(infstream.total_out == uncompressed_size);
+        // assert(infstream.msg == nullptr);
+        // assert(infstream.total_out == uncompressed_size);
 
         buffer_ptr = uncompressed_data;
         buffer_sentinel = buffer_ptr + uncompressed_size;

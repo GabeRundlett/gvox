@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
+// #include <cassert>
 #include <algorithm>
 
 #include <gzip/compress.hpp>

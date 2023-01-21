@@ -230,7 +230,7 @@ auto main() -> int {
                     .gpu_input = device.get_device_address(gpu_input_buffer),
                     .vertex_buffer = device.get_device_address(mesh.vertex_buffer),
                     .voxel_buffer = device.get_device_address(voxel_buffer),
-                    .texture_id = mesh.textures[0]->image_id,
+                    .texture_id = mesh.textures[0]->image_id.default_view(),
                     .texture_sampler = texture_sampler,
                 });
                 cmd_list.draw({.vertex_count = static_cast<u32>(mesh.verts.size())});

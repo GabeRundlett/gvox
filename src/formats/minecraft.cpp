@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
+// #include <cassert>
 
 #include <algorithm>
 #include <array>
@@ -410,26 +410,26 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
     size_t const voxels_size = node.size_x * node.size_y * node.size_z * sizeof(GVoxVoxel);
     node.voxels = (GVoxVoxel *)std::malloc(voxels_size);
     std::memset(node.voxels, 0, voxels_size);
-    assert(payload.size > sizeof(McrHeader));
+    // assert(payload.size > sizeof(McrHeader));
     auto *buffer_ptr = payload.data;
     auto const &header = read_data_ref<McrHeader>(buffer_ptr);
     auto jar_filepath = std::filesystem::path{"C:/Users/gabe/AppData/Roaming/.minecraft/versions/1.19.3/1.19.3.jar"};
     auto *jar_zip = unzOpen(jar_filepath.string().c_str());
-    assert(jar_zip != nullptr);
+    // assert(jar_zip != nullptr);
     auto block_infos = std::unordered_map<std::string, BlockInfo>{};
     auto load_from_jar = [&](char const *path) {
-        int err = 0;
+        [[maybe_unused]] int err = 0;
         err = unzLocateFile(jar_zip, path, 1);
-        assert(err == UNZ_OK);
+        // assert(err == UNZ_OK);
         auto file_info = unz_file_info{};
         err = unzGetCurrentFileInfo(jar_zip, &file_info, nullptr, 0, nullptr, 0, nullptr, 0);
-        assert(err == UNZ_OK);
+        // assert(err == UNZ_OK);
         auto file_data = std::vector<uint8_t>{};
         file_data.resize(file_info.uncompressed_size);
         err = unzOpenCurrentFile(jar_zip);
-        assert(err == UNZ_OK);
+        // assert(err == UNZ_OK);
         err = unzReadCurrentFile(jar_zip, file_data.data(), static_cast<uint32_t>(file_data.size()));
-        assert(err == file_data.size());
+        // assert(err == file_data.size());
         return file_data;
     };
     auto load_json_from_jar = [&](std::string const &path) -> nlohmann::json {
@@ -453,7 +453,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 int channel_n{};
                 auto *pixels = reinterpret_cast<Pixel *>(stbi_load_from_memory(png_data.data(), static_cast<int>(png_data.size()), &size_x, &size_y, &channel_n, 4));
                 // print_pixels(pixels, size_x, size_y);
-                auto pixel = avg_pixels(pixels, size_x, size_y);
+                auto pixel = avg_pixels(pixels, static_cast<size_t>(size_x), static_cast<size_t>(size_y));
                 avg_r += pixel.r;
                 avg_g += pixel.g;
                 avg_b += pixel.b;
@@ -475,7 +475,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 }
             }
         } else {
-            assert(false && "What block model doesn't have 'textures'?");
+            // assert(false && "What block model doesn't have 'textures'?");
         }
         handle_textures(texture_names, block_info);
     };
@@ -487,7 +487,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
             auto model_name = variants.at(variant_name)[0].at("model").get<std::string>();
             handle_block_model_json(model_name, block_info);
         } else {
-            assert(false && "What block has variants, but it's not an object or array?");
+            // assert(false && "What block has variants, but it's not an object or array?");
         }
     };
     auto lookup_block_info = [&](BlockTag block_tag) -> BlockInfo const & {
@@ -557,10 +557,10 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 uncompressed_size = new_size;
             }
             inflateEnd(&infstream);
-            assert(inflate_err >= 0);
+            // assert(inflate_err >= 0);
             auto *chunk_buffer_ptr = uncompressed_data;
             auto root_tag = parse_nbt_tag(chunk_buffer_ptr);
-            assert(root_tag.id == NbtTagId::Compound);
+            // assert(root_tag.id == NbtTagId::Compound);
             auto &root = std::get<NbtTag::Compound>(root_tag.payload);
             // auto x_pos = as_le(std::get<NbtTag::Int>(root.tags["xPos"]->payload));
             auto y_pos = as_le(std::get<NbtTag::Int>(root.tags["yPos"]->payload));
@@ -572,7 +572,7 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                 auto section_y = static_cast<int32_t>(std::get<NbtTag::Byte>(section.tags["Y"]->payload));
                 if (section_y >= y_pos) {
                     auto x_off = chunk_xi * 16;
-                    auto y_off = (section_y - y_pos) * 16;
+                    auto y_off = static_cast<size_t>(section_y - y_pos) * 16;
                     auto z_off = chunk_zi * 16;
                     // std::cout << "y_off = " << y_off << std::endl;
                     auto &block_states = std::get<NbtTag::Compound>(section.tags["block_states"]->payload);
@@ -626,8 +626,8 @@ auto MinecraftContext::parse_payload(GVoxPayload payload) -> GVoxScene {
                                     auto const in_64_index = element_index - u64_index * elem_per_u64;
                                     auto const mask = get_mask(bits_per_element);
                                     auto const o_index = (node.size_x - 1 - (element_xi + x_off)) + (element_yi + z_off) * node.size_x + (element_zi + y_off) * node.size_x * node.size_y;
-                                    auto palette_index = (as_le(elements.data[u64_index]) >> (in_64_index * bits_per_element)) & mask;
-                                    assert(palette_index < variant_n);
+                                    auto palette_index = (static_cast<size_t>(as_le(elements.data[u64_index])) >> (in_64_index * bits_per_element)) & mask;
+                                    // assert(palette_index < variant_n);
                                     auto &block_data = std::get<NbtTag::Compound>(palette.payloads[palette_index]);
                                     auto &block_name_id = std::get<NbtTag::String>(block_data.tags["Name"]->payload);
                                     if (block_name_id != "minecraft:air" && block_name_id != "minecraft:cave_air") {
