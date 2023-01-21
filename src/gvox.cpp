@@ -311,9 +311,18 @@ void gvox_pop_result(GVoxContext *ctx) {
 
 auto gvox_parse(GVoxContext *ctx, GVoxPayload const *payload, char const *src_format) -> GVoxScene {
     GVoxScene result = {};
-    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, src_format);
+    auto format = std::string{src_format};
+    auto actual_payload = *payload;
+    if (format == "gvox") {
+        GVoxHeader file_header = *reinterpret_cast<GVoxHeader *>(actual_payload.data);
+        actual_payload.data += sizeof(GVoxHeader);
+        format.resize(file_header.format_name_size);
+        std::memcpy(format.data(), actual_payload.data, file_header.format_name_size);
+        actual_payload.data += file_header.format_name_size;
+    }
+    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format.c_str());
     if (format_loader != nullptr) {
-        result = format_loader->info.parse_payload(format_loader->context, payload);
+        result = format_loader->info.parse_payload(format_loader->context, &actual_payload);
     }
     return result;
 }
