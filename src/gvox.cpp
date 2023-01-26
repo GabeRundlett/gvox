@@ -40,13 +40,13 @@ struct AdapterState {
 };
 
 struct _GVoxAdapterContext {
+    GVoxContext *gvox_context_ptr;
     AdapterState<GVoxInputAdapter> input;
     AdapterState<GVoxOutputAdapter> output;
     AdapterState<GVoxParseAdapter> parse;
     AdapterState<GVoxSerializeAdapter> serialize;
     std::vector<GVoxRegion> regions;
     std::vector<void *> allocations;
-    std::vector<std::pair<std::string, GVoxResult>> errors;
 };
 
 #include <adapters.hpp>
@@ -84,6 +84,36 @@ void gvox_destroy_context(GVoxContext *ctx) {
         delete adapter;
     }
     delete ctx;
+}
+
+auto gvox_get_result(GVoxContext *ctx) -> GVoxResult {
+    if (ctx->errors.empty()) {
+        return GVOX_RESULT_SUCCESS;
+    }
+    auto [msg, id] = ctx->errors.back();
+    return id;
+}
+void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size) {
+    if (str_buffer != nullptr) {
+        if (ctx->errors.empty()) {
+            for (size_t i = 0; i < *str_size; ++i) {
+                str_buffer[i] = '\0';
+            }
+            return;
+        }
+        auto [msg, id] = ctx->errors.back();
+        std::copy(msg.begin(), msg.end(), str_buffer);
+    } else if (str_size != nullptr) {
+        if (ctx->errors.empty()) {
+            *str_size = 0;
+            return;
+        }
+        auto [msg, id] = ctx->errors.back();
+        *str_size = msg.size();
+    }
+}
+void gvox_pop_result(GVoxContext *ctx) {
+    ctx->errors.pop_back();
 }
 
 auto gvox_register_input_adapter(GVoxContext *ctx, GVoxInputAdapterInfo const *adapter_info) -> GVoxInputAdapter * {
@@ -131,11 +161,13 @@ auto gvox_get_serialize_adapter(GVoxContext *ctx, char const *adapter_name) -> G
 }
 
 auto gvox_create_adapter_context(
+    GVoxContext *gvox_ctx,
     GVoxInputAdapter *input_adapter, void *input_config,
     GVoxOutputAdapter *output_adapter, void *output_config,
     GVoxParseAdapter *parse_adapter, void *parse_config,
     GVoxSerializeAdapter *serialize_adapter, void *serialize_config) -> GVoxAdapterContext * {
     auto *ctx = new GVoxAdapterContext{
+        .gvox_context_ptr = gvox_ctx,
         .input = {
             .adapter = input_adapter,
             .user_ptr = {},
@@ -153,7 +185,6 @@ auto gvox_create_adapter_context(
             .user_ptr = {},
         },
         .regions = {},
-        .errors = {},
     };
     if (ctx->input.adapter) {
         ctx->input.adapter->info.begin(ctx, input_config);
@@ -193,7 +224,7 @@ void gvox_destroy_adapter_context(GVoxAdapterContext *ctx) {
 
 void gvox_translate_region(GVoxAdapterContext *ctx, GVoxRegionRange const *range) {
     if (!ctx->serialize.adapter) {
-        ctx->errors.emplace_back("[GVOX TRANSLATE ERROR]: The given serialize adapter was null", GVOX_RESULT_ERROR_INVALID_PARAMETER);
+        ctx->gvox_context_ptr->errors.emplace_back("[GVOX TRANSLATE ERROR]: The given serialize adapter was null", GVOX_RESULT_ERROR_INVALID_PARAMETER);
         return;
     }
     ctx->serialize.adapter->info.serialize_region(ctx, range);
@@ -229,7 +260,7 @@ auto gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *ran
 }
 
 void gvox_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
-    ctx->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
+    ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
     assert(0 && message);
 }
 auto gvox_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {

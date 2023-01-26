@@ -70,12 +70,17 @@ typedef struct _GVoxAdapterContext GVoxAdapterContext;
 GVoxContext *gvox_create_context(void);
 void gvox_destroy_context(GVoxContext *ctx);
 
+GVoxResult gvox_get_result(GVoxContext *ctx);
+void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
+void gvox_pop_result(GVoxContext *ctx);
+
 GVoxInputAdapter *gvox_get_input_adapter(GVoxContext *ctx, char const *adapter_name);
 GVoxOutputAdapter *gvox_get_output_adapter(GVoxContext *ctx, char const *adapter_name);
 GVoxParseAdapter *gvox_get_parse_adapter(GVoxContext *ctx, char const *adapter_name);
 GVoxSerializeAdapter *gvox_get_serialize_adapter(GVoxContext *ctx, char const *adapter_name);
 
 GVoxAdapterContext *gvox_create_adapter_context(
+    GVoxContext *gvox_ctx,
     GVoxInputAdapter *input_adapter, void *input_config,
     GVoxOutputAdapter *output_adapter, void *output_config,
     GVoxParseAdapter *parse_adapter, void *parse_config,

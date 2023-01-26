@@ -20,6 +20,7 @@ using ParseState = struct {
     size_t offset;
     NodeHeader node_header;
     std::vector<RegionHeader> region_headers;
+    std::vector<uint8_t> buffer;
 };
 
 static constexpr auto REGION_SIZE = 8;
@@ -86,6 +87,25 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GVoxAdapterContext *ctx, [
         gvox_input_read(ctx, parse_state.offset, sizeof(RegionHeader), &region_header);
         parse_state.offset += sizeof(RegionHeader);
     }
+
+    parse_state.buffer.resize(parse_state.node_header.node_full_size);
+    gvox_input_read(ctx, parse_state.offset, parse_state.node_header.node_full_size, parse_state.buffer.data());
+
+    GVoxRegion region = {
+        .range = {
+            .offset = {0, 0, 0},
+            .extent = {
+                parse_state.node_header.region_count_x * REGION_SIZE,
+                parse_state.node_header.region_count_y * REGION_SIZE,
+                parse_state.node_header.region_count_z * REGION_SIZE,
+            },
+        },
+        .channels = GVOX_CHANNEL_BIT_COLOR,
+        .flags = 0,
+        .data = nullptr,
+    };
+
+    gvox_make_region_available(ctx, &region);
 }
 
 extern "C" void gvox_parse_adapter_gvox_palette_end([[maybe_unused]] GVoxAdapterContext *ctx) {
@@ -111,7 +131,7 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unuse
             for (uint32_t yi = ay; yi <= by; ++yi) {
                 for (uint32_t xi = ax; xi <= bx; ++xi) {
                     auto &b_region_header = parse_state.region_headers[xi + yi * r_nx + zi * r_nx * r_ny];
-                    if (b_region_header.variant_n > 1 || b_region_header.blob_offset != a_region_header.blob_offset) {
+                    if (b_region_header.variant_n != 1 || b_region_header.blob_offset != a_region_header.blob_offset) {
                         flags = 0;
                         break;
                     }
@@ -123,65 +143,31 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unuse
 }
 
 extern "C" void gvox_parse_adapter_gvox_palette_load_region(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index) {
-    auto &parse_state = *reinterpret_cast<ParseState *>(gvox_parse_adapter_get_user_pointer(ctx));
-    auto base_offset = parse_state.offset;
-
-    auto rx = offset->x / 8;
-    auto ry = offset->y / 8;
-    auto rz = offset->z / 8;
-    auto r_nx = parse_state.node_header.region_count_x;
-    auto r_ny = parse_state.node_header.region_count_y;
-
-    auto &region_header = parse_state.region_headers[rx + ry * r_nx + rz * r_nx * r_ny];
-
-    GVoxRegion region = {
-        .range = {
-            .offset = {
-                (offset->x / REGION_SIZE) * REGION_SIZE,
-                (offset->y / REGION_SIZE) * REGION_SIZE,
-                (offset->z / REGION_SIZE) * REGION_SIZE,
-            },
-            .extent = {REGION_SIZE, REGION_SIZE, REGION_SIZE},
-        },
-        .channels = 1u << channel_index,
-        .flags = 0,
-        .data = nullptr,
-    };
-
-    if (region_header.variant_n == 1) {
-        region.flags |= GVOX_REGION_FLAG_UNIFORM;
-        region.data = reinterpret_cast<void *>(static_cast<size_t>(region_header.blob_offset));
-    } else {
-        auto size = calc_block_size(region_header.variant_n);
-        region.data = gvox_adapter_malloc(ctx, sizeof(uint32_t) + size);
-        *reinterpret_cast<uint32_t *>(region.data) = region_header.variant_n;
-        gvox_input_read(ctx, base_offset + region_header.blob_offset, size, reinterpret_cast<uint32_t *>(region.data) + 1);
-    }
-
-    gvox_make_region_available(ctx, &region);
 }
 
 extern "C" auto gvox_parse_adapter_gvox_palette_sample_data([[maybe_unused]] GVoxAdapterContext *ctx, GVoxRegion const *region, [[maybe_unused]] GVoxOffset3D const *offset, uint32_t channel_index) -> uint32_t {
-    if (region->flags & GVOX_REGION_FLAG_UNIFORM) {
-        return static_cast<uint32_t>(reinterpret_cast<size_t>(region->data));
+    auto &parse_state = *reinterpret_cast<ParseState *>(gvox_parse_adapter_get_user_pointer(ctx));
+    auto const xi = offset->x / REGION_SIZE;
+    auto const yi = offset->y / REGION_SIZE;
+    auto const zi = offset->z / REGION_SIZE;
+    auto const px = offset->x - xi * REGION_SIZE;
+    auto const py = offset->y - yi * REGION_SIZE;
+    auto const pz = offset->z - zi * REGION_SIZE;
+    auto r_nx = parse_state.node_header.region_count_x;
+    auto r_ny = parse_state.node_header.region_count_y;
+    auto &region_header = parse_state.region_headers[xi + yi * r_nx + zi * r_nx * r_ny];
+    if (region_header.variant_n == 1) {
+        return region_header.blob_offset;
     } else {
-        uint8_t *buffer_ptr = reinterpret_cast<uint8_t *>(region->data);
-        auto const &variant_n = *reinterpret_cast<uint32_t *>(buffer_ptr);
-        buffer_ptr += sizeof(uint32_t);
-        if (variant_n > 367) {
-            auto const px = offset->x;
-            auto const py = offset->y;
-            auto const pz = offset->z;
+        uint8_t *buffer_ptr = parse_state.buffer.data() + region_header.blob_offset;
+        if (region_header.variant_n > 367) {
             auto const index = px + py * REGION_SIZE + pz * REGION_SIZE * REGION_SIZE;
             // return 0;
             return *reinterpret_cast<uint32_t *>(buffer_ptr + index * sizeof(uint32_t));
         } else {
             auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
-            auto const bits_per_variant = ceil_log2(variant_n);
-            buffer_ptr += variant_n * sizeof(uint32_t);
-            auto const px = offset->x;
-            auto const py = offset->y;
-            auto const pz = offset->z;
+            auto const bits_per_variant = ceil_log2(region_header.variant_n);
+            buffer_ptr += region_header.variant_n * sizeof(uint32_t);
             auto const index = px + py * REGION_SIZE + pz * REGION_SIZE * REGION_SIZE;
             auto const bit_index = static_cast<uint32_t>(index * bits_per_variant);
             auto const byte_index = bit_index / 8;
