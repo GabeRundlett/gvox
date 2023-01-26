@@ -33,11 +33,3 @@ GVOX_CREATE_TEST(
     LANG c
     LIBS
 )
-# GVOX_CREATE_TEST(
-#     FOLDER simple
-#     FILE comparison
-#     LANG cpp
-#     LIBS daxa::daxa
-# )
-# set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
-# target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")

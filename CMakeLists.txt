@@ -42,11 +42,23 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
     endif()
 endif()
 
-set(GVOX_FORMATS
-    gvox_raw
-    # gvox_u32_palette
+set(GVOX_INPUT_ADAPTERS
+    "file"
+)
+set(GVOX_OUTPUT_ADAPTERS
+    "file"
+    "stdout"
+)
+set(GVOX_PARSE_ADAPTERS
+    "test"
+    "gvox_raw"
+    "gvox_palette"
     # ace_of_spades
     # magicavoxel
+)
+set(GVOX_SERIALIZE_ADAPTERS
+    "test"
+    "colored_text"
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -83,64 +95,7 @@ target_include_directories(${PROJECT_NAME}
 )
 set_project_warnings(${PROJECT_NAME})
 
-foreach(FORMAT_NAME ${GVOX_FORMATS})
-    set(format_names_content "${format_names_content}
-    \"${FORMAT_NAME}\",")
-endforeach()
-
-set(formats_header_content "#pragma once
-
-#include <array>
-#include <string_view>
-
-static constexpr std::array format_names = {${format_names_content}
-};
-")
-
-set(formats_header_content "${formats_header_content}
-#pragma region STATIC_FORMATS
-
-struct FormatInfo {
-    std::string_view name;
-    // GVoxFormatCreateContextFunc create_context;
-    // GVoxFormatDestroyContextFunc destroy_context;
-    // GVoxFormatCreatePayloadFunc create_payload;
-    // GVoxFormatDestroyPayloadFunc destroy_payload;
-    // GVoxFormatParsePayloadFunc parse_payload;
-};
-")
-
-foreach(FORMAT_NAME ${GVOX_FORMATS})
-    target_sources(${PROJECT_NAME} PRIVATE "src/formats/${FORMAT_NAME}.cpp")
-    string(MAKE_C_IDENTIFIER "${FORMAT_NAME}" FORMAT_NAME_UPPER)
-    string(TOUPPER "${FORMAT_NAME_UPPER}" FORMAT_NAME_UPPER)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=1)
-    set(formats_header_content "${formats_header_content}
-// extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
-// extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
-// extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload;
-// extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload const *payload);
-// extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene;
-")
-    set(format_infos_content "${format_infos_content}
-    FormatInfo{
-        .name = \"gvox_format_${FORMAT_NAME}\",
-        // .create_context = gvox_format_${FORMAT_NAME}_create_context,
-        // .destroy_context = gvox_format_${FORMAT_NAME}_destroy_context,
-        // .create_payload = gvox_format_${FORMAT_NAME}_create_payload,
-        // .destroy_payload = gvox_format_${FORMAT_NAME}_destroy_payload,
-        // .parse_payload = gvox_format_${FORMAT_NAME}_parse_payload,
-    },")
-endforeach()
-
-set(formats_header_content "${formats_header_content}
-static constexpr std::array format_infos = {${format_infos_content}
-};
-
-#pragma endregion
-")
-
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/formats.hpp" "${formats_header_content}")
+include("cmake/adapters.cmake")
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS
