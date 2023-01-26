@@ -37,8 +37,6 @@ template <typename AdapterT>
 struct AdapterState {
     AdapterT *adapter;
     void *user_ptr{};
-    std::vector<void *> allocations;
-    std::vector<std::pair<std::string, GVoxResult>> errors;
 };
 
 struct _GVoxAdapterContext {
@@ -47,6 +45,7 @@ struct _GVoxAdapterContext {
     AdapterState<GVoxParseAdapter> parse;
     AdapterState<GVoxSerializeAdapter> serialize;
     std::vector<GVoxRegion> regions;
+    std::vector<void *> allocations;
     std::vector<std::pair<std::string, GVoxResult>> errors;
 };
 
@@ -140,26 +139,18 @@ auto gvox_create_adapter_context(
         .input = {
             .adapter = input_adapter,
             .user_ptr = {},
-            .allocations = {},
-            .errors = {},
         },
         .output = {
             .adapter = output_adapter,
             .user_ptr = {},
-            .allocations = {},
-            .errors = {},
         },
         .parse = {
             .adapter = parse_adapter,
             .user_ptr = {},
-            .allocations = {},
-            .errors = {},
         },
         .serialize = {
             .adapter = serialize_adapter,
             .user_ptr = {},
-            .allocations = {},
-            .errors = {},
         },
         .regions = {},
         .errors = {},
@@ -192,29 +183,35 @@ void gvox_destroy_adapter_context(GVoxAdapterContext *ctx) {
     if (ctx->input.adapter) {
         ctx->input.adapter->info.end(ctx);
     }
+
+    for (auto &allocation : ctx->allocations) {
+        free(allocation);
+    }
+
     delete ctx;
 }
 
 void gvox_translate_region(GVoxAdapterContext *ctx, GVoxRegionRange const *range) {
     if (!ctx->serialize.adapter) {
-        ctx->serialize.errors.emplace_back("[GVOX TRANSLATE ERROR]: The given serialize adapter was null", GVOX_ERROR_UNKNOWN);
+        ctx->errors.emplace_back("[GVOX TRANSLATE ERROR]: The given serialize adapter was null", GVOX_RESULT_ERROR_INVALID_PARAMETER);
         return;
     }
     ctx->serialize.adapter->info.serialize_region(ctx, range);
 }
 
-auto gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset) -> uint32_t {
-    auto region_iter = std::find_if(ctx->regions.begin(), ctx->regions.end(), [offset](GVoxRegion const &region) {
+auto gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index) -> uint32_t {
+    auto region_iter = std::find_if(ctx->regions.begin(), ctx->regions.end(), [offset, channel_index](GVoxRegion const &region) {
         return offset->x >= region.range.offset.x &&
                offset->y >= region.range.offset.y &&
                offset->z >= region.range.offset.z &&
                offset->x < region.range.offset.x + static_cast<int32_t>(region.range.extent.x) &&
                offset->y < region.range.offset.y + static_cast<int32_t>(region.range.extent.y) &&
-               offset->z < region.range.offset.z + static_cast<int32_t>(region.range.extent.z);
+               offset->z < region.range.offset.z + static_cast<int32_t>(region.range.extent.z) &&
+               ((1u << channel_index) & region.channels);
     });
     GVoxRegion *region = nullptr;
     if (region_iter == ctx->regions.end()) {
-        ctx->parse.adapter->info.load_region(ctx, offset);
+        ctx->parse.adapter->info.load_region(ctx, offset, channel_index);
         region = &ctx->regions.back();
     } else {
         region = &*region_iter;
@@ -224,93 +221,68 @@ auto gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset) -> ui
         offset->y - region->range.offset.y,
         offset->z - region->range.offset.z,
     };
-    return ctx->parse.adapter->info.sample_data(ctx, region, &in_region_offset);
+    return ctx->parse.adapter->info.sample_data(ctx, region, &in_region_offset, channel_index);
 }
 
-auto gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range) -> uint32_t {
-    return ctx->parse.adapter->info.query_region_flags(ctx, range);
+auto gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range, uint32_t channel_index) -> uint32_t {
+    return ctx->parse.adapter->info.query_region_flags(ctx, range, channel_index);
 }
 
-void gvox_input_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
-    ctx->input.errors.emplace_back("[GVOX INPUT ERROR]: " + std::string(message), result_code);
+void gvox_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
+    ctx->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
     assert(0 && message);
 }
-void gvox_output_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
-    ctx->output.errors.emplace_back("[GVOX OUTPUT ERROR]: " + std::string(message), result_code);
-    assert(0 && message);
-}
-void gvox_parse_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
-    ctx->parse.errors.emplace_back("[GVOX PARSE ERROR]: " + std::string(message), result_code);
-    assert(0 && message);
-}
-void gvox_serialize_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message) {
-    ctx->serialize.errors.emplace_back("[GVOX SERIALIZE ERROR]: " + std::string(message), result_code);
-    assert(0 && message);
-}
-
-auto gvox_input_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {
-    ctx->input.allocations.emplace_back(malloc(size));
-    return ctx->input.allocations.back();
-}
-auto gvox_output_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {
-    ctx->output.allocations.emplace_back(malloc(size));
-    return ctx->output.allocations.back();
-}
-auto gvox_parse_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {
-    ctx->parse.allocations.emplace_back(malloc(size));
-    return ctx->parse.allocations.back();
-}
-auto gvox_serialize_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {
-    ctx->serialize.allocations.emplace_back(malloc(size));
-    return ctx->serialize.allocations.back();
+auto gvox_adapter_malloc(GVoxAdapterContext *ctx, size_t size) -> void * {
+    ctx->allocations.emplace_back(malloc(size));
+    return ctx->allocations.back();
 }
 
 void gvox_input_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr) {
     if (ctx->input.user_ptr == nullptr) {
-        ctx->input.user_ptr = gvox_input_adapter_malloc(ctx, sizeof(ctx->input.user_ptr));
+        ctx->input.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->input.user_ptr));
     }
     ctx->input.user_ptr = ptr;
 }
 void gvox_output_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr) {
     if (ctx->output.user_ptr == nullptr) {
-        ctx->output.user_ptr = gvox_output_adapter_malloc(ctx, sizeof(ctx->output.user_ptr));
+        ctx->output.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->output.user_ptr));
     }
     ctx->output.user_ptr = ptr;
 }
 void gvox_parse_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr) {
     if (ctx->parse.user_ptr == nullptr) {
-        ctx->parse.user_ptr = gvox_parse_adapter_malloc(ctx, sizeof(ctx->parse.user_ptr));
+        ctx->parse.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->parse.user_ptr));
     }
     ctx->parse.user_ptr = ptr;
 }
 void gvox_serialize_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr) {
     if (ctx->serialize.user_ptr == nullptr) {
-        ctx->serialize.user_ptr = gvox_serialize_adapter_malloc(ctx, sizeof(ctx->serialize.user_ptr));
+        ctx->serialize.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->serialize.user_ptr));
     }
     ctx->serialize.user_ptr = ptr;
 }
 
 auto gvox_input_adapter_get_user_pointer(GVoxAdapterContext *ctx) -> void * {
     if (ctx->input.user_ptr == nullptr) {
-        ctx->input.user_ptr = gvox_input_adapter_malloc(ctx, sizeof(ctx->input.user_ptr));
+        ctx->input.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->input.user_ptr));
     }
     return ctx->input.user_ptr;
 }
 auto gvox_output_adapter_get_user_pointer(GVoxAdapterContext *ctx) -> void * {
     if (ctx->output.user_ptr == nullptr) {
-        ctx->output.user_ptr = gvox_output_adapter_malloc(ctx, sizeof(ctx->output.user_ptr));
+        ctx->output.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->output.user_ptr));
     }
     return ctx->output.user_ptr;
 }
 auto gvox_parse_adapter_get_user_pointer(GVoxAdapterContext *ctx) -> void * {
     if (ctx->parse.user_ptr == nullptr) {
-        ctx->parse.user_ptr = gvox_parse_adapter_malloc(ctx, sizeof(ctx->parse.user_ptr));
+        ctx->parse.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->parse.user_ptr));
     }
     return ctx->parse.user_ptr;
 }
 auto gvox_serialize_adapter_get_user_pointer(GVoxAdapterContext *ctx) -> void * {
     if (ctx->serialize.user_ptr == nullptr) {
-        ctx->serialize.user_ptr = gvox_serialize_adapter_malloc(ctx, sizeof(ctx->serialize.user_ptr));
+        ctx->serialize.user_ptr = gvox_adapter_malloc(ctx, sizeof(ctx->serialize.user_ptr));
     }
     return ctx->serialize.user_ptr;
 }

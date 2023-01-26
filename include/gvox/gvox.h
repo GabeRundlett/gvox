@@ -9,9 +9,39 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum {
-    GVOX_SUCCESS = 0,
-    GVOX_ERROR_UNKNOWN = -1,
+    GVOX_RESULT_SUCCESS = 0,
+    GVOX_RESULT_ERROR_UNKNOWN = -1,
+    GVOX_RESULT_ERROR_INVALID_PARAMETER = -2,
+
+    GVOX_RESULT_ERROR_INPUT_ADAPTER = -3,
+    GVOX_RESULT_ERROR_OUTPUT_ADAPTER = -4,
+    GVOX_RESULT_ERROR_PARSE_ADAPTER = -5,
+    GVOX_RESULT_ERROR_SERIALIZE_ADAPTER = -6,
+
+    GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT = -7,
+    GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT = -8,
+    GVOX_RESULT_ERROR_SERIALIZE_ADAPTER_UNREPRESENTABLE_DATA = -9,
 } GVoxResult;
+
+#define GVOX_CHANNEL_INDEX_COLOR 0
+#define GVOX_CHANNEL_INDEX_NORMAL 1
+#define GVOX_CHANNEL_INDEX_MATERIAL_ID 2
+#define GVOX_CHANNEL_INDEX_ROUGHNESS 3
+#define GVOX_CHANNEL_INDEX_METALNESS 4
+#define GVOX_CHANNEL_INDEX_OPACITY 5
+#define GVOX_CHANNEL_INDEX_EMISSIVITY 6
+#define GVOX_CHANNEL_INDEX_HARDNESS 7
+#define GVOX_CHANNEL_INDEX_LAST_STANDARD 15
+
+#define GVOX_CHANNEL_BIT_COLOR (1 << GVOX_CHANNEL_INDEX_COLOR)
+#define GVOX_CHANNEL_BIT_NORMAL (1 << GVOX_CHANNEL_INDEX_NORMAL)
+#define GVOX_CHANNEL_BIT_MATERIAL_ID (1 << GVOX_CHANNEL_INDEX_MATERIAL_ID)
+#define GVOX_CHANNEL_BIT_ROUGHNESS (1 << GVOX_CHANNEL_INDEX_ROUGHNESS)
+#define GVOX_CHANNEL_BIT_METALNESS (1 << GVOX_CHANNEL_INDEX_METALNESS)
+#define GVOX_CHANNEL_BIT_OPACITY (1 << GVOX_CHANNEL_INDEX_OPACITY)
+#define GVOX_CHANNEL_BIT_EMISSIVITY (1 << GVOX_CHANNEL_INDEX_EMISSIVITY)
+#define GVOX_CHANNEL_BIT_HARDNESS (1 << GVOX_CHANNEL_INDEX_HARDNESS)
+#define GVOX_CHANNEL_BIT_LAST_STANDARD (1 << GVOX_CHANNEL_INDEX_LAST_STANDARD)
 
 typedef struct {
     int32_t x;
@@ -53,8 +83,8 @@ GVoxAdapterContext *gvox_create_adapter_context(
 void gvox_destroy_adapter_context(GVoxAdapterContext *ctx);
 void gvox_translate_region(GVoxAdapterContext *ctx, GVoxRegionRange const *range);
 
-uint32_t gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset);
-uint32_t gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range);
+uint32_t gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index);
+uint32_t gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range, uint32_t channel_index);
 
 #ifdef __cplusplus
 }

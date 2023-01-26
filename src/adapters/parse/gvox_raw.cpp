@@ -12,7 +12,7 @@ using ParseState = struct {
 };
 
 extern "C" void gvox_parse_adapter_gvox_raw_begin(GVoxAdapterContext *ctx, [[maybe_unused]] void *config) {
-    auto &parse_state = *reinterpret_cast<ParseState *>(gvox_parse_adapter_malloc(ctx, sizeof(ParseState)));
+    auto &parse_state = *reinterpret_cast<ParseState *>(gvox_adapter_malloc(ctx, sizeof(ParseState)));
     gvox_parse_adapter_set_user_pointer(ctx, &parse_state);
     memset(&parse_state, 0, sizeof(ParseState));
 
@@ -21,7 +21,7 @@ extern "C" void gvox_parse_adapter_gvox_raw_begin(GVoxAdapterContext *ctx, [[may
     parse_state.offset += sizeof(uint64_t);
 
     if (node_n != 1) {
-        gvox_parse_adapter_push_error(ctx, GVOX_ERROR_UNKNOWN, "gvox_raw does not support more than 1 node");
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "gvox_raw does not support more than 1 node");
         return;
     }
 
@@ -36,11 +36,11 @@ extern "C" void gvox_parse_adapter_gvox_raw_begin(GVoxAdapterContext *ctx, [[may
 extern "C" void gvox_parse_adapter_gvox_raw_end([[maybe_unused]] GVoxAdapterContext *ctx) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags([[maybe_unused]] GVoxAdapterContext *ctx, [[maybe_unused]] GVoxOffset3D const *offset) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags([[maybe_unused]] GVoxAdapterContext *ctx, [[maybe_unused]] GVoxRegionRange const *range, uint32_t channel_index) -> uint32_t {
     return 0;
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_load_region(GVoxAdapterContext *ctx, GVoxOffset3D const *offset) {
+extern "C" void gvox_parse_adapter_gvox_raw_load_region(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index) {
     auto &parse_state = *reinterpret_cast<ParseState *>(gvox_parse_adapter_get_user_pointer(ctx));
     auto base_offset = parse_state.offset + static_cast<size_t>(offset->x) * sizeof(uint32_t);
     uint32_t voxel_data = 0;
@@ -51,12 +51,13 @@ extern "C" void gvox_parse_adapter_gvox_raw_load_region(GVoxAdapterContext *ctx,
             .offset = *offset,
             .extent = {1, 1, 1},
         },
+        .channels = channel_index,
         .flags = GVOX_REGION_FLAG_UNIFORM,
         .data = reinterpret_cast<void *>(static_cast<size_t>(voxel_data)),
     };
     gvox_make_region_available(ctx, &region);
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_sample_data([[maybe_unused]] GVoxAdapterContext *ctx, GVoxRegion const *region, [[maybe_unused]] GVoxOffset3D const *offset) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_raw_sample_data([[maybe_unused]] GVoxAdapterContext *ctx, GVoxRegion const *region, [[maybe_unused]] GVoxOffset3D const *offset, uint32_t channel_index) -> uint32_t {
     return static_cast<uint32_t>(reinterpret_cast<size_t>(region->data));
 }

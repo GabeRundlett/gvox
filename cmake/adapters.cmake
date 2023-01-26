@@ -95,9 +95,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_PARSE_ADAPTER_${NAME_UPP
 set(ADAPTERS_HEADER_CONTENT "${ADAPTERS_HEADER_CONTENT}
 extern \"C\" void gvox_parse_adapter_${NAME}_begin(GVoxAdapterContext *ctx, void *config);
 extern \"C\" void gvox_parse_adapter_${NAME}_end(GVoxAdapterContext *ctx);
-extern \"C\" auto gvox_parse_adapter_${NAME}_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range) -> uint32_t;
-extern \"C\" void gvox_parse_adapter_${NAME}_load_region(GVoxAdapterContext *ctx, GVoxOffset3D const *offset);
-extern \"C\" auto gvox_parse_adapter_${NAME}_sample_data(GVoxAdapterContext *ctx, GVoxRegion const *region, GVoxOffset3D const *offset) -> uint32_t;
+extern \"C\" auto gvox_parse_adapter_${NAME}_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range, uint32_t channel_index) -> uint32_t;
+extern \"C\" void gvox_parse_adapter_${NAME}_load_region(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index);
+extern \"C\" auto gvox_parse_adapter_${NAME}_sample_data(GVoxAdapterContext *ctx, GVoxRegion const *region, GVoxOffset3D const *offset, uint32_t channel_index) -> uint32_t;
 ")
 endforeach()
 foreach(NAME ${GVOX_SERIALIZE_ADAPTERS})

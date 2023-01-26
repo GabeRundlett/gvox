@@ -11,6 +11,7 @@ extern "C" {
 
 typedef struct {
     GVoxRegionRange range;
+    uint32_t channels;
     uint32_t flags;
     void *data;
 } GVoxRegion;
@@ -34,9 +35,9 @@ typedef struct {
     char const *name_str;
     void (*begin)(GVoxAdapterContext *ctx, void *config);
     void (*end)(GVoxAdapterContext *ctx);
-    uint32_t (*query_region_flags)(GVoxAdapterContext *ctx, GVoxRegionRange const *range);
-    void (*load_region)(GVoxAdapterContext *ctx, GVoxOffset3D const *offset);
-    uint32_t (*sample_data)(GVoxAdapterContext *ctx, GVoxRegion const *region, GVoxOffset3D const *offset);
+    uint32_t (*query_region_flags)(GVoxAdapterContext *ctx, GVoxRegionRange const *range, uint32_t channel_index);
+    void (*load_region)(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index);
+    uint32_t (*sample_data)(GVoxAdapterContext *ctx, GVoxRegion const *region, GVoxOffset3D const *offset, uint32_t channel_index);
 } GVoxParseAdapterInfo;
 
 typedef struct {
@@ -51,15 +52,8 @@ GVoxOutputAdapter *gvox_register_output_adapter(GVoxContext *ctx, GVoxOutputAdap
 GVoxParseAdapter *gvox_register_parse_adapter(GVoxContext *ctx, GVoxParseAdapterInfo const *adapter_info);
 GVoxSerializeAdapter *gvox_register_serialize_adapter(GVoxContext *ctx, GVoxSerializeAdapterInfo const *adapter_info);
 
-void gvox_input_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message);
-void gvox_output_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message);
-void gvox_parse_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message);
-void gvox_serialize_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message);
-
-void *gvox_input_adapter_malloc(GVoxAdapterContext *ctx, size_t size);
-void *gvox_output_adapter_malloc(GVoxAdapterContext *ctx, size_t size);
-void *gvox_parse_adapter_malloc(GVoxAdapterContext *ctx, size_t size);
-void *gvox_serialize_adapter_malloc(GVoxAdapterContext *ctx, size_t size);
+void gvox_adapter_push_error(GVoxAdapterContext *ctx, GVoxResult result_code, char const *message);
+void *gvox_adapter_malloc(GVoxAdapterContext *ctx, size_t size);
 
 void gvox_input_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr);
 void gvox_output_adapter_set_user_pointer(GVoxAdapterContext *ctx, void *ptr);

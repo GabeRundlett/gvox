@@ -16,7 +16,7 @@ using FileState = struct {
 };
 
 extern "C" void gvox_output_adapter_file_begin(GVoxAdapterContext *ctx, void *config) {
-    auto &user_state = *reinterpret_cast<FileState *>(gvox_output_adapter_malloc(ctx, sizeof(FileState)));
+    auto &user_state = *reinterpret_cast<FileState *>(gvox_adapter_malloc(ctx, sizeof(FileState)));
     gvox_output_adapter_set_user_pointer(ctx, &user_state);
     memset(&user_state, 0, sizeof(FileState));
     if (config != nullptr) {
