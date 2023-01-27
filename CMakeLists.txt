@@ -60,9 +60,9 @@ add_library(${PROJECT_NAME} STATIC
     "src/gvox.cpp"
 )
 
-if(GVOX_BUILD_FOR_ODIN)
+if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 endif()
 

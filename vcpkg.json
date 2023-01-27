@@ -3,6 +3,9 @@
   "version-string": "nightly",
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
+  "dependencies": [
+    "zlib"
+  ],
   "features": {
     "file-io": {
       "description": "Enable file IO library features"
