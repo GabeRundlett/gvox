@@ -43,9 +43,11 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
 endif()
 
 set(GVOX_INPUT_ADAPTERS
+    "byte_buffer"
     "file"
 )
 set(GVOX_OUTPUT_ADAPTERS
+    "byte_buffer"
     "file"
     "stdout"
 )

@@ -186,32 +186,32 @@ auto gvox_create_adapter_context(
         },
         .regions = {},
     };
-    if (ctx->input.adapter) {
+    if (ctx->input.adapter != nullptr) {
         ctx->input.adapter->info.begin(ctx, input_config);
     }
-    if (ctx->output.adapter) {
+    if (ctx->output.adapter != nullptr) {
         ctx->output.adapter->info.begin(ctx, output_config);
     }
-    if (ctx->parse.adapter) {
+    if (ctx->parse.adapter != nullptr) {
         ctx->parse.adapter->info.begin(ctx, parse_config);
     }
-    if (ctx->serialize.adapter) {
+    if (ctx->serialize.adapter != nullptr) {
         ctx->serialize.adapter->info.begin(ctx, serialize_config);
     }
     return ctx;
 }
 
 void gvox_destroy_adapter_context(GVoxAdapterContext *ctx) {
-    if (ctx->serialize.adapter) {
+    if (ctx->serialize.adapter != nullptr) {
         ctx->serialize.adapter->info.end(ctx);
     }
-    if (ctx->parse.adapter) {
+    if (ctx->parse.adapter != nullptr) {
         ctx->parse.adapter->info.end(ctx);
     }
-    if (ctx->output.adapter) {
+    if (ctx->output.adapter != nullptr) {
         ctx->output.adapter->info.end(ctx);
     }
-    if (ctx->input.adapter) {
+    if (ctx->input.adapter != nullptr) {
         ctx->input.adapter->info.end(ctx);
     }
 
@@ -223,7 +223,7 @@ void gvox_destroy_adapter_context(GVoxAdapterContext *ctx) {
 }
 
 void gvox_translate_region(GVoxAdapterContext *ctx, GVoxRegionRange const *range) {
-    if (!ctx->serialize.adapter) {
+    if (ctx->serialize.adapter == nullptr) {
         ctx->gvox_context_ptr->errors.emplace_back("[GVOX TRANSLATE ERROR]: The given serialize adapter was null", GVOX_RESULT_ERROR_INVALID_PARAMETER);
         return;
     }
@@ -238,7 +238,7 @@ auto gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint3
                offset->x < region.range.offset.x + static_cast<int32_t>(region.range.extent.x) &&
                offset->y < region.range.offset.y + static_cast<int32_t>(region.range.extent.y) &&
                offset->z < region.range.offset.z + static_cast<int32_t>(region.range.extent.z) &&
-               ((1u << channel_index) & region.channels);
+               (((1u << channel_index) & region.channels) != 0u);
     });
     GVoxRegion *region = nullptr;
     if (region_iter == ctx->regions.end()) {

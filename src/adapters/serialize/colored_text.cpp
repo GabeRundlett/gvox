@@ -34,7 +34,7 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GVoxAdapter
     constexpr auto newline_terminator = std::to_array("\033[0m\n");
     data.resize(range->extent.x * range->extent.y * range->extent.z * (pixel.size() - 1) + range->extent.y * range->extent.z * (line_terminator.size() - 1) + range->extent.z * (newline_terminator.size() - 1));
     size_t output_index = 0;
-    bool is_3channel =
+    bool const is_3channel =
         (user_state.config.channel_index == GVOX_CHANNEL_INDEX_COLOR) ||
         (user_state.config.channel_index == GVOX_CHANNEL_INDEX_NORMAL);
     for (uint32_t zi = 0; zi < range->extent.z; zi += user_state.config.downscale_factor) {
@@ -49,7 +49,7 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GVoxAdapter
                     float avg_b = 0.0f;
                     float sample_n = 0.0f;
                     uint32_t sub_n = user_state.config.downscale_factor;
-                    GVoxRegionRange sub_range = {
+                    GVoxRegionRange const sub_range = {
                         .offset = {
                             static_cast<int32_t>(xi + range->offset.x),
                             static_cast<int32_t>(yi + range->offset.y),
@@ -61,7 +61,7 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GVoxAdapter
                             user_state.config.downscale_factor,
                         },
                     };
-                    if (gvox_query_region_flags(ctx, &sub_range, user_state.config.channel_index)) {
+                    if (gvox_query_region_flags(ctx, &sub_range, user_state.config.channel_index) != 0u) {
                         sub_n = 1;
                     }
                     for (uint32_t sub_zi = 0; sub_zi < sub_n && (zi + sub_zi < range->extent.z); ++sub_zi) {
