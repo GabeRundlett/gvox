@@ -44,22 +44,23 @@ endif()
 
 set(GVOX_INPUT_ADAPTERS
     "byte_buffer"
-    "file"
 )
 set(GVOX_OUTPUT_ADAPTERS
     "byte_buffer"
-    "file"
     "stdout"
 )
 set(GVOX_PARSE_ADAPTERS
     "test"
     "gvox_raw"
     "gvox_palette"
+    "procedural"
     # ace_of_spades
     # magicavoxel
 )
 set(GVOX_SERIALIZE_ADAPTERS
     "test"
+    "gvox_raw"
+    "gvox_palette"
     "colored_text"
 )
 
@@ -69,10 +70,8 @@ add_library(${PROJECT_NAME} STATIC
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    target_link_libraries(${PROJECT_NAME}
-        PUBLIC
-        ${CMAKE_DL_LIBS}
-    )
+    list(APPEND GVOX_INPUT_ADAPTERS "file")
+    list(APPEND GVOX_OUTPUT_ADAPTERS "file")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()

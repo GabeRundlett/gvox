@@ -3,6 +3,7 @@
 
 typedef struct {
     char const *filepath;
-} GVoxFileInputAdapterConfig;
+    size_t byte_offset;
+} GvoxFileInputAdapterConfig;
 
 #endif

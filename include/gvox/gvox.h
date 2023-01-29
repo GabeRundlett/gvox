@@ -21,75 +21,145 @@ typedef enum {
     GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT = -7,
     GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT = -8,
     GVOX_RESULT_ERROR_SERIALIZE_ADAPTER_UNREPRESENTABLE_DATA = -9,
-} GVoxResult;
+} GvoxResult;
 
-#define GVOX_CHANNEL_INDEX_COLOR 0
-#define GVOX_CHANNEL_INDEX_NORMAL 1
-#define GVOX_CHANNEL_INDEX_MATERIAL_ID 2
-#define GVOX_CHANNEL_INDEX_ROUGHNESS 3
-#define GVOX_CHANNEL_INDEX_METALNESS 4
-#define GVOX_CHANNEL_INDEX_OPACITY 5
-#define GVOX_CHANNEL_INDEX_EMISSIVITY 6
-#define GVOX_CHANNEL_INDEX_HARDNESS 7
-#define GVOX_CHANNEL_INDEX_LAST_STANDARD 15
+#define GVOX_CHANNEL_ID_COLOR 0
+#define GVOX_CHANNEL_ID_NORMAL 1
+#define GVOX_CHANNEL_ID_MATERIAL_ID 2
+#define GVOX_CHANNEL_ID_ROUGHNESS 3
+#define GVOX_CHANNEL_ID_METALNESS 4
+#define GVOX_CHANNEL_ID_OPACITY 5
+#define GVOX_CHANNEL_ID_EMISSIVITY 6
+#define GVOX_CHANNEL_ID_HARDNESS 7
+#define GVOX_CHANNEL_ID_LAST_STANDARD 15
 
-#define GVOX_CHANNEL_BIT_COLOR (1 << GVOX_CHANNEL_INDEX_COLOR)
-#define GVOX_CHANNEL_BIT_NORMAL (1 << GVOX_CHANNEL_INDEX_NORMAL)
-#define GVOX_CHANNEL_BIT_MATERIAL_ID (1 << GVOX_CHANNEL_INDEX_MATERIAL_ID)
-#define GVOX_CHANNEL_BIT_ROUGHNESS (1 << GVOX_CHANNEL_INDEX_ROUGHNESS)
-#define GVOX_CHANNEL_BIT_METALNESS (1 << GVOX_CHANNEL_INDEX_METALNESS)
-#define GVOX_CHANNEL_BIT_OPACITY (1 << GVOX_CHANNEL_INDEX_OPACITY)
-#define GVOX_CHANNEL_BIT_EMISSIVITY (1 << GVOX_CHANNEL_INDEX_EMISSIVITY)
-#define GVOX_CHANNEL_BIT_HARDNESS (1 << GVOX_CHANNEL_INDEX_HARDNESS)
-#define GVOX_CHANNEL_BIT_LAST_STANDARD (1 << GVOX_CHANNEL_INDEX_LAST_STANDARD)
+#define GVOX_CHANNEL_BIT_COLOR (1 << GVOX_CHANNEL_ID_COLOR)
+#define GVOX_CHANNEL_BIT_NORMAL (1 << GVOX_CHANNEL_ID_NORMAL)
+#define GVOX_CHANNEL_BIT_MATERIAL_ID (1 << GVOX_CHANNEL_ID_MATERIAL_ID)
+#define GVOX_CHANNEL_BIT_ROUGHNESS (1 << GVOX_CHANNEL_ID_ROUGHNESS)
+#define GVOX_CHANNEL_BIT_METALNESS (1 << GVOX_CHANNEL_ID_METALNESS)
+#define GVOX_CHANNEL_BIT_OPACITY (1 << GVOX_CHANNEL_ID_OPACITY)
+#define GVOX_CHANNEL_BIT_EMISSIVITY (1 << GVOX_CHANNEL_ID_EMISSIVITY)
+#define GVOX_CHANNEL_BIT_HARDNESS (1 << GVOX_CHANNEL_ID_HARDNESS)
+#define GVOX_CHANNEL_BIT_LAST_STANDARD (1 << GVOX_CHANNEL_ID_LAST_STANDARD)
+
+#define GVOX_REGION_FLAG_UNIFORM 0x00000001
+
+typedef struct _GvoxContext GvoxContext;
+typedef struct _GvoxInputAdapter GvoxInputAdapter;
+typedef struct _GvoxOutputAdapter GvoxOutputAdapter;
+typedef struct _GvoxParseAdapter GvoxParseAdapter;
+typedef struct _GvoxSerializeAdapter GvoxSerializeAdapter;
+typedef struct _GvoxAdapterContext GvoxAdapterContext;
 
 typedef struct {
     int32_t x;
     int32_t y;
     int32_t z;
-} GVoxOffset3D;
+} GvoxOffset3D;
 
 typedef struct {
     uint32_t x;
     uint32_t y;
     uint32_t z;
-} GVoxExtent3D;
+} GvoxExtent3D;
 
 typedef struct {
-    GVoxOffset3D offset;
-    GVoxExtent3D extent;
-} GVoxRegionRange;
+    GvoxOffset3D offset;
+    GvoxExtent3D extent;
+} GvoxRegionRange;
 
-typedef struct _GVoxContext GVoxContext;
-typedef struct _GVoxInputAdapter GVoxInputAdapter;
-typedef struct _GVoxOutputAdapter GVoxOutputAdapter;
-typedef struct _GVoxParseAdapter GVoxParseAdapter;
-typedef struct _GVoxSerializeAdapter GVoxSerializeAdapter;
-typedef struct _GVoxAdapterContext GVoxAdapterContext;
+typedef struct {
+    GvoxRegionRange range;
+    uint32_t channels;
+    uint32_t flags;
+    void *data;
+} GvoxRegion;
 
-GVoxContext *gvox_create_context(void);
-void gvox_destroy_context(GVoxContext *ctx);
+typedef struct {
+    char const *name_str;
+    void (*begin)(GvoxAdapterContext *ctx, void *config);
+    void (*end)(GvoxAdapterContext *ctx);
+    void (*read)(GvoxAdapterContext *ctx, size_t position, size_t size, void *data);
+} GvoxInputAdapterInfo;
 
-GVoxResult gvox_get_result(GVoxContext *ctx);
-void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
-void gvox_pop_result(GVoxContext *ctx);
+typedef struct {
+    char const *name_str;
+    void (*begin)(GvoxAdapterContext *ctx, void *config);
+    void (*end)(GvoxAdapterContext *ctx);
+    void (*write)(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data);
+    void (*reserve)(GvoxAdapterContext *ctx, size_t size);
+} GvoxOutputAdapterInfo;
 
-GVoxInputAdapter *gvox_get_input_adapter(GVoxContext *ctx, char const *adapter_name);
-GVoxOutputAdapter *gvox_get_output_adapter(GVoxContext *ctx, char const *adapter_name);
-GVoxParseAdapter *gvox_get_parse_adapter(GVoxContext *ctx, char const *adapter_name);
-GVoxSerializeAdapter *gvox_get_serialize_adapter(GVoxContext *ctx, char const *adapter_name);
+typedef struct {
+    char const *name_str;
+    void (*begin)(GvoxAdapterContext *ctx, void *config);
+    void (*end)(GvoxAdapterContext *ctx);
+    uint32_t (*query_region_flags)(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
+    GvoxRegion (*load_region)(GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+    void (*unload_region)(GvoxAdapterContext *ctx, GvoxRegion *region);
+    uint32_t (*sample_region)(GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
+} GvoxParseAdapterInfo;
 
-GVoxAdapterContext *gvox_create_adapter_context(
-    GVoxContext *gvox_ctx,
-    GVoxInputAdapter *input_adapter, void *input_config,
-    GVoxOutputAdapter *output_adapter, void *output_config,
-    GVoxParseAdapter *parse_adapter, void *parse_config,
-    GVoxSerializeAdapter *serialize_adapter, void *serialize_config);
-void gvox_destroy_adapter_context(GVoxAdapterContext *ctx);
-void gvox_translate_region(GVoxAdapterContext *ctx, GVoxRegionRange const *range);
+typedef struct {
+    char const *name_str;
+    void (*begin)(GvoxAdapterContext *ctx, void *config);
+    void (*end)(GvoxAdapterContext *ctx);
+    void (*serialize_region)(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+} GvoxSerializeAdapterInfo;
 
-uint32_t gvox_sample_data(GVoxAdapterContext *ctx, GVoxOffset3D const *offset, uint32_t channel_index);
-uint32_t gvox_query_region_flags(GVoxAdapterContext *ctx, GVoxRegionRange const *range, uint32_t channel_index);
+GvoxContext *gvox_create_context(void);
+void gvox_destroy_context(GvoxContext *ctx);
+
+GvoxResult gvox_get_result(GvoxContext *ctx);
+void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *str_size);
+void gvox_pop_result(GvoxContext *ctx);
+
+GvoxInputAdapter *gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info);
+GvoxInputAdapter *gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GvoxOutputAdapter *gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info);
+GvoxOutputAdapter *gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GvoxParseAdapter *gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info);
+GvoxParseAdapter *gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GvoxSerializeAdapter *gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info);
+GvoxSerializeAdapter *gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GvoxAdapterContext *gvox_create_adapter_context(
+    GvoxContext *gvox_ctx,
+    GvoxInputAdapter *input_adapter, void *input_config,
+    GvoxOutputAdapter *output_adapter, void *output_config,
+    GvoxParseAdapter *parse_adapter, void *parse_config,
+    GvoxSerializeAdapter *serialize_adapter, void *serialize_config);
+void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
+void gvox_translate_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+
+GvoxRegion gvox_load_region(GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+void gvox_unload_region(GvoxAdapterContext *ctx, GvoxRegion *region);
+uint32_t gvox_sample_region(GvoxAdapterContext *ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id);
+uint32_t gvox_query_region_flags(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
+
+void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
+void *gvox_adapter_malloc(GvoxAdapterContext *ctx, size_t size);
+
+void gvox_input_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
+void gvox_output_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
+void gvox_parse_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
+void gvox_serialize_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
+
+void *gvox_input_adapter_get_user_pointer(GvoxAdapterContext *ctx);
+void *gvox_output_adapter_get_user_pointer(GvoxAdapterContext *ctx);
+void *gvox_parse_adapter_get_user_pointer(GvoxAdapterContext *ctx);
+void *gvox_serialize_adapter_get_user_pointer(GvoxAdapterContext *ctx);
+
+// To be used by the parse adapter
+void gvox_input_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data);
+
+// To be used by the serialize adapter
+void gvox_output_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data);
+void gvox_output_reserve(GvoxAdapterContext *ctx, size_t size);
 
 #ifdef __cplusplus
 }

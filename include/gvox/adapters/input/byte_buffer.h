@@ -6,6 +6,6 @@
 typedef struct {
     uint8_t const *data;
     size_t size;
-} GVoxByteBufferInputAdapterConfig;
+} GvoxByteBufferInputAdapterConfig;
 
 #endif

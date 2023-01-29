@@ -8,6 +8,6 @@ typedef struct {
     uint8_t **out_byte_buffer_ptr;
 
     void *(*allocate)(size_t size);
-} GVoxByteBufferOutputAdapterConfig;
+} GvoxByteBufferOutputAdapterConfig;
 
 #endif

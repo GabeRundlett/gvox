@@ -3,6 +3,6 @@
 
 typedef struct {
     char const *filepath;
-} GVoxFileOutputAdapterConfig;
+} GvoxFileOutputAdapterConfig;
 
 #endif
