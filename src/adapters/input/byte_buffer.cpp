@@ -1,7 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/input/byte_buffer.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 

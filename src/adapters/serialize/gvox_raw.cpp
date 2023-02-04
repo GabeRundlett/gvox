@@ -1,6 +1,8 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/serialize/gvox_raw.h>
 
+#include <cstdlib>
+
 #include <bit>
 #include <array>
 #include <vector>

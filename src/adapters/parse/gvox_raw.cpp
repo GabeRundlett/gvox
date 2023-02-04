@@ -1,7 +1,9 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/parse/gvox_raw.h>
 
+#include <cstdlib>
 #include <cstring>
+
 #include <bit>
 #include <array>
 #include <vector>

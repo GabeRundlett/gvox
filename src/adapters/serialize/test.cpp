@@ -1,6 +1,8 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/serialize/test.h>
 
+#include <cstdlib>
+
 #include <bit>
 #include <array>
 
