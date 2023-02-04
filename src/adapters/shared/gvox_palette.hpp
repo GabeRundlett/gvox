@@ -41,5 +41,17 @@ static constexpr auto calc_block_size(size_t variant_n) -> size_t {
 }
 
 static constexpr auto MAX_REGION_ALLOCATION_SIZE = REGION_SIZE * REGION_SIZE * REGION_SIZE * sizeof(uint32_t);
-static_assert(calc_block_size(367) <= MAX_REGION_ALLOCATION_SIZE);
-static_assert(calc_block_size(368) > MAX_REGION_ALLOCATION_SIZE);
+static constexpr auto MAX_REGION_COMPRESSED_VARIANT_N =
+    REGION_SIZE == 8 ? 367 : (REGION_SIZE == 16 ? 2559 : 0);
+
+static_assert(calc_block_size(MAX_REGION_COMPRESSED_VARIANT_N) <= MAX_REGION_ALLOCATION_SIZE);
+static_assert(calc_block_size(MAX_REGION_COMPRESSED_VARIANT_N + 1) > MAX_REGION_ALLOCATION_SIZE);
+
+struct ChannelHeader {
+    uint32_t variant_n;
+    uint32_t blob_offset; // if variant_n == 1, this is just the data
+};
+
+struct RegionHeader {
+    uint32_t channel_n;
+};

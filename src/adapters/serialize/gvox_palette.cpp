@@ -12,15 +12,6 @@
 #include <unordered_set>
 #include <algorithm>
 
-struct ChannelHeader {
-    uint32_t variant_n;
-    uint32_t blob_offset; // if variant_n == 1, this is just the data
-};
-
-struct RegionHeader {
-    uint32_t channel_n;
-};
-
 struct GvoxPaletteSerializeUserState {
     size_t offset{};
     size_t blobs_begin{};
@@ -81,7 +72,7 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
     auto const bits_per_variant = ceil_log2(variant_n);
     size_t size = 0;
     ChannelHeader region_header{.variant_n = variant_n};
-    if (variant_n > 367) {
+    if (variant_n > MAX_REGION_COMPRESSED_VARIANT_N) {
         size = MAX_REGION_ALLOCATION_SIZE;
         auto const old_size = user_state.data.size();
         region_header.blob_offset = static_cast<uint32_t>(old_size - user_state.blobs_begin);
@@ -138,13 +129,19 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
                         u32_voxel = sample_u32_data(pos);
                     }
                     auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
-                    // assert(palette_iter != palette_end);
+                    if (palette_iter == palette_end) {
+                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "How did this happen? (1)");
+                        return 0;
+                    }
                     auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
                     auto const bit_index = static_cast<size_t>(in_region_index * bits_per_variant);
                     auto const byte_index = bit_index / 8;
                     auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                     auto const mask = get_mask(bits_per_variant);
-                    // assert(output_buffer + byte_index + 3 < data.data() + data.size());
+                    if (output_buffer + byte_index + 3 >= user_state.data.data() + user_state.data.size()) {
+                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "How did this happen? (2)");
+                        return 0;
+                    }
                     auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                     output = output & ~(mask << bit_offset);
                     output = output | static_cast<uint32_t>(palette_id << bit_offset);
@@ -175,6 +172,9 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     gvox_output_write(ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);
 
+    auto blob_size_offset = user_state.offset;
+    user_state.offset += sizeof(uint32_t);
+
     gvox_output_write(ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
     user_state.offset += sizeof(channel_flags);
 
@@ -194,7 +194,8 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     auto size = (sizeof(RegionHeader) + sizeof(ChannelHeader) * channels.size()) * region_nx * region_ny * region_nz;
     user_state.blobs_begin = size;
     auto const two_percent_raw_size = static_cast<size_t>(range->extent.x * range->extent.y * range->extent.z) * sizeof(uint32_t) * channels.size() / 50;
-    user_state.data.resize(size + two_percent_raw_size);
+    user_state.data.reserve(size + two_percent_raw_size);
+    user_state.data.resize(size);
 
     for (uint32_t zi = 0; zi < region_nz; ++zi) {
         for (uint32_t yi = 0; yi < region_ny; ++yi) {
@@ -206,23 +207,8 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
         }
     }
 
+    auto blob_size = static_cast<uint32_t>(size - user_state.blobs_begin);
+    gvox_output_write(ctx, blob_size_offset, sizeof(blob_size), &blob_size);
+
     gvox_output_write(ctx, user_state.offset, user_state.data.size(), user_state.data.data());
-    // for (uint32_t zi = 0; zi < range->extent.z; ++zi) {
-    //     for (uint32_t yi = 0; yi < range->extent.y; ++yi) {
-    //         for (uint32_t xi = 0; xi < range->extent.x; ++xi) {
-    //             auto const pos = GvoxOffset3D{
-    //                 static_cast<int32_t>(xi + range->offset.x),
-    //                 static_cast<int32_t>(yi + range->offset.y),
-    //                 static_cast<int32_t>(zi + range->offset.z),
-    //             };
-    //             for (uint32_t channel_i = 0; channel_i < channels.size(); ++channel_i) {
-    //                 auto region = gvox_load_region(ctx, &pos, channels[channel_i]);
-    //                 temp_voxel[channel_i] = gvox_sample_region(ctx, &region, &pos, channels[channel_i]);
-    //                 gvox_unload_region(ctx, &region);
-    //             }
-    //             gvox_output_write(ctx, offset, voxel_size, temp_voxel.data());
-    //             offset += voxel_size;
-    //         }
-    //     }
-    // }
 }
