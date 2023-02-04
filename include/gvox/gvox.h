@@ -142,7 +142,6 @@ uint32_t gvox_sample_region(GvoxAdapterContext *ctx, GvoxRegion *region, GvoxOff
 uint32_t gvox_query_region_flags(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
 
 void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
-void *gvox_adapter_malloc(GvoxAdapterContext *ctx, size_t size);
 
 void gvox_input_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
 void gvox_output_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);

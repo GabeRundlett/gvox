@@ -10,7 +10,7 @@ struct ColoredTextSerializeUserState {
 };
 
 extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
-    auto *user_state_ptr = gvox_adapter_malloc(ctx, sizeof(ColoredTextSerializeUserState));
+    auto *user_state_ptr = malloc(sizeof(ColoredTextSerializeUserState));
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
     gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
 
@@ -27,6 +27,9 @@ extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxA
 }
 
 extern "C" void gvox_serialize_adapter_colored_text_end([[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
+    user_state.~ColoredTextSerializeUserState();
+    free(&user_state);
 }
 
 extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channels) {

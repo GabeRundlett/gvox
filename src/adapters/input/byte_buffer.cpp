@@ -13,7 +13,7 @@ struct ByteBufferInputUserState {
 };
 
 extern "C" void gvox_input_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, void *config) {
-    auto *user_state_ptr = gvox_adapter_malloc(ctx, sizeof(ByteBufferInputUserState));
+    auto *user_state_ptr = malloc(sizeof(ByteBufferInputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferInputUserState());
     gvox_input_adapter_set_user_pointer(ctx, user_state_ptr);
 
@@ -25,6 +25,7 @@ extern "C" void gvox_input_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, vo
 extern "C" void gvox_input_adapter_byte_buffer_end([[maybe_unused]] GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<ByteBufferInputUserState *>(gvox_input_adapter_get_user_pointer(ctx));
     user_state.~ByteBufferInputUserState();
+    free(&user_state);
 }
 
 extern "C" void gvox_input_adapter_byte_buffer_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {

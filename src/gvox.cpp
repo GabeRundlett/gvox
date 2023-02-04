@@ -44,7 +44,6 @@ struct _GvoxAdapterContext {
     AdapterState<GvoxOutputAdapter> output;
     AdapterState<GvoxParseAdapter> parse;
     AdapterState<GvoxSerializeAdapter> serialize;
-    std::vector<void *> allocations;
 };
 
 #include <adapters.hpp>
@@ -211,10 +210,6 @@ void gvox_destroy_adapter_context(GvoxAdapterContext *ctx) {
         ctx->input.adapter->info.end(ctx);
     }
 
-    for (auto &allocation : ctx->allocations) {
-        free(allocation);
-    }
-
     delete ctx;
 }
 void gvox_translate_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
@@ -246,10 +241,6 @@ auto gvox_query_region_flags(GvoxAdapterContext *ctx, GvoxRegionRange const *ran
 void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message) {
     ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
     assert(0 && message);
-}
-auto gvox_adapter_malloc(GvoxAdapterContext *ctx, size_t size) -> void * {
-    ctx->allocations.emplace_back(malloc(size));
-    return ctx->allocations.back();
 }
 
 void gvox_input_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {

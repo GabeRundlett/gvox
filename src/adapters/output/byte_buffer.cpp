@@ -15,7 +15,7 @@ struct ByteBufferOutputUserState {
 };
 
 extern "C" void gvox_output_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, void *config) {
-    auto *user_state_ptr = reinterpret_cast<uint8_t *>(gvox_adapter_malloc(ctx, sizeof(ByteBufferOutputUserState)));
+    auto *user_state_ptr = malloc(sizeof(ByteBufferOutputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferOutputUserState());
     gvox_output_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
@@ -37,6 +37,7 @@ extern "C" void gvox_output_adapter_byte_buffer_end(GvoxAdapterContext *ctx) {
     *user_state.config.out_byte_buffer_ptr = static_cast<uint8_t *>(bytes);
     *user_state.config.out_size = user_state.bytes.size();
     user_state.~ByteBufferOutputUserState();
+    free(&user_state);
 }
 
 extern "C" void gvox_output_adapter_byte_buffer_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data) {

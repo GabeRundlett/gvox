@@ -30,7 +30,7 @@ struct GvoxPaletteParseUserState {
 };
 
 extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
-    auto *user_state_ptr = gvox_adapter_malloc(ctx, sizeof(GvoxPaletteParseUserState));
+    auto *user_state_ptr = malloc(sizeof(GvoxPaletteParseUserState));
     auto &user_state = *(new (user_state_ptr) GvoxPaletteParseUserState());
     gvox_parse_adapter_set_user_pointer(ctx, user_state_ptr);
 
@@ -84,6 +84,7 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [
 extern "C" void gvox_parse_adapter_gvox_palette_end([[maybe_unused]] GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
     user_state.~GvoxPaletteParseUserState();
+    free(&user_state);
 }
 
 extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {

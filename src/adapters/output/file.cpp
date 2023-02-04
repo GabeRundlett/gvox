@@ -15,7 +15,7 @@ struct OutputFileUserState {
 };
 
 extern "C" void gvox_output_adapter_file_begin(GvoxAdapterContext *ctx, void *config) {
-    auto *user_state_ptr = gvox_adapter_malloc(ctx, sizeof(OutputFileUserState));
+    auto *user_state_ptr = malloc(sizeof(OutputFileUserState));
     auto &user_state = *(new (user_state_ptr) OutputFileUserState());
     gvox_output_adapter_set_user_pointer(ctx, user_state_ptr);
 
@@ -34,6 +34,7 @@ extern "C" void gvox_output_adapter_file_end(GvoxAdapterContext *ctx) {
     fwrite(user_state.bytes.data(), 1, user_state.bytes.size(), o_file);
     fclose(o_file);
     user_state.~OutputFileUserState();
+    free(&user_state);
 }
 
 extern "C" void gvox_output_adapter_file_reserve(GvoxAdapterContext *ctx, size_t size) {

@@ -25,7 +25,7 @@ static void write_data(uint8_t *&buffer_ptr, T const &data) {
 }
 
 extern "C" void gvox_serialize_adapter_gvox_palette_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
-    auto *user_state_ptr = gvox_adapter_malloc(ctx, sizeof(GvoxPaletteSerializeUserState));
+    auto *user_state_ptr = malloc(ctx, sizeof(GvoxPaletteSerializeUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
     gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
 }
@@ -33,6 +33,7 @@ extern "C" void gvox_serialize_adapter_gvox_palette_begin([[maybe_unused]] GvoxA
 extern "C" void gvox_serialize_adapter_gvox_palette_end([[maybe_unused]] GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
     user_state.~GvoxPaletteSerializeUserState();
+    free(&user_state);
 }
 
 auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_state, GvoxRegionRange const &range, uint32_t rx, uint32_t ry, uint32_t rz, uint32_t ci, std::vector<uint8_t> const &channels) -> size_t {
