@@ -55,7 +55,7 @@ set(GVOX_PARSE_ADAPTERS
     "gvox_palette"
     "procedural"
     # ace_of_spades
-    # magicavoxel
+    "magicavoxel"
 )
 set(GVOX_SERIALIZE_ADAPTERS
     "test"
