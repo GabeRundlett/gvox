@@ -8,7 +8,7 @@
 #include <new>
 
 struct ByteBufferInputUserState {
-    std::vector<uint8_t> bytes = {};
+    std::vector<uint8_t> bytes{};
 };
 
 extern "C" void gvox_input_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, void *config) {

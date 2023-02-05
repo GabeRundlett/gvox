@@ -7,9 +7,16 @@
 
 #include <new>
 
+#if GVOX_ENABLE_THREADSAFETY
+#include <mutex>
+#endif
+
 struct FileInputUserState {
-    FILE *file;
-    size_t byte_offset;
+    FILE *file{};
+    size_t byte_offset{};
+#if GVOX_ENABLE_THREADSAFETY
+    std::mutex mtx{};
+#endif
 };
 
 extern "C" void gvox_input_adapter_file_begin(GvoxAdapterContext *ctx, void *config) {
@@ -31,6 +38,9 @@ extern "C" void gvox_input_adapter_file_end(GvoxAdapterContext *ctx) {
 
 extern "C" void gvox_input_adapter_file_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
     auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_input_adapter_get_user_pointer(ctx));
+#if GVOX_ENABLE_THREADSAFETY
+    auto lock = std::lock_guard{user_state.mtx};
+#endif
     auto ret = fseek(user_state.file, static_cast<long>(position + user_state.byte_offset), SEEK_SET);
     if (ret != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_INPUT_ADAPTER, "Failed to set the file read head");

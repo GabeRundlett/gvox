@@ -8,6 +8,8 @@
 #include <array>
 #include <algorithm>
 
+#include <mutex>
+
 #if __wasm32__
 #include "utils/patch_wasm.h"
 #endif
@@ -25,11 +27,14 @@ struct _GvoxSerializeAdapter {
     GvoxSerializeAdapterInfo info;
 };
 struct _GvoxContext {
-    std::unordered_map<std::string, _GvoxInputAdapter *> input_adapter_table = {};
-    std::unordered_map<std::string, _GvoxOutputAdapter *> output_adapter_table = {};
-    std::unordered_map<std::string, _GvoxParseAdapter *> parse_adapter_table = {};
-    std::unordered_map<std::string, _GvoxSerializeAdapter *> serialize_adapter_table = {};
-    std::vector<std::pair<std::string, GvoxResult>> errors = {};
+    std::unordered_map<std::string, _GvoxInputAdapter *> input_adapter_table{};
+    std::unordered_map<std::string, _GvoxOutputAdapter *> output_adapter_table{};
+    std::unordered_map<std::string, _GvoxParseAdapter *> parse_adapter_table{};
+    std::unordered_map<std::string, _GvoxSerializeAdapter *> serialize_adapter_table{};
+    std::vector<std::pair<std::string, GvoxResult>> errors{};
+#if GVOX_ENABLE_THREADSAFETY
+    std::mutex mtx{};
+#endif
 };
 
 template <typename AdapterT>
@@ -217,7 +222,10 @@ void gvox_translate_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[TRANSLATE ERROR]: The given serialize adapter was null");
         return;
     }
+    // auto t0 = std::chrono::high_resolution_clock::now();
     ctx->serialize.adapter->info.serialize_region(ctx, range, channel_flags);
+    // auto t1 = std::chrono::high_resolution_clock::now();
+    // std::cout << "Elapsed: " << std::chrono::duration<float>(t1 - t0).count() << std::endl;
 }
 
 auto gvox_load_region(GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
@@ -239,6 +247,9 @@ auto gvox_query_region_flags(GvoxAdapterContext *ctx, GvoxRegionRange const *ran
 }
 
 void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message) {
+#if GVOX_ENABLE_THREADSAFETY
+    auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
+#endif
     ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
     assert(0 && message);
 }

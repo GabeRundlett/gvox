@@ -10,11 +10,10 @@
 #include <new>
 
 struct GvoxRawParseUserState {
-    GvoxRegionRange range;
-    uint32_t channel_flags;
-    uint32_t channel_n;
-
-    size_t offset;
+    GvoxRegionRange range{};
+    uint32_t channel_flags{};
+    uint32_t channel_n{};
+    size_t offset{};
 };
 
 extern "C" void gvox_parse_adapter_gvox_raw_begin(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {

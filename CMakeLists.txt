@@ -68,6 +68,11 @@ add_library(${PROJECT_NAME} STATIC
     "src/gvox.cpp"
 )
 
+if(GVOX_ENABLE_THREADSAFETY)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
+endif()
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
     list(APPEND GVOX_INPUT_ADAPTERS "file")

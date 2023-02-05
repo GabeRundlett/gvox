@@ -15,15 +15,15 @@ struct LoadedRegionHeader {
 };
 
 struct GvoxPaletteParseUserState {
-    GvoxRegionRange range;
-    uint32_t blob_size;
-    uint32_t channel_flags;
-    uint32_t channel_n;
+    GvoxRegionRange range{};
+    uint32_t blob_size{};
+    uint32_t channel_flags{};
+    uint32_t channel_n{};
 
     size_t offset{};
-    uint32_t r_nx;
-    uint32_t r_ny;
-    uint32_t r_nz;
+    uint32_t r_nx{};
+    uint32_t r_ny{};
+    uint32_t r_nz{};
 
     std::vector<LoadedRegionHeader> region_headers{};
     std::vector<uint8_t> buffer{};

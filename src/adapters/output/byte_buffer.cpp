@@ -9,8 +9,8 @@
 #include <new>
 
 struct ByteBufferOutputUserState {
-    GvoxByteBufferOutputAdapterConfig config = {};
-    std::vector<uint8_t> bytes = {};
+    GvoxByteBufferOutputAdapterConfig config{};
+    std::vector<uint8_t> bytes{};
 };
 
 extern "C" void gvox_output_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, void *config) {

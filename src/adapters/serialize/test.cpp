@@ -1,11 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/serialize/test.h>
 
-#include <cstdlib>
-
-#include <bit>
-#include <array>
-
 extern "C" void gvox_serialize_adapter_test_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
 }
 

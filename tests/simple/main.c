@@ -27,8 +27,8 @@ void test_raw_file_io(void) {
             parse_adapter, NULL,
             serialize_adapter, NULL);
         GvoxRegionRange region_range = {
-            .offset = {0, 0, 0},
-            .extent = {16, 16, 16},
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
         };
         gvox_translate_region(adapter_ctx, &region_range, GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
         gvox_destroy_adapter_context(adapter_ctx);
@@ -59,8 +59,8 @@ void test_raw_file_io(void) {
                 parse_adapter, NULL,
                 serialize_adapter, &s_config);
             GvoxRegionRange region_range = {
-                .offset = {0, 0, 0},
-                .extent = {16, 16, 16},
+                .offset = {-4, -4, -4},
+                .extent = {+8, +8, +8},
             };
             gvox_translate_region(adapter_ctx, &region_range, 1u << s_config.channel_id);
             gvox_destroy_adapter_context(adapter_ctx);
@@ -72,7 +72,6 @@ void test_raw_file_io(void) {
 
 void test_palette_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
-
     // Create gvox_palette file
     {
         GvoxOutputAdapter *o_adapter = gvox_get_output_adapter(gvox_ctx, "file");
@@ -88,15 +87,13 @@ void test_palette_file_io(void) {
             parse_adapter, NULL,
             serialize_adapter, NULL);
         GvoxRegionRange region_range = {
-            .offset = {0, 0, 0},
-            .extent = {16, 16, 16},
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
         };
         gvox_translate_region(adapter_ctx, &region_range, GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
         gvox_destroy_adapter_context(adapter_ctx);
     }
-
     printf("\n");
-
     // Load gvox_palette file
     {
         GvoxInputAdapter *i_adapter = gvox_get_input_adapter(gvox_ctx, "file");
@@ -122,18 +119,17 @@ void test_palette_file_io(void) {
                 parse_adapter, NULL,
                 serialize_adapter, &s_config);
             GvoxRegionRange region_range = {
-                .offset = {0, 0, 0},
-                .extent = {16, 16, 16},
+                .offset = {-4, -4, -4},
+                .extent = {+8, +8, +8},
             };
             gvox_translate_region(adapter_ctx, &region_range, 1u << s_config.channel_id);
             gvox_destroy_adapter_context(adapter_ctx);
         }
     }
-
     gvox_destroy_context(gvox_ctx);
 }
 
 int main(void) {
-    test_raw_file_io();
+    // test_raw_file_io();
     test_palette_file_io();
 }

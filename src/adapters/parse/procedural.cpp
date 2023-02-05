@@ -9,21 +9,20 @@ float stable_rand(float x) { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f
 float stable_rand(float x, float y) { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
 float stable_rand(float x, float y, float z) { return stable_rand(x + stable_rand(z), y + stable_rand(z)); }
 float stable_rand(int32_t xi, int32_t yi, int32_t zi) {
-    float const x = static_cast<float>(xi) * (1.0f / 8.0f);
-    float const y = static_cast<float>(yi) * (1.0f / 8.0f);
-    float const z = static_cast<float>(zi) * (1.0f / 8.0f);
+    float const x = (static_cast<float>(xi) + 0.5f) * (1.0f / 8.0f);
+    float const y = (static_cast<float>(yi) + 0.5f) * (1.0f / 8.0f);
+    float const z = (static_cast<float>(zi) + 0.5f) * (1.0f / 8.0f);
     return stable_rand(x, y, z);
 }
 
 auto sample_terrain(float x, float y, float z) -> float {
-    float const r = stable_rand(x, y, z);
-    return sinf(x * 10) * 5.8f + sinf(y * 10) * 5.9f - z * 8.0f + 8.0f + r * 2.5f;
+    return -(x * x + y * y + z * z) + 0.25f;
 }
 
 auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
-    float const x = static_cast<float>(xi) * (1.0f / 8.0f);
-    float const y = static_cast<float>(yi) * (1.0f / 8.0f);
-    float const z = static_cast<float>(zi) * (1.0f / 8.0f);
+    float const x = (static_cast<float>(xi) + 0.5f) * (1.0f / 8.0f);
+    float const y = (static_cast<float>(yi) + 0.5f) * (1.0f / 8.0f);
+    float const z = (static_cast<float>(zi) + 0.5f) * (1.0f / 8.0f);
     return sample_terrain(x, y, z);
 }
 
@@ -42,14 +41,12 @@ extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxA
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "procedural 'parser' does not generate anything other than color & normal");
         return {};
     }
-
     constexpr auto create_color = [](float rf, float gf, float bf, uint32_t const a) {
         uint32_t const r = static_cast<uint32_t>(std::max(std::min(rf, 1.0f), 0.0f) * 255.0f);
         uint32_t const g = static_cast<uint32_t>(std::max(std::min(gf, 1.0f), 0.0f) * 255.0f);
         uint32_t const b = static_cast<uint32_t>(std::max(std::min(bf, 1.0f), 0.0f) * 255.0f);
         return (r << 0x00) | (g << 0x08) | (b << 0x10) | (a << 0x18);
     };
-
     constexpr auto create_normal = [](float xf, float yf, float zf) {
         uint32_t const x = static_cast<uint32_t>(std::max(std::min(xf * 0.5f + 0.5f, 1.0f), 0.0f) * 255.0f);
         uint32_t const y = static_cast<uint32_t>(std::max(std::min(yf * 0.5f + 0.5f, 1.0f), 0.0f) * 255.0f);
@@ -57,11 +54,9 @@ extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxA
         uint32_t const w = 0;
         return (x << 0x00) | (y << 0x08) | (z << 0x10) | (w << 0x18);
     };
-
     uint32_t color = create_color(0.6f, 0.7f, 0.9f, 0u);
     uint32_t normal = create_normal(0.0f, 0.0f, 0.0f);
     uint32_t id = 0;
-
     float const val = sample_terrain_i(offset->x, offset->y, offset->z);
     if (val >= 0.0f) {
         {
@@ -71,7 +66,7 @@ extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxA
             float const px_val = sample_terrain_i(offset->x + 1, offset->y, offset->z);
             float const py_val = sample_terrain_i(offset->x, offset->y + 1, offset->z);
             float const pz_val = sample_terrain_i(offset->x, offset->y, offset->z + 1);
-            if (nx_val < 0.0f || ny_val < 0.0f || nz_val < 0.0f || py_val < 0.0f || pz_val < 0.0f) {
+            if (nx_val < 0.0f || ny_val < 0.0f || nz_val < 0.0f || px_val < 0.0f || py_val < 0.0f || pz_val < 0.0f) {
                 float const nx = px_val - val;
                 float const ny = py_val - val;
                 float const nz = pz_val - val;
@@ -102,7 +97,6 @@ extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxA
             id = 3u;
         }
     }
-
     GvoxRegion const region = {
         .range = {
             .offset = *offset,

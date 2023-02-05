@@ -10,8 +10,8 @@
 #include <new>
 
 struct OutputFileUserState {
-    std::filesystem::path path = {};
-    std::vector<uint8_t> bytes = {};
+    std::filesystem::path path{};
+    std::vector<uint8_t> bytes{};
 };
 
 extern "C" void gvox_output_adapter_file_begin(GvoxAdapterContext *ctx, void *config) {

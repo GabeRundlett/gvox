@@ -16,6 +16,7 @@
                 "GVOX_ENABLE_FILE_IO": true,
                 "GVOX_ENABLE_ZLIB": true,
                 "GVOX_ENABLE_GZIP": true,
+                "GVOX_ENABLE_THREADSAFETY": true,
                 "GVOX_ENABLE_TESTS": true,
                 "GVOX_ENABLE_ASAN": false,
                 "GVOX_ENABLE_STATIC_ANALYSIS": false,
@@ -59,6 +60,7 @@
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_ZLIB": false,
                 "GVOX_ENABLE_GZIP": false,
+                "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake"
@@ -74,6 +76,7 @@
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_ZLIB": false,
                 "GVOX_ENABLE_GZIP": false,
+                "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake"

@@ -15,7 +15,6 @@ extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxA
     auto *user_state_ptr = malloc(sizeof(ColoredTextSerializeUserState));
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
     gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
-
     if (config != nullptr) {
         user_state.config = *reinterpret_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
     } else {

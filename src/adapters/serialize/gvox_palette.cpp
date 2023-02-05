@@ -2,6 +2,7 @@
 #include <gvox/adapters/serialize/gvox_palette.h>
 
 #include "../shared/gvox_palette.hpp"
+#include "../shared/thread_pool.hpp"
 
 #include <cstdlib>
 #include <cstdint>
@@ -12,11 +13,15 @@
 #include <new>
 #include <unordered_set>
 #include <algorithm>
+#include <mutex>
 
 struct GvoxPaletteSerializeUserState {
     size_t offset{};
     size_t blobs_begin{};
-    std::vector<uint8_t> data = {};
+    std::vector<uint8_t> data{};
+#if ENABLE_THREAD_POOL
+    std::mutex mtx{};
+#endif
 };
 
 template <typename T>
@@ -74,12 +79,22 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
     auto const bits_per_variant = ceil_log2(variant_n);
     size_t size = 0;
     ChannelHeader region_header{.variant_n = variant_n};
+    auto local_data = std::vector<uint8_t>{};
+    auto alloc_region = [&]() {
+        {
+#if ENABLE_THREAD_POOL
+            auto lock = std::lock_guard{user_state.mtx};
+#endif
+            auto const old_size = user_state.data.size();
+            region_header.blob_offset = static_cast<uint32_t>(old_size - user_state.blobs_begin);
+            user_state.data.resize(old_size + size);
+        }
+        local_data.resize(size);
+    };
     if (variant_n > MAX_REGION_COMPRESSED_VARIANT_N) {
         size = MAX_REGION_ALLOCATION_SIZE;
-        auto const old_size = user_state.data.size();
-        region_header.blob_offset = static_cast<uint32_t>(old_size - user_state.blobs_begin);
-        user_state.data.resize(old_size + size);
-        uint8_t *output_buffer = user_state.data.data() + old_size;
+        alloc_region();
+        uint8_t *output_buffer = local_data.data();
         for (uint32_t zi = 0; zi < REGION_SIZE; ++zi) {
             for (uint32_t yi = 0; yi < REGION_SIZE; ++yi) {
                 for (uint32_t xi = 0; xi < REGION_SIZE; ++xi) {
@@ -104,10 +119,8 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
         size += sizeof(uint32_t) * variant_n;
         // insert palette region
         size += calc_palette_region_size(bits_per_variant);
-        auto const old_size = user_state.data.size();
-        region_header.blob_offset = static_cast<uint32_t>(old_size - user_state.blobs_begin);
-        user_state.data.resize(old_size + size);
-        uint8_t *output_buffer = user_state.data.data() + old_size;
+        alloc_region();
+        uint8_t *output_buffer = local_data.data();
         auto *palette_begin = reinterpret_cast<uint32_t *>(output_buffer);
         auto *palette_end = palette_begin + variant_n;
         for (auto u32_voxel : tile_set) {
@@ -132,7 +145,7 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
                     }
                     auto *palette_iter = std::find(palette_begin, palette_end, u32_voxel);
                     if (palette_iter == palette_end) {
-                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "How did this happen? (1)");
+                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Failed to find the voxel within the palette, how did this happen?");
                         return 0;
                     }
                     auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
@@ -140,8 +153,8 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
                     auto const byte_index = bit_index / 8;
                     auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                     auto const mask = get_mask(bits_per_variant);
-                    if (output_buffer + byte_index + 3 >= user_state.data.data() + user_state.data.size()) {
-                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "How did this happen? (2)");
+                    if (output_buffer + byte_index + 3 >= local_data.data() + local_data.size()) {
+                        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Trying to write past end of buffer, how did this happen?");
                         return 0;
                     }
                     auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
@@ -155,31 +168,34 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
     }
     auto region_nx = (range.extent.x + REGION_SIZE - 1) / REGION_SIZE;
     auto region_ny = (range.extent.y + REGION_SIZE - 1) / REGION_SIZE;
-    auto *channel_header_ptr =
-        user_state.data.data() +
-        (rx + ry * region_nx + rz * region_nx * region_ny) *
-            (sizeof(RegionHeader) + sizeof(ChannelHeader) * channels.size()) +
-        (sizeof(RegionHeader) + sizeof(ChannelHeader) * ci);
-    write_data<ChannelHeader>(channel_header_ptr, region_header);
+    {
+#if ENABLE_THREAD_POOL
+        auto lock = std::lock_guard{user_state.mtx};
+#endif
+        auto *channel_header_ptr =
+            user_state.data.data() +
+            (rx + ry * region_nx + rz * region_nx * region_ny) *
+                (sizeof(RegionHeader) + sizeof(ChannelHeader) * channels.size()) +
+            (sizeof(RegionHeader) + sizeof(ChannelHeader) * ci);
+        write_data<ChannelHeader>(channel_header_ptr, region_header);
+        if (variant_n > 1) {
+            std::memcpy(user_state.data.data() + user_state.blobs_begin + region_header.blob_offset, local_data.data(), local_data.size());
+        }
+    }
     return size;
 }
 
 extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
-
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'});
     gvox_output_write(ctx, user_state.offset, sizeof(uint32_t), &magic);
     user_state.offset += sizeof(magic);
-
     gvox_output_write(ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);
-
     auto blob_size_offset = user_state.offset;
     user_state.offset += sizeof(uint32_t);
-
     gvox_output_write(ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
     user_state.offset += sizeof(channel_flags);
-
     std::vector<uint8_t> channels;
     channels.resize(static_cast<size_t>(std::popcount(channel_flags)));
     uint32_t next_channel = 0;
@@ -189,7 +205,6 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
             ++next_channel;
         }
     }
-
     auto region_nx = (range->extent.x + REGION_SIZE - 1) / REGION_SIZE;
     auto region_ny = (range->extent.y + REGION_SIZE - 1) / REGION_SIZE;
     auto region_nz = (range->extent.z + REGION_SIZE - 1) / REGION_SIZE;
@@ -198,19 +213,32 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     auto const two_percent_raw_size = static_cast<size_t>(range->extent.x * range->extent.y * range->extent.z) * sizeof(uint32_t) * channels.size() / 50;
     user_state.data.reserve(size + two_percent_raw_size);
     user_state.data.resize(size);
-
+    auto thread_pool = ThreadPool{};
+    thread_pool.start();
+#if ENABLE_THREAD_POOL
+    auto size_mtx = std::mutex{};
+#endif
     for (uint32_t zi = 0; zi < region_nz; ++zi) {
         for (uint32_t yi = 0; yi < region_ny; ++yi) {
             for (uint32_t xi = 0; xi < region_nx; ++xi) {
                 for (uint32_t ci = 0; ci < channels.size(); ++ci) {
-                    size += add_region(ctx, user_state, *range, xi, yi, zi, ci, channels);
+                    thread_pool.enqueue([&, xi, yi, zi, ci]() {
+                        auto region_size = add_region(ctx, user_state, *range, xi, yi, zi, ci, channels);
+                        {
+#if ENABLE_THREAD_POOL
+                            auto lock = std::lock_guard{size_mtx};
+#endif
+                            size += region_size;
+                        }
+                    });
                 }
             }
         }
     }
-
+    while (thread_pool.busy()) {
+    }
+    thread_pool.stop();
     auto blob_size = static_cast<uint32_t>(size - user_state.blobs_begin);
     gvox_output_write(ctx, blob_size_offset, sizeof(blob_size), &blob_size);
-
     gvox_output_write(ctx, user_state.offset, user_state.data.size(), user_state.data.data());
 }
