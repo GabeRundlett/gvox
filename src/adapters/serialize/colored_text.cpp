@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 
+#include <bit>
 #include <vector>
 #include <array>
 #include <new>
@@ -17,6 +18,7 @@ extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxA
     gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
         user_state.config = *reinterpret_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
+        user_state.config.downscale_factor = std::max(user_state.config.downscale_factor, 1u);
     } else {
         user_state.config = {
             .downscale_factor = 1,
@@ -43,7 +45,13 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
     size_t output_index = 0;
     bool const is_3channel =
         (user_state.config.channel_id == GVOX_CHANNEL_ID_COLOR) ||
+        (user_state.config.channel_id == GVOX_CHANNEL_ID_EMISSIVE_COLOR) ||
         (user_state.config.channel_id == GVOX_CHANNEL_ID_NORMAL);
+    bool const is_normalized_float =
+        (user_state.config.channel_id == GVOX_CHANNEL_ID_ROUGHNESS) ||
+        (user_state.config.channel_id == GVOX_CHANNEL_ID_METALNESS) ||
+        (user_state.config.channel_id == GVOX_CHANNEL_ID_TRANSPARENCY) ||
+        (user_state.config.channel_id == GVOX_CHANNEL_ID_EMISSIVE_POWER);
     for (uint32_t zi = 0; zi < range->extent.z; zi += user_state.config.downscale_factor) {
         for (uint32_t yi = 0; yi < range->extent.y; yi += user_state.config.downscale_factor) {
             for (uint32_t xi = 0; xi < range->extent.x; xi += user_state.config.downscale_factor) {
@@ -86,6 +94,8 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
                                     avg_r += static_cast<float>((voxel >> 0x00) & 0xff) * (1.0f / 255.0f);
                                     avg_g += static_cast<float>((voxel >> 0x08) & 0xff) * (1.0f / 255.0f);
                                     avg_b += static_cast<float>((voxel >> 0x10) & 0xff) * (1.0f / 255.0f);
+                                } else if (is_normalized_float) {
+                                    avg_r += std::bit_cast<float>(voxel);
                                 } else {
                                     avg_r += static_cast<float>(voxel) / static_cast<float>(user_state.config.non_color_max_value);
                                 }
@@ -113,6 +123,10 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
                         r = (voxel >> 0x00) & 0xff;
                         g = (voxel >> 0x08) & 0xff;
                         b = (voxel >> 0x10) & 0xff;
+                    } else if (is_normalized_float) {
+                        r = static_cast<uint8_t>(std::bit_cast<float>(voxel) * 255.0f);
+                        g = r;
+                        b = r;
                     } else {
                         r = static_cast<uint8_t>(static_cast<float>(voxel) * 255.0f / static_cast<float>(user_state.config.non_color_max_value));
                         g = r;

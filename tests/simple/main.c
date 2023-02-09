@@ -47,8 +47,6 @@ void test_raw_file_io(void) {
         uint32_t channels[3] = {GVOX_CHANNEL_ID_COLOR, GVOX_CHANNEL_ID_NORMAL, GVOX_CHANNEL_ID_MATERIAL_ID};
         for (uint32_t channel_i = 0; channel_i < sizeof(channels) / sizeof(channels[0]); ++channel_i) {
             GvoxColoredTextSerializeAdapterConfig s_config = {
-                .downscale_factor = 1,
-                .downscale_mode = GVOX_COLORED_TEXT_SERIALIZE_ADAPTER_DOWNSCALE_MODE_LINEAR,
                 .channel_id = channels[channel_i],
                 .non_color_max_value = 5,
             };
@@ -107,8 +105,6 @@ void test_palette_file_io(void) {
         uint32_t channels[3] = {GVOX_CHANNEL_ID_COLOR, GVOX_CHANNEL_ID_NORMAL, GVOX_CHANNEL_ID_MATERIAL_ID};
         for (uint32_t channel_i = 0; channel_i < sizeof(channels) / sizeof(channels[0]); ++channel_i) {
             GvoxColoredTextSerializeAdapterConfig s_config = {
-                .downscale_factor = 1,
-                .downscale_mode = GVOX_COLORED_TEXT_SERIALIZE_ADAPTER_DOWNSCALE_MODE_LINEAR,
                 .channel_id = channels[channel_i],
                 .non_color_max_value = 5,
             };
@@ -129,7 +125,56 @@ void test_palette_file_io(void) {
     gvox_destroy_context(gvox_ctx);
 }
 
+void test_magicavoxel(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+    {
+        GvoxInputAdapter *i_adapter = gvox_get_input_adapter(gvox_ctx, "file");
+        GvoxOutputAdapter *o_adapter = gvox_get_output_adapter(gvox_ctx, "stdout");
+        GvoxParseAdapter *parse_adapter = gvox_get_parse_adapter(gvox_ctx, "magicavoxel");
+        GvoxSerializeAdapter *serialize_adapter = gvox_get_serialize_adapter(gvox_ctx, "colored_text");
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "assets/test.vox",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_configs[] = {
+            {
+                .channel_id = GVOX_CHANNEL_ID_COLOR,
+            },
+            {
+                .channel_id = GVOX_CHANNEL_ID_MATERIAL_ID,
+                .non_color_max_value = 255,
+            },
+            {
+                .channel_id = GVOX_CHANNEL_ID_ROUGHNESS,
+            },
+            {
+                .channel_id = GVOX_CHANNEL_ID_TRANSPARENCY,
+            },
+            {
+                .channel_id = GVOX_CHANNEL_ID_EMISSIVE_COLOR,
+            },
+        };
+        for (uint32_t s_config_i = 0; s_config_i < sizeof(s_configs) / sizeof(s_configs[0]); ++s_config_i) {
+            GvoxAdapterContext *adapter_ctx = gvox_create_adapter_context(
+                gvox_ctx,
+                i_adapter, &i_config,
+                o_adapter, NULL,
+                parse_adapter, NULL,
+                serialize_adapter, &s_configs[s_config_i]);
+            GvoxRegionRange region_range = {
+                .offset = {+0, +0, +0},
+                .extent = {+8, +8, +8},
+            };
+            gvox_translate_region(adapter_ctx, &region_range, 1u << s_configs[s_config_i].channel_id);
+            gvox_destroy_adapter_context(adapter_ctx);
+            printf("\n\n");
+        }
+    }
+    gvox_destroy_context(gvox_ctx);
+}
+
 int main(void) {
     // test_raw_file_io();
-    test_palette_file_io();
+    // test_palette_file_io();
+    test_magicavoxel();
 }
