@@ -35,9 +35,43 @@ namespace magicavoxel {
     };
 
     struct Transform {
-        GvoxOffset3D offset;
-        int8_t rotation;
+        GvoxOffset3D offset{0, 0, 0};
+        int8_t rotation{(0 << 0) | (1 << 2)};
     };
+
+    constexpr auto rotate(uint8_t packed_rotation_bits, GvoxOffset3D offset) {
+        auto result = GvoxOffset3D{};
+#if 0
+        uint32_t constexpr row2_index[] = {2, UINT32_MAX, 1, 0, UINT32_MAX};
+        int32_t *i_row = std::bit_cast<int32_t *>(&offset);
+        uint32_t row0_vec_index = (packed_rotation_bits >> 0) & 3;
+        uint32_t row1_vec_index = (packed_rotation_bits >> 2) & 3;
+        uint32_t row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
+        result.x = i_row[row0_vec_index];
+        result.y = i_row[row1_vec_index];
+        result.z = i_row[row2_vec_index];
+        if (packed_rotation_bits & (1 << 4))
+            result.x *= -1;
+        if (packed_rotation_bits & (1 << 5))
+            result.y *= -1;
+        if (packed_rotation_bits & (1 << 6))
+            result.z *= -1;
+#else
+        result = offset;
+#endif
+        return result;
+    }
+
+    auto rotate(uint8_t rot_a, uint8_t rot_b) {
+        uint32_t constexpr row2_index[] = {2, UINT32_MAX, 1, 0, UINT32_MAX};
+        uint32_t rot_a_row0_vec_index = (rot_a >> 0) & 3;
+        uint32_t rot_a_row1_vec_index = (rot_a >> 2) & 3;
+        uint32_t rot_a_row2_vec_index = row2_index[((1 << rot_a_row0_vec_index) | (1 << rot_a_row1_vec_index)) - 3];
+        uint32_t rot_b_row0_vec_index = (rot_b >> 0) & 3;
+        uint32_t rot_b_row1_vec_index = (rot_b >> 2) & 3;
+        uint32_t rot_b_row2_vec_index = row2_index[((1 << rot_b_row0_vec_index) | (1 << rot_b_row1_vec_index)) - 3];
+        return rot_b;
+    }
 
     struct TransformKeyframe {
         uint32_t frame_index;
@@ -156,12 +190,12 @@ namespace magicavoxel {
 
     struct SceneGroup;
     struct SceneModel;
-    using SceneNode = std::unique_ptr<std::variant<SceneGroup, SceneModel>>;
+    using SceneNode = std::variant<SceneGroup, SceneModel>;
 
     struct SceneGroup {
         Transform transform;
         GvoxRegionRange range;
-        std::vector<SceneNode> nodes;
+        std::vector<std::unique_ptr<SceneNode>> nodes;
     };
 
     struct SceneModel {
@@ -190,29 +224,69 @@ struct MagicavoxelParseUserState {
 };
 
 void sample_scene(magicavoxel::Scene &scene, uint32_t node_index, uint32_t depth, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
-    auto const &node = scene.node_infos[node_index];
-    if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node)) {
-        auto const &t_node = std::get<magicavoxel::SceneTransformInfo>(node);
-        for (uint32_t i = 0; i < depth; ++i)
-            std::cout << "  ";
-        std::cout << " - Transform " << t_node.transform.offset.x << ", " << t_node.transform.offset.y << ", " << t_node.transform.offset.z << "\n";
-        sample_scene(scene, t_node.child_node_id, depth + 1, sample_pos, sampled_voxel);
-    } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node)) {
-        auto const &g_node = std::get<magicavoxel::SceneGroupInfo>(node);
-        for (uint32_t i = 0; i < depth; ++i)
-            std::cout << "  ";
-        std::cout << " - Group\n";
-        for (uint32_t child_i = 0; child_i < g_node.num_child_nodes; ++child_i) {
-            sample_scene(scene, scene.group_children_ids[g_node.first_child_node_id_index + child_i], depth + 1, sample_pos, sampled_voxel);
+    auto const &node_info = scene.node_infos[node_index];
+    if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
+        auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
+        sample_scene(scene, t_node_info.child_node_id, depth + 1, sample_pos, sampled_voxel);
+    } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
+        auto const &g_node_info = std::get<magicavoxel::SceneGroupInfo>(node_info);
+        for (uint32_t child_i = 0; child_i < g_node_info.num_child_nodes; ++child_i) {
+            sample_scene(scene, scene.group_children_ids[g_node_info.first_child_node_id_index + child_i], depth + 1, sample_pos, sampled_voxel);
             if (sampled_voxel != 255)
                 return;
         }
-    } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node)) {
-        auto const &s_node = std::get<magicavoxel::SceneShapeInfo>(node);
+    } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node_info)) {
+        // auto const &s_node_info = std::get<magicavoxel::SceneShapeInfo>(node_info);
+        // auto const &model = scene.models[s_node_info.model_id];
+    }
+}
+
+void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_node, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn) {
+    auto const &node_info = scene.node_infos[node_index];
+    if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
+        auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
+        // auto new_trn = t_node_info.transform;
+        auto new_trn = trn;
+        auto rotated_offset = magicavoxel::rotate(trn.rotation, t_node_info.transform.offset);
+        new_trn.offset.x = rotated_offset.x;
+        new_trn.offset.y = rotated_offset.y;
+        new_trn.offset.z = rotated_offset.z;
+        std::cout << " - trn {" << new_trn.offset.x << ", " << new_trn.offset.y << ", " << new_trn.offset.z << "}\n";
+        // new_trn.rotation = magicavoxel::rotate(new_trn.rotation, t_node_info.transform.rotation);
+        construct_scene(scene, current_node, t_node_info.child_node_id, depth + 1, new_trn);
+    } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
+        auto const &g_node_info = std::get<magicavoxel::SceneGroupInfo>(node_info);
+        auto &g_current_node = std::get<magicavoxel::SceneGroup>(current_node = magicavoxel::SceneGroup{});
+        g_current_node.transform = trn;
+        g_current_node.nodes.resize(g_node_info.num_child_nodes);
+        for (auto &node : g_current_node.nodes) {
+            node = std::make_unique<magicavoxel::SceneNode>();
+        }
+        for (uint32_t child_i = 0; child_i < g_node_info.num_child_nodes; ++child_i) {
+            construct_scene(scene, *g_current_node.nodes[child_i], scene.group_children_ids[g_node_info.first_child_node_id_index + child_i], depth + 1, {});
+        }
+    } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node_info)) {
+        auto const &s_node_info = std::get<magicavoxel::SceneShapeInfo>(node_info);
+        auto &s_current_node = std::get<magicavoxel::SceneModel>(current_node = magicavoxel::SceneModel{});
+        s_current_node.transform = trn;
+        s_current_node.index = s_node_info.model_id;
+    }
+}
+void apply_scene_transform(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_node, uint32_t depth) {
+    if (std::holds_alternative<magicavoxel::SceneGroup>(current_node)) {
+        auto &g_current_node = std::get<magicavoxel::SceneGroup>(current_node);
         for (uint32_t i = 0; i < depth; ++i)
             std::cout << "  ";
-        std::cout << " - Shape\n";
-        auto const &model = scene.models[s_node.model_id];
+        std::cout << " - Group {" << g_current_node.transform.offset.x << ", " << g_current_node.transform.offset.y << ", " << g_current_node.transform.offset.z << " | " << (int)g_current_node.transform.rotation << "}\n";
+        for (auto &node : g_current_node.nodes) {
+            apply_scene_transform(scene, *node, depth + 1);
+        }
+    } else if (std::holds_alternative<magicavoxel::SceneModel>(current_node)) {
+        auto &s_current_node = std::get<magicavoxel::SceneModel>(current_node);
+        for (uint32_t i = 0; i < depth; ++i)
+            std::cout << "  ";
+        std::cout << " - Shape {" << s_current_node.transform.offset.x << ", " << s_current_node.transform.offset.y << ", " << s_current_node.transform.offset.z << " | " << (int)s_current_node.transform.rotation << "}\n";
+        // auto const &model = scene.models[s_current_node.index];
     }
 }
 
@@ -386,10 +460,10 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
                     return;
                 }
                 auto &trn = user_state.transform_keyframes[result_transform.keyframe_offset + i].transform;
-                auto r_str = temp_dict.get<char const *>("_r", 0);
+                auto r_str = temp_dict.get<char const *>("_r", nullptr);
                 if (r_str != nullptr)
                     trn.rotation = static_cast<int8_t>(atoi(r_str));
-                auto t_str = temp_dict.get<char const *>("_t", 0);
+                auto t_str = temp_dict.get<char const *>("_t", nullptr);
                 if (t_str != nullptr)
                     sscanf_s(t_str, "%i %i %i", &trn.offset.x, &trn.offset.y, &trn.offset.z);
                 user_state.transform_keyframes[result_transform.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
@@ -570,8 +644,8 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
         }
     }
     if (user_state.scene.node_infos.size() != 0) {
-        uint32_t x = 255u;
-        sample_scene(user_state.scene, 0, 0, {0, 0, 0}, x);
+        construct_scene(user_state.scene, user_state.scene.root_node, 0, 0, {});
+        apply_scene_transform(user_state.scene, user_state.scene.root_node, 0);
     }
 }
 
