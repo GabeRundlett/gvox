@@ -117,9 +117,9 @@ namespace magicavoxel {
         auto ai = std::array<int8_t, 3>{static_cast<int8_t>(rot_a & 3), static_cast<int8_t>((rot_a >> 2) & 3), 0};
         ai[2] = row2_index[static_cast<size_t>((1 << ai[0]) | (1 << ai[1])) - 3];
         auto bi = ai;
-        bi[ai[0]] = 0;
-        bi[ai[1]] = 1;
-        bi[ai[2]] = 2;
+        bi[static_cast<size_t>(ai[0])] = 0;
+        bi[static_cast<size_t>(ai[1])] = 1;
+        bi[static_cast<size_t>(ai[2])] = 2;
         int8_t result = static_cast<int8_t>((bi[0] << 0) | (bi[1] << 2));
         if (((rot_a >> 4) & 1) == 1) {
             result |= 1 << (4 + ai[0]);
@@ -518,8 +518,9 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
                 if (r_str != nullptr)
                     trn.rotation = static_cast<int8_t>(atoi(r_str));
                 auto t_str = temp_dict.get<char const *>("_t", nullptr);
-                if (t_str != nullptr)
-                    sscanf_s(t_str, "%i %i %i", &trn.offset.x, &trn.offset.y, &trn.offset.z);
+                if (t_str != nullptr) {
+                    sscanf(t_str, "%i %i %i", &trn.offset.x, &trn.offset.y, &trn.offset.z);
+                }
                 user_state.transform_keyframes[result_transform.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
             }
             result_transform.transform = user_state.transform_keyframes[result_transform.keyframe_offset].transform;
@@ -599,7 +600,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
             char const *color_string = temp_dict.get<char const *>("_color", nullptr);
             if (color_string != nullptr) {
                 uint32_t r, g, b;
-                sscanf_s(color_string, "%u %u %u", &r, &g, &b);
+                sscanf(color_string, "%u %u %u", &r, &g, &b);
                 result_layer.color.r = static_cast<uint8_t>(r);
                 result_layer.color.g = static_cast<uint8_t>(g);
                 result_layer.color.b = static_cast<uint8_t>(b);
