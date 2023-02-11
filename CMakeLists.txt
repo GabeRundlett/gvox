@@ -63,6 +63,13 @@ if(GVOX_ENABLE_THREADSAFETY)
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
 endif()
+
+if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+endif()
+
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
     list(APPEND GVOX_INPUT_ADAPTERS "file")
@@ -70,7 +77,6 @@ if(GVOX_ENABLE_FILE_IO)
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()
-
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
