@@ -14,8 +14,6 @@
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": true,
-                "GVOX_ENABLE_ZLIB": true,
-                "GVOX_ENABLE_GZIP": true,
                 "GVOX_ENABLE_THREADSAFETY": true,
                 "GVOX_ENABLE_TESTS": true,
                 "GVOX_ENABLE_ASAN": false,
@@ -58,8 +56,6 @@
             ],
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
-                "GVOX_ENABLE_ZLIB": false,
-                "GVOX_ENABLE_GZIP": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
@@ -74,8 +70,6 @@
             ],
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
-                "GVOX_ENABLE_ZLIB": false,
-                "GVOX_ENABLE_GZIP": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk",
