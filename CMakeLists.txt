@@ -64,6 +64,18 @@ else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
 endif()
 
+if(GVOX_BUILD_FOR_RUST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=0)
+endif()
+
+if(GVOX_BUILD_FOR_ODIN)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=0)
+endif()
+
 if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

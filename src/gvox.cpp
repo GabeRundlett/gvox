@@ -250,7 +250,9 @@ void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, ch
     auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
 #endif
     ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
+#if !GVOX_BUILD_FOR_RUST && !GVOX_BUILD_FOR_ODIN
     assert(0 && message);
+#endif
 }
 
 void gvox_input_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {
