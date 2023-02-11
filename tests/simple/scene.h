@@ -4,18 +4,27 @@
 #include <stdio.h>
 #include <gvox/gvox.h>
 
-float sample_terrain(float x, float y, float z) {
-    float r = (float)(rand() % 1000) * 0.001f;
+float stable_rand(float x) { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f); }
+float stable_rand(float x, float y) { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
+float stable_rand(float x, float y, float z) { return stable_rand(x + stable_rand(z), y + stable_rand(z)); }
+float stable_rand(size_t xi, size_t yi, size_t zi) {
+    float const x = static_cast<float>(xi) * (1.0f / 8.0f);
+    float const y = static_cast<float>(yi) * (1.0f / 8.0f);
+    float const z = static_cast<float>(zi) * (1.0f / 8.0f);
+    return stable_rand(x, y, z);
+}
+
+auto sample_terrain(float x, float y, float z) -> float {
+    float const r = stable_rand(x, y, z);
     return sinf(x * 10) * 0.8f + sinf(y * 10) * 0.9f - z * 16.0f + 7.0f + r * 0.5f;
 }
 
-float sample_terrain_i(int xi, int yi, int zi, size_t sx, size_t sy, size_t sz) {
-    float const x = ((float)xi) * (1.0f / (float)sx);
-    float const y = ((float)yi) * (1.0f / (float)sy);
-    float const z = ((float)zi) * (1.0f / (float)sz);
+auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
+    float const x = static_cast<float>(xi) * (1.0f / 8.0f);
+    float const y = static_cast<float>(yi) * (1.0f / 8.0f);
+    float const z = static_cast<float>(zi) * (1.0f / 8.0f);
     return sample_terrain(x, y, z);
 }
-
 GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
     GVoxScene scene;
     scene.node_n = 1;
@@ -32,7 +41,7 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                 size_t const i = xi + yi * sx + zi * sx * sy;
                 GVoxVoxel result = {.color = {0.6f, 0.7f, 0.9f}, .id = 0};
 
-                float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi, sx, sy, sz);
+                float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi);
                 if (val > -0.0f) {
                     result.color.x = 0.25f;
                     result.color.y = 0.24f;
@@ -59,23 +68,23 @@ GVoxScene create_scene(size_t sx, size_t sy, size_t sz) {
                 if (result.id == 1) {
                     int si = 0;
                     for (si = 0; si < 16; ++si) {
-                        float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi + si, sx, sy, sz);
+                        float const val = sample_terrain_i((int32_t)xi, (int32_t)yi, (int32_t)zi + si);
                         if (val < -0.0f) {
                             break;
                         }
                     }
-                    if (si < 6) {
+                    if (si < 2) {
                         result.color.x = 0.2f;
                         result.color.y = 0.5f;
                         result.color.z = 0.1f;
                         result.id = 2;
-                    } else if (si < 15) {
+                    } else if (si < 4) {
                         result.color.x = 0.4f;
                         result.color.y = 0.3f;
                         result.color.z = 0.2f;
                         result.id = 3;
                     } else {
-                        float const r = (float)(rand() % 1000) * 0.001f;
+                        float const r = stable_rand(xi, yi, zi);
                         if (r < 0.5f) {
                             result.color.x = 0.36f;
                             result.color.y = 0.34f;

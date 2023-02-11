@@ -54,4 +54,6 @@ void main() {
         VERTS(vert_off + 2).pos = pos[2].xyz;
         break;
     }
+
+    NORMALS(tri_i) = -nrm;
 }

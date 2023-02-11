@@ -7,7 +7,7 @@
 #define PRINT_MODE 3
 
 void print_voxels(GVoxScene scene) {
-    const size_t AVG_REGION = 8;
+    const size_t AVG_REGION = 1;
 
     for (size_t node_i = 0; node_i < scene.node_n; ++node_i) {
         if (!scene.nodes[node_i].voxels)

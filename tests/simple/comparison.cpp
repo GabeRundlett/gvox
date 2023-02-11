@@ -124,7 +124,7 @@ auto main() -> int {
     {
         Timer const timer{};
         gvox_save_as_raw(gvox, &scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
-        // gvox_save(gvox, scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
+        // gvox_save_as_raw(gvox, &scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
         while (gvox_get_result(gvox) != GVOX_SUCCESS) {
             size_t msg_size = 0;
             gvox_get_result_message(gvox, nullptr, &msg_size);
@@ -147,7 +147,7 @@ auto main() -> int {
     // }
 
     // std::cout << "\nloaded GPU scene content:" << std::endl;
-    run_gpu_version(gvox, scene);
+    // run_gpu_version(gvox, scene);
 
     gvox_destroy_scene(&scene);
     // scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");

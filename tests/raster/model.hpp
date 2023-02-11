@@ -26,6 +26,7 @@ struct Mesh {
     std::vector<std::shared_ptr<Texture>> textures;
     f32mat4x4 modl_mat;
     daxa::BufferId vertex_buffer;
+    daxa::BufferId normal_buffer;
 };
 using TextureMap = std::unordered_map<std::string, std::shared_ptr<Texture>>;
 struct Model {
@@ -79,6 +80,10 @@ void process_node(daxa::Device device, Model &model, aiNode *node, aiScene const
         o_mesh.vertex_buffer = device.create_buffer(daxa::BufferInfo{
             .size = static_cast<u32>(sizeof(Vertex) * o_mesh.verts.size()),
             .debug_name = "vertex_buffer",
+        });
+        o_mesh.normal_buffer = device.create_buffer(daxa::BufferInfo{
+            .size = static_cast<u32>(sizeof(Vertex) * o_mesh.verts.size() / 3),
+            .debug_name = "normal_buffer",
         });
     }
 

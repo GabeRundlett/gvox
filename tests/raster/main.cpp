@@ -51,10 +51,11 @@ auto main() -> int {
     });
     auto *gpu_input_ptr = new GpuInput{};
     GpuInput &gpu_input = *gpu_input_ptr;
-    gpu_input.size = {512, 512, 512};
+    gpu_input.size = {768, 768, 768};
     Model model;
     // open_model(device, model, "assets/suzanne.dae");
-    open_model(device, model, "C:/dev/projects/cpp/mesh-renderer/assets/suzanne.dae");
+    // open_model(device, model, "C:/dev/projects/cpp/mesh-renderer/assets/suzanne.dae");
+    open_model(device, model, "C:/dev/projects/models/halflife-c2a5w/halflife.dae");
     daxa::SamplerId texture_sampler = device.create_sampler({
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::LINEAR,
@@ -206,6 +207,7 @@ auto main() -> int {
                     .modl_mat = mesh.modl_mat,
                     .gpu_input = device.get_device_address(gpu_input_buffer),
                     .vertex_buffer = device.get_device_address(mesh.vertex_buffer),
+                    .normal_buffer = device.get_device_address(mesh.normal_buffer),
                 });
                 cmd_list.dispatch(static_cast<u32>(mesh.verts.size() / 3));
             }
@@ -229,6 +231,7 @@ auto main() -> int {
                 cmd_list.push_constant(RasterPush{
                     .gpu_input = device.get_device_address(gpu_input_buffer),
                     .vertex_buffer = device.get_device_address(mesh.vertex_buffer),
+                    .normal_buffer = device.get_device_address(mesh.normal_buffer),
                     .voxel_buffer = device.get_device_address(voxel_buffer),
                     .texture_id = mesh.textures[0]->image_id.default_view(),
                     .texture_sampler = texture_sampler,

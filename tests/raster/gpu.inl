@@ -19,6 +19,7 @@ DAXA_ENABLE_BUFFER_PTR(GpuInput)
 struct RasterPush {
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(Vertex) vertex_buffer;
+    daxa_BufferPtr(daxa_f32vec3) normal_buffer;
     daxa_RWBufferPtr(daxa_u32) voxel_buffer;
     daxa_Image2Df32 texture_id;
     daxa_SamplerId texture_sampler;
@@ -28,8 +29,10 @@ struct PreprocessPush {
     f32mat4x4 modl_mat;
     daxa_BufferPtr(GpuInput) gpu_input;
     daxa_BufferPtr(Vertex) vertex_buffer;
+    daxa_BufferPtr(daxa_f32vec3) normal_buffer;
 };
 
 #define VERTS(i) deref(daxa_push_constant.vertex_buffer[i])
+#define NORMALS(i) deref(daxa_push_constant.normal_buffer[i])
 #define INPUT deref(daxa_push_constant.gpu_input)
 #define VOXELS(i) deref(daxa_push_constant.voxel_buffer[i])
