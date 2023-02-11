@@ -175,8 +175,8 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
         auto *channel_header_ptr =
             user_state.data.data() +
             (rx + ry * region_nx + rz * region_nx * region_ny) *
-                (sizeof(RegionHeader) + sizeof(ChannelHeader) * channels.size()) +
-            (sizeof(RegionHeader) + sizeof(ChannelHeader) * ci);
+                (sizeof(ChannelHeader) * channels.size()) +
+            (sizeof(ChannelHeader) * ci);
         write_data<ChannelHeader>(channel_header_ptr, region_header);
         if (variant_n > 1) {
             std::memcpy(user_state.data.data() + user_state.blobs_begin + region_header.blob_offset, local_data.data(), local_data.size());
@@ -188,6 +188,7 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
 extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'});
+    auto channel_n = static_cast<uint32_t>(std::popcount(channel_flags));
     gvox_output_write(ctx, user_state.offset, sizeof(uint32_t), &magic);
     user_state.offset += sizeof(magic);
     gvox_output_write(ctx, user_state.offset, sizeof(*range), range);
@@ -196,8 +197,10 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     user_state.offset += sizeof(uint32_t);
     gvox_output_write(ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
     user_state.offset += sizeof(channel_flags);
+    gvox_output_write(ctx, user_state.offset, sizeof(channel_n), &channel_n);
+    user_state.offset += sizeof(channel_n);
     std::vector<uint8_t> channels;
-    channels.resize(static_cast<size_t>(std::popcount(channel_flags)));
+    channels.resize(static_cast<size_t>(channel_n));
     uint32_t next_channel = 0;
     for (uint8_t channel_i = 0; channel_i < 32; ++channel_i) {
         if ((channel_flags & (1u << channel_i)) != 0) {
@@ -208,7 +211,7 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     auto region_nx = (range->extent.x + REGION_SIZE - 1) / REGION_SIZE;
     auto region_ny = (range->extent.y + REGION_SIZE - 1) / REGION_SIZE;
     auto region_nz = (range->extent.z + REGION_SIZE - 1) / REGION_SIZE;
-    auto size = (sizeof(RegionHeader) + sizeof(ChannelHeader) * channels.size()) * region_nx * region_ny * region_nz;
+    auto size = (sizeof(ChannelHeader) * channels.size()) * region_nx * region_ny * region_nz;
     user_state.blobs_begin = size;
     auto const two_percent_raw_size = static_cast<size_t>(range->extent.x * range->extent.y * range->extent.z) * sizeof(uint32_t) * channels.size() / 50;
     user_state.data.reserve(size + two_percent_raw_size);

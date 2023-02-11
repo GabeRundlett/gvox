@@ -51,7 +51,3 @@ struct ChannelHeader {
     uint32_t variant_n;
     uint32_t blob_offset; // if variant_n == 1, this is just the data
 };
-
-struct RegionHeader {
-    uint32_t channel_n;
-};

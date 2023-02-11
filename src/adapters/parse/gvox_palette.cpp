@@ -10,7 +10,6 @@
 #include <new>
 
 struct LoadedRegionHeader {
-    RegionHeader region;
     std::vector<ChannelHeader> channels;
 };
 
@@ -54,7 +53,8 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [
     gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_flags);
     user_state.offset += sizeof(uint32_t);
 
-    user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
+    gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_n);
+    user_state.offset += sizeof(uint32_t);
 
     uint32_t next_channel = 0;
     for (uint8_t channel_i = 0; channel_i < 32; ++channel_i) {
@@ -70,8 +70,6 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [
 
     user_state.region_headers.resize(user_state.r_nx * user_state.r_ny * user_state.r_nz);
     for (auto &region_header : user_state.region_headers) {
-        gvox_input_read(ctx, user_state.offset, sizeof(RegionHeader), &region_header.region);
-        user_state.offset += sizeof(RegionHeader);
         region_header.channels.resize(user_state.channel_n);
         for (auto &channel_header : region_header.channels) {
             gvox_input_read(ctx, user_state.offset, sizeof(ChannelHeader), &channel_header);
