@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-#include <gvox/adapters/parse/procedural.h>
+#include <adapters/procedural.h>
 
 #include <cstdlib>
 #include <cmath>

@@ -3,7 +3,7 @@
 #include <gvox/adapters/input/file.h>
 #include <gvox/adapters/output/file.h>
 #include <gvox/adapters/output/stdout.h>
-#include <gvox/adapters/parse/procedural.h>
+#include <adapters/procedural.h>
 #include <gvox/adapters/serialize/gvox_raw.h>
 #include <gvox/adapters/serialize/colored_text.h>
 
@@ -11,6 +11,17 @@
 
 void test_raw_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
+
+    GvoxParseAdapterInfo procedural_adapter_info = {
+        .name_str = "procedural",
+        .begin = gvox_parse_adapter_procedural_begin,
+        .end = gvox_parse_adapter_procedural_end,
+        .query_region_flags = gvox_parse_adapter_procedural_query_region_flags,
+        .load_region = gvox_parse_adapter_procedural_load_region,
+        .unload_region = gvox_parse_adapter_procedural_unload_region,
+        .sample_region = gvox_parse_adapter_procedural_sample_region,
+    };
+    gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info);
 
     // Create gvox_raw file
     {
@@ -70,6 +81,18 @@ void test_raw_file_io(void) {
 
 void test_palette_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
+
+    GvoxParseAdapterInfo procedural_adapter_info = {
+        .name_str = "procedural",
+        .begin = gvox_parse_adapter_procedural_begin,
+        .end = gvox_parse_adapter_procedural_end,
+        .query_region_flags = gvox_parse_adapter_procedural_query_region_flags,
+        .load_region = gvox_parse_adapter_procedural_load_region,
+        .unload_region = gvox_parse_adapter_procedural_unload_region,
+        .sample_region = gvox_parse_adapter_procedural_sample_region,
+    };
+    gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info);
+
     // Create gvox_palette file
     {
         GvoxOutputAdapter *o_adapter = gvox_get_output_adapter(gvox_ctx, "file");

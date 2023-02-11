@@ -13,8 +13,6 @@
 #include <string>
 #include <memory>
 
-#include <iostream>
-
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});
     static constexpr uint32_t CHUNK_ID_MAIN = std::bit_cast<uint32_t>(std::array{'M', 'A', 'I', 'N'});
@@ -78,9 +76,6 @@ namespace magicavoxel {
         result[row0_vec_index] = p.x;
         result[row1_vec_index] = p.y;
         result[row2_vec_index] = p.z;
-        if (result[0] >= extent.x || result[1] >= extent.y || result[2] >= extent.z) {
-            std::cout << "what";
-        }
         if (packed_rotation_bits & (1 << 4)) {
             result[0] = extent.x - 1 - result[0];
         }

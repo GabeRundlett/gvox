@@ -27,9 +27,13 @@ endfunction()
 
 find_package(daxa CONFIG REQUIRED)
 
+add_library(procedural_parse_adapter "adapters/procedural.cpp")
+target_include_directories(procedural_parse_adapter PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
+target_link_libraries(procedural_parse_adapter PUBLIC gvox::gvox)
+
 GVOX_CREATE_TEST(
     FOLDER simple
     FILE main
     LANG c
-    LIBS
+    LIBS procedural_parse_adapter
 )
