@@ -3,47 +3,14 @@
   "version-string": "nightly",
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
-  "dependencies": [
-    "zlib"
-  ],
   "features": {
     "file-io": {
       "description": "Enable file IO library features"
     },
-    "zlib": {
-      "description": "Build ZLIB format compressor",
-      "dependencies": [
-        "zlib"
-      ]
-    },
-    "minecraft": {
-      "description": "Parse and Serialize Minecraft World Data",
-      "dependencies": [
-        "zlib",
-        "minizip",
-        "stb",
-        "nlohmann-json"
-      ]
-    },
-    "gzip": {
-      "description": "Build GZIP format compressor",
-      "dependencies": [
-        "gzip-hpp"
-      ]
-    },
     "tests": {
       "description": "Build Tests",
       "dependencies": [
-        "assimp",
-        "stb",
-        {
-          "name": "daxa",
-          "default-features": false,
-          "features": [
-            "utils-pipeline-manager-glslang",
-            "utils-task-list"
-          ]
-        }
+        "daxa"
       ]
     }
   },

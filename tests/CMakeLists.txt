@@ -22,15 +22,6 @@ function(GVOX_CREATE_TEST)
         endif()
     endif()
 
-    foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-        add_custom_command(
-            TARGET ${TGT}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                $<TARGET_FILE:gvox_format_${FORMAT_NAME}>
-                $<TARGET_FILE_DIR:${TGT}>
-        )
-    endforeach()
     set_project_sanitizers(${TGT})
 endfunction()
 
@@ -40,25 +31,13 @@ find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 
+add_library(procedural_parse_adapter "adapters/procedural.cpp")
+target_include_directories(procedural_parse_adapter PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
+target_link_libraries(procedural_parse_adapter PUBLIC gvox::gvox)
+
 GVOX_CREATE_TEST(
     FOLDER simple
     FILE main
     LANG c
-    LIBS
+    LIBS procedural_parse_adapter
 )
-GVOX_CREATE_TEST(
-    FOLDER simple
-    FILE comparison
-    LANG cpp
-    LIBS daxa::daxa
-)
-target_compile_definitions(${PROJECT_NAME}_test_simple_comparison PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
-
-GVOX_CREATE_TEST(
-    FOLDER raster
-    FILE main
-    LANG cpp
-    LIBS daxa::daxa assimp::assimp
-)
-target_compile_definitions(${PROJECT_NAME}_test_raster_main PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
-target_include_directories(${PROJECT_NAME}_test_raster_main PRIVATE ${STB_INCLUDE_DIRS})

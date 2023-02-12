@@ -1,5 +1,5 @@
-#ifndef GVOX_H
-#define GVOX_H
+#ifndef GVOX_GVOX_H
+#define GVOX_GVOX_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -8,84 +8,152 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+// User API
+
 typedef enum {
-    GVOX_SUCCESS = 0,
-    GVOX_ERROR_FAILED_TO_LOAD_FILE = -1,
-    GVOX_ERROR_FAILED_TO_LOAD_FORMAT = -2,
-    GVOX_ERROR_INVALID_FORMAT = -3,
-} GVoxResult;
+    GVOX_RESULT_SUCCESS = 0,
+    GVOX_RESULT_ERROR_UNKNOWN = -1,
+    GVOX_RESULT_ERROR_INVALID_PARAMETER = -2,
+
+    GVOX_RESULT_ERROR_INPUT_ADAPTER = -3,
+    GVOX_RESULT_ERROR_OUTPUT_ADAPTER = -4,
+    GVOX_RESULT_ERROR_PARSE_ADAPTER = -5,
+    GVOX_RESULT_ERROR_SERIALIZE_ADAPTER = -6,
+
+    GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT = -7,
+    GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT = -8,
+    GVOX_RESULT_ERROR_SERIALIZE_ADAPTER_UNREPRESENTABLE_DATA = -9,
+} GvoxResult;
+
+#define GVOX_CHANNEL_ID_COLOR 0
+#define GVOX_CHANNEL_ID_NORMAL 1
+#define GVOX_CHANNEL_ID_MATERIAL_ID 2
+#define GVOX_CHANNEL_ID_ROUGHNESS 3
+#define GVOX_CHANNEL_ID_METALNESS 4
+#define GVOX_CHANNEL_ID_TRANSPARENCY 5
+#define GVOX_CHANNEL_ID_IOR 6
+#define GVOX_CHANNEL_ID_EMISSIVE_COLOR 7
+#define GVOX_CHANNEL_ID_EMISSIVE_POWER 8
+#define GVOX_CHANNEL_ID_HARDNESS 9
+#define GVOX_CHANNEL_ID_LAST_STANDARD 15
+
+#define GVOX_CHANNEL_BIT_COLOR (1 << GVOX_CHANNEL_ID_COLOR)
+#define GVOX_CHANNEL_BIT_NORMAL (1 << GVOX_CHANNEL_ID_NORMAL)
+#define GVOX_CHANNEL_BIT_MATERIAL_ID (1 << GVOX_CHANNEL_ID_MATERIAL_ID)
+#define GVOX_CHANNEL_BIT_ROUGHNESS (1 << GVOX_CHANNEL_ID_ROUGHNESS)
+#define GVOX_CHANNEL_BIT_METALNESS (1 << GVOX_CHANNEL_ID_METALNESS)
+#define GVOX_CHANNEL_BIT_TRANSPARENCY (1 << GVOX_CHANNEL_ID_TRANSPARENCY)
+#define GVOX_CHANNEL_BIT_IOR (1 << GVOX_CHANNEL_ID_IOR)
+#define GVOX_CHANNEL_BIT_EMISSIVE_COLOR (1 << GVOX_CHANNEL_ID_EMISSIVE_COLOR)
+#define GVOX_CHANNEL_BIT_EMISSIVE_POWER (1 << GVOX_CHANNEL_ID_EMISSIVE_POWER)
+#define GVOX_CHANNEL_BIT_HARDNESS (1 << GVOX_CHANNEL_ID_HARDNESS)
+#define GVOX_CHANNEL_BIT_LAST_STANDARD (1 << GVOX_CHANNEL_ID_LAST_STANDARD)
+
+#define GVOX_REGION_FLAG_UNIFORM 0x00000001
+
+typedef struct _GvoxContext GvoxContext;
+typedef struct _GvoxAdapter GvoxAdapter;
+typedef struct _GvoxAdapterContext GvoxAdapterContext;
+typedef struct _GvoxBlitContext GvoxBlitContext;
 
 typedef struct {
-    struct {
-        float x;
-        float y;
-        float z;
-    } color;
-    uint32_t id;
-} GVoxVoxel;
+    int32_t x;
+    int32_t y;
+    int32_t z;
+} GvoxOffset3D;
 
 typedef struct {
-    // TODO: add a transform
-    uint64_t size_x, size_y, size_z;
-    GVoxVoxel *voxels;
-} GVoxSceneNode;
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+} GvoxExtent3D;
 
 typedef struct {
-    uint64_t node_n;
-    GVoxSceneNode *nodes;
-} GVoxScene;
+    GvoxOffset3D offset;
+    GvoxExtent3D extent;
+} GvoxRegionRange;
 
 typedef struct {
-    uint64_t format_name_size;
-    uint64_t payload_size;
-} GVoxHeader;
-
-typedef struct {
-    uint64_t size;
-    uint8_t *data;
-} GVoxPayload;
+    GvoxRegionRange range;
+    uint32_t channels;
+    uint32_t flags;
+    void *data;
+} GvoxRegion;
 
 typedef struct {
     char const *name_str;
+    void (*create)(GvoxAdapterContext *ctx, void *config);
+    void (*destroy)(GvoxAdapterContext *ctx);
+    void (*blit_begin)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+    void (*blit_end)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+} GvoxAdapterBaseInfo;
 
-    void *(*create_context)(void);
-    void (*destroy_context)(void *);
-    GVoxPayload (*create_payload)(void *, GVoxScene const *scene);
-    void (*destroy_payload)(void *, GVoxPayload const *payload);
-    GVoxScene (*parse_payload)(void *, GVoxPayload const *payload);
-} GVoxFormatLoaderInfo;
+typedef struct {
+    GvoxAdapterBaseInfo base_info;
+    void (*read)(GvoxAdapterContext *ctx, size_t position, size_t size, void *data);
+} GvoxInputAdapterInfo;
 
-typedef struct _GVoxContext GVoxContext;
+typedef struct {
+    GvoxAdapterBaseInfo base_info;
+    void (*write)(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data);
+    void (*reserve)(GvoxAdapterContext *ctx, size_t size);
+} GvoxOutputAdapterInfo;
 
-GVoxContext *gvox_create_context(void);
-void gvox_destroy_context(GVoxContext *ctx);
+typedef struct {
+    GvoxAdapterBaseInfo base_info;
+    uint32_t (*query_region_flags)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
+    GvoxRegion (*load_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+    void (*unload_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
+    uint32_t (*sample_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
+} GvoxParseAdapterInfo;
 
-#if GVOX_ENABLE_FILE_IO
-size_t gvox_load_header(char const *filepath);
+typedef struct {
+    GvoxAdapterBaseInfo base_info;
+    void (*serialize_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+} GvoxSerializeAdapterInfo;
 
-void gvox_push_root_path(GVoxContext *ctx, char const *path);
-void gvox_pop_root_path(GVoxContext *ctx);
+GvoxContext *gvox_create_context(void);
+void gvox_destroy_context(GvoxContext *ctx);
 
-GVoxScene gvox_load(GVoxContext *ctx, char const *filepath);
-GVoxScene gvox_load_from_raw(GVoxContext *ctx, char const *filepath, char const *src_format);
-void gvox_save(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
-void gvox_save_as_raw(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format);
-#endif
+GvoxResult gvox_get_result(GvoxContext *ctx);
+void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *str_size);
+void gvox_pop_result(GvoxContext *ctx);
 
-void gvox_register_format(GVoxContext *ctx, GVoxFormatLoaderInfo const *format_loader_info);
-void gvox_load_format(GVoxContext *ctx, char const *format_loader_name);
+GvoxAdapter *gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info);
+GvoxAdapter *gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name);
 
-GVoxResult gvox_get_result(GVoxContext *ctx);
-void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size);
-void gvox_pop_result(GVoxContext *ctx);
+GvoxAdapter *gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info);
+GvoxAdapter *gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name);
 
-GVoxScene gvox_parse(GVoxContext *ctx, GVoxPayload const *payload, char const *src_format);
-GVoxPayload gvox_serialize(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format);
-void gvox_load_raw_payload_into(GVoxContext *ctx, GVoxScene *scene, char const *dst_format, uint8_t *dst_ptr);
-void gvox_serialize_into(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format, uint8_t *dst_ptr);
+GvoxAdapter *gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info);
+GvoxAdapter *gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name);
 
-void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload const *payload, char const *format);
-void gvox_destroy_scene(GVoxScene const *scene);
+GvoxAdapter *gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info);
+GvoxAdapter *gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GvoxAdapterContext *gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void *config);
+void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
+
+void gvox_blit_region(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *input_range, GvoxRegionRange const *output_range,
+    uint32_t channel_flags);
+
+// Adapter API
+
+GvoxRegion gvox_load_region(GvoxBlitContext *blit_ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+void gvox_unload_region(GvoxBlitContext *blit_ctx, GvoxRegion *region);
+uint32_t gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id);
+uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_id);
+
+void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
+void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);
+void *gvox_adapter_get_user_pointer(GvoxAdapterContext *ctx);
+
+void gvox_input_read(GvoxBlitContext *blit_ctx, size_t position, size_t size, void *data);
+void gvox_output_write(GvoxBlitContext *blit_ctx, size_t position, size_t size, void const *data);
+void gvox_output_reserve(GvoxBlitContext *blit_ctx, size_t size);
 
 #ifdef __cplusplus
 }

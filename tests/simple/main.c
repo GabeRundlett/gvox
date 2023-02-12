@@ -1,71 +1,190 @@
-#include <stdlib.h>
-#include <math.h>
+#include <gvox/gvox.h>
 
-#include "print.h"
-#include "scene.h"
+#include <gvox/adapters/input/file.h>
+#include <gvox/adapters/output/file.h>
+#include <gvox/adapters/output/stdout.h>
+#include <adapters/procedural.h>
+#include <gvox/adapters/serialize/gvox_raw.h>
+#include <gvox/adapters/serialize/colored_text.h>
 
-#define DO_LOAD 0
-#define PRINT_RESULTS 0
+void test_raw_file_io(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+
+    // Create gvox_raw file
+    {
+        GvoxParseAdapterInfo procedural_adapter_info = {
+            .base_info = {
+                .name_str = "procedural",
+                .create = procedural_create,
+                .destroy = procedural_destroy,
+                .blit_begin = procedural_blit_begin,
+                .blit_end = procedural_blit_end,
+            },
+            .query_region_flags = procedural_query_region_flags,
+            .load_region = procedural_load_region,
+            .unload_region = procedural_unload_region,
+            .sample_region = procedural_sample_region,
+        };
+        GvoxFileOutputAdapterConfig o_config = {
+            .filepath = "tests/simple/raw.gvox",
+        };
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "file"), &o_config);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_raw"), NULL);
+
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            NULL, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
+
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+
+    // Load gvox_raw file
+    {
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "tests/simple/raw.gvox",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 5,
+        };
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "gvox_raw"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
+
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+
+    gvox_destroy_context(gvox_ctx);
+}
+
+void test_palette_file_io(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+
+    // Create gvox_palette file
+    {
+        GvoxParseAdapterInfo procedural_adapter_info = {
+            .base_info = {
+                .name_str = "procedural",
+                .create = procedural_create,
+                .destroy = procedural_destroy,
+                .blit_begin = procedural_blit_begin,
+                .blit_end = procedural_blit_end,
+            },
+            .query_region_flags = procedural_query_region_flags,
+            .load_region = procedural_load_region,
+            .unload_region = procedural_unload_region,
+            .sample_region = procedural_sample_region,
+        };
+        GvoxFileOutputAdapterConfig o_config = {
+            .filepath = "tests/simple/palette.gvox",
+        };
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "file"), &o_config);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
+
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            NULL, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
+
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+
+    // Load gvox_palette file
+    {
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "tests/simple/palette.gvox",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 5,
+        };
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "gvox_palette"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, -4},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
+
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+
+    gvox_destroy_context(gvox_ctx);
+}
+
+void test_magicavoxel(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+    {
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "assets/test.vox",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 255,
+        };
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "magicavoxel"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, +0},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR |
+                GVOX_CHANNEL_BIT_MATERIAL_ID |
+                GVOX_CHANNEL_BIT_ROUGHNESS |
+                GVOX_CHANNEL_BIT_TRANSPARENCY |
+                GVOX_CHANNEL_BIT_EMISSIVE_COLOR);
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+    gvox_destroy_context(gvox_ctx);
+}
 
 int main(void) {
-    GVoxContext *gvox = gvox_create_context();
-
-    GVoxScene scene = create_scene(256, 256, 256);
-#if PRINT_RESULTS
-    printf("\n raw\n");
-    print_voxels(scene);
-#endif
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_raw.gvox", "gvox_raw");
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_u32.gvox", "gvox_u32");
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gvox_u32_palette.gvox", "gvox_u32_palette");
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_zlib.gvox", "zlib");
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_gzip.gvox", "gzip");
-    gvox_save(gvox, &scene, "tests/simple/compare_scene0_magicavoxel.gvox", "magicavoxel");
-    gvox_destroy_scene(&scene);
-
-#if DO_LOAD
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_raw.gvox");
-#if PRINT_RESULTS
-    printf("\n gvox_raw\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32.gvox");
-#if PRINT_RESULTS
-    printf("\n gvox_u32\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gvox_u32_palette.gvox");
-#if PRINT_RESULTS
-    printf("\n gvox_u32_palette\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_zlib.gvox");
-#if PRINT_RESULTS
-    printf("\n zlib\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-
-    scene = gvox_load(gvox, "tests/simple/compare_scene0_gzip.gvox");
-#if PRINT_RESULTS
-    printf("\n gzip\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-
-    scene = gvox_load_from_raw(gvox, "tests/simple/compare_scene0_magicavoxel.vox", "magicavoxel");
-#if PRINT_RESULTS
-    printf("\n magicavoxel\n");
-    print_voxels(scene);
-#endif
-    gvox_destroy_scene(scene);
-#endif
-
-    gvox_destroy_context(gvox);
+    test_raw_file_io();
+    test_palette_file_io();
+    test_magicavoxel();
 }

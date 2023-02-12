@@ -1,292 +1,105 @@
 #include <gvox/gvox.h>
 
-#include <cstring>
+#include <cassert>
 #include <unordered_map>
 #include <string>
 #include <vector>
 #include <array>
 #include <algorithm>
 
-#if GVOX_ENABLE_FILE_IO
-#include <fstream>
-#include <filesystem>
-#if __linux__
-#include <unistd.h>
-#include <dlfcn.h>
-#elif _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-#endif
+#include <mutex>
 
 #if __wasm32__
 #include "utils/patch_wasm.h"
 #endif
 
-using GVoxFormatCreateContextFunc = void *(*)();
-using GVoxFormatDestroyContextFunc = void (*)(void *);
-using GVoxFormatCreatePayloadFunc = GVoxPayload (*)(void *, GVoxScene const *);
-using GVoxFormatDestroyPayloadFunc = void (*)(void *, GVoxPayload const *);
-using GVoxFormatParsePayloadFunc = GVoxScene (*)(void *, GVoxPayload const *);
-
-struct GVoxFormatLoader {
-    void *context;
-    GVoxFormatLoaderInfo info;
+struct _GvoxAdapter {
+    GvoxAdapterBaseInfo base_info;
 };
-
-#include <formats.hpp>
-
-struct _GVoxContext {
-    std::unordered_map<std::string, GVoxFormatLoader *> format_loader_table = {};
-#if GVOX_ENABLE_FILE_IO
-    std::vector<std::filesystem::path> root_paths = {};
+struct GvoxInputAdapter {
+    GvoxInputAdapterInfo info;
+};
+struct GvoxOutputAdapter {
+    GvoxOutputAdapterInfo info;
+};
+struct GvoxParseAdapter {
+    GvoxParseAdapterInfo info;
+};
+struct GvoxSerializeAdapter {
+    GvoxSerializeAdapterInfo info;
+};
+struct _GvoxContext {
+    std::unordered_map<std::string, GvoxInputAdapter *> input_adapter_table{};
+    std::unordered_map<std::string, GvoxOutputAdapter *> output_adapter_table{};
+    std::unordered_map<std::string, GvoxParseAdapter *> parse_adapter_table{};
+    std::unordered_map<std::string, GvoxSerializeAdapter *> serialize_adapter_table{};
+    std::vector<std::pair<std::string, GvoxResult>> errors{};
+#if GVOX_ENABLE_THREADSAFETY
+    std::mutex mtx{};
 #endif
-    std::vector<std::pair<std::string, GVoxResult>> errors = {};
+};
+struct _GvoxAdapterContext {
+    GvoxContext *gvox_context_ptr;
+    GvoxAdapter *adapter;
+    void *user_ptr;
+};
+struct _GvoxBlitContext {
+    GvoxContext *gvox_context_ptr;
+    GvoxAdapterContext *i_ctx;
+    GvoxAdapterContext *o_ctx;
+    GvoxAdapterContext *p_ctx;
+    GvoxAdapterContext *s_ctx;
+    GvoxRegionRange i_range;
+    GvoxRegionRange o_range;
+    uint32_t channel_flags;
 };
 
-static auto gvox_context_find_loader(GVoxContext *ctx, std::string const &format_name) -> GVoxFormatLoader * {
-    auto iter = ctx->format_loader_table.find(format_name);
-    if (iter == ctx->format_loader_table.end()) {
-        ctx->errors.emplace_back("Failed to find format [" + format_name + "]", GVOX_ERROR_INVALID_FORMAT);
-        return nullptr;
-    }
-    return iter->second;
-}
-void impl_gvox_unregister_format(GVoxContext *ctx, GVoxFormatLoader const &self) {
-    // basically the destructor for format_loader
-    if (self.context != nullptr) {
-        ctx->errors.emplace_back("Failed to destroy the context of format [" + std::string(self.info.name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
-        self.info.destroy_context(self.context);
-    }
-}
+#include <adapters.hpp>
 
-auto gvox_create_context(void) -> GVoxContext * {
-    auto *result = new GVoxContext;
-    for (const auto *const name : format_names) {
-        gvox_load_format(result, name);
+auto gvox_create_context(void) -> GvoxContext * {
+    auto *ctx = new GvoxContext;
+    for (auto const &info : input_adapter_infos) {
+        gvox_register_input_adapter(ctx, &info);
     }
-    return result;
+    for (auto const &info : output_adapter_infos) {
+        gvox_register_output_adapter(ctx, &info);
+    }
+    for (auto const &info : parse_adapter_infos) {
+        gvox_register_parse_adapter(ctx, &info);
+    }
+    for (auto const &info : serialize_adapter_infos) {
+        gvox_register_serialize_adapter(ctx, &info);
+    }
+    return ctx;
 }
-void gvox_destroy_context(GVoxContext *ctx) {
+void gvox_destroy_context(GvoxContext *ctx) {
     if (ctx == nullptr) {
         return;
     }
-    for (auto &[format_key, format_loader] : ctx->format_loader_table) {
-        impl_gvox_unregister_format(ctx, *format_loader);
-        delete format_loader;
+    for (auto &[key, adapter] : ctx->input_adapter_table) {
+        delete adapter;
+    }
+    for (auto &[key, adapter] : ctx->output_adapter_table) {
+        delete adapter;
+    }
+    for (auto &[key, adapter] : ctx->parse_adapter_table) {
+        delete adapter;
+    }
+    for (auto &[key, adapter] : ctx->serialize_adapter_table) {
+        delete adapter;
     }
     delete ctx;
 }
 
-#if GVOX_ENABLE_FILE_IO
-auto get_exe_path() -> std::filesystem::path {
-    char *out_str = new char[512];
-    for (size_t i = 0; i < 512; ++i) {
-        out_str[i] = '\0';
-    }
-#if __linux__
-    readlink("/proc/self/exe", out_str, 511);
-#elif _WIN32
-    GetModuleFileName(nullptr, out_str, 511);
-#endif
-    auto result = std::filesystem::path(out_str);
-    if (!std::filesystem::is_directory(result)) {
-        result = result.parent_path();
-    }
-    delete[] out_str;
-    return result;
-}
-static inline void gvox_save(GVoxContext *ctx, GVoxScene const &scene, char const *filepath, char const *dst_format, uint8_t is_raw) {
-    GVoxHeader file_header;
-    GVoxPayload file_payload;
-    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, dst_format);
-    if (format_loader == nullptr) {
-        return;
-    }
-    file_payload = format_loader->info.create_payload(format_loader->context, &scene);
-    auto file = std::ofstream(filepath, std::ios::binary);
-    if (!file.is_open()) {
-        format_loader->info.destroy_payload(format_loader->context, &file_payload);
-        return;
-    }
-    file_header.payload_size = file_payload.size;
-    file_header.format_name_size = std::strlen(dst_format);
-    if (is_raw == 0u) {
-        file.write(reinterpret_cast<char const *>(&file_header), sizeof(file_header));
-        file.write(reinterpret_cast<char const *>(dst_format), static_cast<std::streamsize>(file_header.format_name_size));
-    }
-    file.write(reinterpret_cast<char const *>(file_payload.data), static_cast<std::streamsize>(file_payload.size));
-    file.close();
-    format_loader->info.destroy_payload(format_loader->context, &file_payload);
-}
-
-void gvox_push_root_path(GVoxContext *ctx, char const *path) {
-    ctx->root_paths.emplace_back(path);
-}
-void gvox_pop_root_path(GVoxContext *ctx) {
-    ctx->root_paths.pop_back();
-}
-
-auto gvox_load(GVoxContext *ctx, char const *filepath) -> GVoxScene {
-    GVoxHeader file_header;
-    GVoxPayload file_payload;
-    struct {
-        char *str;
-        size_t str_size;
-    } file_format_name{};
-    auto file = std::ifstream(filepath, std::ios::binary);
-    if (!file.is_open()) {
-        for (auto const &root_path : ctx->root_paths) {
-            file = std::ifstream(root_path / filepath, std::ios::binary);
-            if (file.is_open()) {
-                break;
-            }
-        }
-    }
-    if (!file.is_open()) {
-        ctx->errors.emplace_back("Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE);
-        return {};
-    }
-    file.read((char *)&file_header, sizeof(file_header));
-    file_format_name.str_size = file_header.format_name_size;
-    file_format_name.str = new char[file_format_name.str_size + 1];
-    file.read(file_format_name.str, static_cast<std::streamsize>(file_format_name.str_size));
-    file_format_name.str[file_format_name.str_size] = '\0';
-    file_payload.size = file_header.payload_size;
-    file_payload.data = new uint8_t[file_payload.size];
-    file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
-    file.close();
-    auto result = gvox_parse(ctx, &file_payload, file_format_name.str);
-    delete[] file_format_name.str;
-    delete[] file_payload.data;
-    return result;
-}
-auto gvox_load_from_raw(GVoxContext *ctx, char const *filepath, char const *src_format) -> GVoxScene {
-    GVoxPayload file_payload;
-    auto file = std::ifstream(filepath, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        for (auto const &root_path : ctx->root_paths) {
-            file = std::ifstream(root_path / filepath, std::ios::binary | std::ios::ate);
-            if (file.is_open()) {
-                break;
-            }
-        }
-    }
-    if (!file.is_open()) {
-        ctx->errors.emplace_back("Failed to load file [" + std::string(filepath) + "]", GVOX_ERROR_FAILED_TO_LOAD_FILE);
-        return {};
-    }
-    file_payload.size = static_cast<size_t>(file.tellg());
-    file_payload.data = new uint8_t[file_payload.size];
-    file.seekg(0, std::ios::beg);
-    file.read((char *)file_payload.data, static_cast<std::streamsize>(file_payload.size));
-    file.close();
-    auto result = gvox_parse(ctx, &file_payload, src_format);
-    delete[] file_payload.data;
-    return result;
-}
-void gvox_save(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format) {
-    gvox_save(ctx, *scene, filepath, dst_format, 0u);
-}
-void gvox_save_as_raw(GVoxContext *ctx, GVoxScene const *scene, char const *filepath, char const *dst_format) {
-    gvox_save(ctx, *scene, filepath, dst_format, 1u);
-}
-#endif
-
-void gvox_register_format(GVoxContext *ctx, GVoxFormatLoaderInfo const *format_loader_info) {
-    if (format_loader_info->create_context == nullptr ||
-        format_loader_info->destroy_context == nullptr ||
-        format_loader_info->create_payload == nullptr ||
-        format_loader_info->destroy_payload == nullptr ||
-        format_loader_info->parse_payload == nullptr) {
-        ctx->errors.emplace_back("Failed to register format [" + std::string(format_loader_info->name_str) + "]", GVOX_ERROR_INVALID_FORMAT);
-        return;
-    }
-    ctx->format_loader_table[format_loader_info->name_str] = new GVoxFormatLoader{
-        format_loader_info->create_context(),
-        *format_loader_info,
-    };
-}
-void gvox_load_format(GVoxContext *ctx, char const *format_loader_name) {
-    std::string filename = std::string("gvox_format_") + format_loader_name;
-
-    auto static_format_iter = std::find_if(static_format_infos.begin(), static_format_infos.end(), [&](auto const &static_format_info) {
-        return static_format_info.name == filename;
-    });
-
-    if (static_format_iter != static_format_infos.end()) {
-        GVoxFormatLoaderInfo const format_loader = {
-            .name_str = format_loader_name,
-            .create_context = static_format_iter->create_context,
-            .destroy_context = static_format_iter->destroy_context,
-            .create_payload = static_format_iter->create_payload,
-            .destroy_payload = static_format_iter->destroy_payload,
-            .parse_payload = static_format_iter->parse_payload,
-        };
-        gvox_register_format(ctx, &format_loader);
-    }
-#if GVOX_ENABLE_FILE_IO
-    else {
-        auto create_context_str = std::string("gvox_format_") + format_loader_name + "_create_context";
-        auto destroy_context_str = std::string("gvox_format_") + format_loader_name + "_destroy_context";
-        auto create_payload_str = std::string("gvox_format_") + format_loader_name + "_create_payload";
-        auto destroy_payload_str = std::string("gvox_format_") + format_loader_name + "_destroy_payload";
-        auto parse_payload_str = std::string("gvox_format_") + format_loader_name + "_parse_payload";
-#if __linux__
-        filename = "lib" + filename + ".so";
-        void *so_handle = dlopen(filename.c_str(), RTLD_LAZY);
-        if (!so_handle) {
-            auto path = get_exe_path() / filename;
-            so_handle = dlopen(path.string().c_str(), RTLD_LAZY);
-        }
-        if (!so_handle) {
-            ctx->errors.push_back({"Failed to load Format .so at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT});
-            return;
-        }
-        GVoxFormatLoaderInfo format_loader_info = {
-            .name_str = format_loader_name,
-            .create_context = (GVoxFormatCreateContextFunc)dlsym(so_handle, create_context_str.c_str()),
-            .destroy_context = (GVoxFormatDestroyContextFunc)dlsym(so_handle, destroy_context_str.c_str()),
-            .create_payload = (GVoxFormatCreatePayloadFunc)dlsym(so_handle, create_payload_str.c_str()),
-            .destroy_payload = (GVoxFormatDestroyPayloadFunc)dlsym(so_handle, destroy_payload_str.c_str()),
-            .parse_payload = (GVoxFormatParsePayloadFunc)dlsym(so_handle, parse_payload_str.c_str()),
-        };
-#elif _WIN32
-        filename = filename + ".dll";
-        HINSTANCE dll_handle = LoadLibrary(filename.c_str());
-        if (dll_handle == nullptr) {
-            auto path = get_exe_path() / filename;
-            dll_handle = LoadLibrary(path.string().c_str());
-        }
-        if (dll_handle == nullptr) {
-            ctx->errors.emplace_back("Failed to load Format DLL at [" + filename + "]", GVOX_ERROR_FAILED_TO_LOAD_FORMAT);
-            return;
-        }
-        GVoxFormatLoaderInfo const format_loader_info = {
-            .name_str = format_loader_name,
-            .create_context = (GVoxFormatCreateContextFunc)GetProcAddress(dll_handle, create_context_str.c_str()),
-            .destroy_context = (GVoxFormatDestroyContextFunc)GetProcAddress(dll_handle, destroy_context_str.c_str()),
-            .create_payload = (GVoxFormatCreatePayloadFunc)GetProcAddress(dll_handle, create_payload_str.c_str()),
-            .destroy_payload = (GVoxFormatDestroyPayloadFunc)GetProcAddress(dll_handle, destroy_payload_str.c_str()),
-            .parse_payload = (GVoxFormatParsePayloadFunc)GetProcAddress(dll_handle, parse_payload_str.c_str()),
-        };
-#endif
-        gvox_register_format(ctx, &format_loader_info);
-    }
-#endif
-}
-
-auto gvox_get_result(GVoxContext *ctx) -> GVoxResult {
+auto gvox_get_result(GvoxContext *ctx) -> GvoxResult {
     if (ctx->errors.empty()) {
-        return GVOX_SUCCESS;
+        return GVOX_RESULT_SUCCESS;
     }
     auto [msg, id] = ctx->errors.back();
     return id;
 }
-void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *str_size) {
+void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *str_size) {
     if (str_buffer != nullptr) {
-        // assert(str_size);
         if (ctx->errors.empty()) {
             for (size_t i = 0; i < *str_size; ++i) {
                 str_buffer[i] = '\0';
@@ -294,7 +107,6 @@ void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *s
             return;
         }
         auto [msg, id] = ctx->errors.back();
-        // assert(msg.size() <= *str_size);
         std::copy(msg.begin(), msg.end(), str_buffer);
     } else if (str_size != nullptr) {
         if (ctx->errors.empty()) {
@@ -305,49 +117,207 @@ void gvox_get_result_message(GVoxContext *ctx, char *const str_buffer, size_t *s
         *str_size = msg.size();
     }
 }
-void gvox_pop_result(GVoxContext *ctx) {
+void gvox_pop_result(GvoxContext *ctx) {
     ctx->errors.pop_back();
 }
 
-auto gvox_parse(GVoxContext *ctx, GVoxPayload const *payload, char const *src_format) -> GVoxScene {
-    GVoxScene result = {};
-    auto format = std::string{src_format};
-    auto actual_payload = *payload;
-    if (format == "gvox") {
-        GVoxHeader file_header = *reinterpret_cast<GVoxHeader *>(actual_payload.data);
-        actual_payload.data += sizeof(GVoxHeader);
-        format.resize(file_header.format_name_size);
-        std::memcpy(format.data(), actual_payload.data, file_header.format_name_size);
-        actual_payload.data += file_header.format_name_size;
-    }
-    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format.c_str());
-    if (format_loader != nullptr) {
-        result = format_loader->info.parse_payload(format_loader->context, &actual_payload);
-    }
-    return result;
+auto gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto *result = new GvoxInputAdapter{
+        *adapter_info,
+    };
+    ctx->input_adapter_table[adapter_info->base_info.name_str] = result;
+    return reinterpret_cast<GvoxAdapter *>(result);
 }
-auto gvox_serialize(GVoxContext *ctx, GVoxScene const *scene, char const *dst_format) -> GVoxPayload {
-    GVoxPayload result = {};
-    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, dst_format);
-    if (format_loader != nullptr) {
-        result = format_loader->info.create_payload(format_loader->context, scene);
+auto gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxAdapter * {
+    auto adapter_iter = ctx->input_adapter_table.find(adapter_name);
+    if (adapter_iter == ctx->input_adapter_table.end()) {
+        return nullptr;
+    } else {
+        auto &[name, adapter] = *adapter_iter;
+        return reinterpret_cast<GvoxAdapter *>(adapter);
     }
-    return result;
 }
 
-void gvox_destroy_payload(GVoxContext *ctx, GVoxPayload const *payload, char const *format) {
-    GVoxFormatLoader *format_loader = gvox_context_find_loader(ctx, format);
-    if (format_loader != nullptr) {
-        format_loader->info.destroy_payload(format_loader->context, payload);
+auto gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto *result = new GvoxOutputAdapter{
+        *adapter_info,
+    };
+    ctx->output_adapter_table[adapter_info->base_info.name_str] = result;
+    return reinterpret_cast<GvoxAdapter *>(result);
+}
+auto gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxAdapter * {
+    return reinterpret_cast<GvoxAdapter *>(ctx->output_adapter_table.at(adapter_name));
+    auto adapter_iter = ctx->output_adapter_table.find(adapter_name);
+    if (adapter_iter == ctx->output_adapter_table.end()) {
+        return nullptr;
+    } else {
+        auto &[name, adapter] = *adapter_iter;
+        return reinterpret_cast<GvoxAdapter *>(adapter);
     }
 }
-void gvox_destroy_scene(GVoxScene const *scene) {
-    for (uint64_t node_i = 0; node_i < scene->node_n; ++node_i) {
-        if (scene->nodes[node_i].voxels != nullptr) {
-            std::free(scene->nodes[node_i].voxels);
-        }
+
+auto gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto *result = new GvoxParseAdapter{
+        *adapter_info,
+    };
+    ctx->parse_adapter_table[adapter_info->base_info.name_str] = result;
+    return reinterpret_cast<GvoxAdapter *>(result);
+}
+auto gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxAdapter * {
+    auto adapter_iter = ctx->parse_adapter_table.find(adapter_name);
+    if (adapter_iter == ctx->parse_adapter_table.end()) {
+        return nullptr;
+    } else {
+        auto &[name, adapter] = *adapter_iter;
+        return reinterpret_cast<GvoxAdapter *>(adapter);
     }
-    if (scene->nodes != nullptr) {
-        std::free(scene->nodes);
+}
+
+auto gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto *result = new GvoxSerializeAdapter{
+        *adapter_info,
+    };
+    ctx->serialize_adapter_table[adapter_info->base_info.name_str] = result;
+    return reinterpret_cast<GvoxAdapter *>(result);
+}
+auto gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxAdapter * {
+    auto adapter_iter = ctx->serialize_adapter_table.find(adapter_name);
+    if (adapter_iter == ctx->serialize_adapter_table.end()) {
+        return nullptr;
+    } else {
+        auto &[name, adapter] = *adapter_iter;
+        return reinterpret_cast<GvoxAdapter *>(adapter);
     }
+}
+
+void gvox_adapter_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    if (ctx != nullptr && ctx->adapter != nullptr) {
+        ctx->adapter->base_info.blit_begin(blit_ctx, ctx);
+    }
+}
+void gvox_adapter_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    if (ctx != nullptr && ctx->adapter != nullptr) {
+        ctx->adapter->base_info.blit_end(blit_ctx, ctx);
+    }
+}
+
+auto gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void *config) -> GvoxAdapterContext * {
+    auto *ctx = new GvoxAdapterContext{
+        .gvox_context_ptr = gvox_ctx,
+        .adapter = adapter,
+        .user_ptr = {},
+    };
+    if (ctx->adapter != nullptr) {
+        ctx->adapter->base_info.create(ctx, config);
+    }
+    return ctx;
+}
+void gvox_destroy_adapter_context(GvoxAdapterContext *ctx) {
+    if (ctx && ctx->adapter != nullptr) {
+        ctx->adapter->base_info.destroy(ctx);
+    }
+    delete ctx;
+}
+void gvox_blit_region(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *input_range, GvoxRegionRange const *output_range,
+    uint32_t channel_flags) {
+    if (serialize_ctx->adapter == nullptr) {
+        gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The serialize adapter mustn't null");
+        return;
+    }
+    if (input_range == nullptr) {
+        gvox_adapter_push_error(input_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The input range mustn't be null");
+        return;
+    }
+    auto blit_ctx = GvoxBlitContext{
+        .i_ctx = input_ctx,
+        .o_ctx = output_ctx,
+        .p_ctx = parse_ctx,
+        .s_ctx = serialize_ctx,
+        .i_range = *input_range,
+        .o_range = *output_range,
+        .channel_flags = channel_flags,
+    };
+    if (blit_ctx.o_range.extent.x > blit_ctx.i_range.extent.x ||
+        blit_ctx.o_range.extent.y > blit_ctx.i_range.extent.y ||
+        blit_ctx.o_range.extent.z > blit_ctx.i_range.extent.z) {
+        gvox_adapter_push_error(input_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: It doesn't make sense to have a larger output than input");
+        return;
+    }
+    if (blit_ctx.o_range.extent.x == 0) {
+        blit_ctx.o_range.extent.x = blit_ctx.i_range.extent.x;
+    }
+    if (blit_ctx.o_range.extent.y == 0) {
+        blit_ctx.o_range.extent.y = blit_ctx.i_range.extent.y;
+    }
+    if (blit_ctx.o_range.extent.z == 0) {
+        blit_ctx.o_range.extent.z = blit_ctx.i_range.extent.z;
+    }
+
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.i_ctx);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.o_ctx);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx);
+    reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &blit_ctx.o_range, channel_flags);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
+}
+
+auto gvox_load_region(GvoxBlitContext *blit_ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
+    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
+    return p_adapter.info.load_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), offset, channel_id);
+}
+void gvox_unload_region(GvoxBlitContext *blit_ctx, GvoxRegion *region) {
+    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
+    p_adapter.info.unload_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region);
+}
+auto gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
+    auto in_region_offset = GvoxOffset3D{
+        offset->x - region->range.offset.x,
+        offset->y - region->range.offset.y,
+        offset->z - region->range.offset.z,
+    };
+    return p_adapter.info.sample_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region, &in_region_offset, channel_id);
+}
+auto gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_id) -> uint32_t {
+    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
+    return p_adapter.info.query_region_flags(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), range, channel_id);
+}
+
+void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message) {
+#if GVOX_ENABLE_THREADSAFETY
+    auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
+#endif
+    ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
+#if !GVOX_BUILD_FOR_RUST && !GVOX_BUILD_FOR_ODIN
+    assert(0 && message);
+#endif
+}
+
+void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {
+    ctx->user_ptr = ptr;
+}
+
+auto gvox_adapter_get_user_pointer(GvoxAdapterContext *ctx) -> void * {
+    return ctx->user_ptr;
+}
+
+void gvox_input_read(GvoxBlitContext *blit_ctx, size_t position, size_t size, void *data) {
+    auto &i_adapter = *reinterpret_cast<GvoxInputAdapter *>(blit_ctx->i_ctx->adapter);
+    i_adapter.info.read(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->i_ctx), position, size, data);
+}
+
+void gvox_output_write(GvoxBlitContext *blit_ctx, size_t position, size_t size, void const *data) {
+    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
+    o_adapter.info.write(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), position, size, data);
+}
+
+void gvox_output_reserve(GvoxBlitContext *blit_ctx, size_t size) {
+    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
+    o_adapter.info.reserve(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), size);
 }

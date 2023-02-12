@@ -5,15 +5,6 @@ include(cmake/warnings.cmake)
 if(GVOX_ENABLE_FILE_IO)
     list(APPEND VCPKG_MANIFEST_FEATURES "file-io")
 endif()
-if(GVOX_ENABLE_MINECRAFT)
-    list(APPEND VCPKG_MANIFEST_FEATURES "minecraft")
-endif()
-if(GVOX_ENABLE_ZLIB)
-    list(APPEND VCPKG_MANIFEST_FEATURES "zlib")
-endif()
-if(GVOX_ENABLE_GZIP)
-    list(APPEND VCPKG_MANIFEST_FEATURES "gzip")
-endif()
 if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
@@ -45,20 +36,45 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
     endif()
 endif()
 
-set(GVOX_DYNAMIC_FORMATS
+set(GVOX_INPUT_ADAPTERS
+    "byte_buffer"
 )
-
-set(GVOX_STATIC_FORMATS
-    gvox_raw
-    gvox_u32
-    gvox_u32_palette
-    ace_of_spades
-    magicavoxel
+set(GVOX_OUTPUT_ADAPTERS
+    "byte_buffer"
+)
+set(GVOX_PARSE_ADAPTERS
+    "gvox_raw"
+    "gvox_palette"
+    # ace_of_spades
+    "magicavoxel"
+)
+set(GVOX_SERIALIZE_ADAPTERS
+    "gvox_raw"
+    "gvox_palette"
+    "colored_text"
 )
 
 add_library(${PROJECT_NAME} STATIC
     "src/gvox.cpp"
 )
+
+if(GVOX_ENABLE_THREADSAFETY)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
+endif()
+
+if(GVOX_BUILD_FOR_RUST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=0)
+endif()
+
+if(GVOX_BUILD_FOR_ODIN)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=0)
+endif()
 
 if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -68,30 +84,10 @@ endif()
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    target_link_libraries(${PROJECT_NAME}
-        PUBLIC
-        ${CMAKE_DL_LIBS}
-    )
+    list(APPEND GVOX_INPUT_ADAPTERS "file")
+    list(APPEND GVOX_OUTPUT_ADAPTERS "file" "stdout")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
-endif()
-if(GVOX_ENABLE_MINECRAFT)
-    list(APPEND GVOX_STATIC_FORMATS minecraft)
-    find_package(minizip CONFIG REQUIRED)
-    find_package(nlohmann_json CONFIG REQUIRED)
-    find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
-    target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE minizip::minizip nlohmann_json::nlohmann_json)
-endif()
-if(GVOX_ENABLE_ZLIB)
-    list(APPEND GVOX_STATIC_FORMATS zlib)
-    find_package(ZLIB REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
-endif()
-if(GVOX_ENABLE_GZIP)
-    list(APPEND GVOX_STATIC_FORMATS gzip)
-    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-    target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
 endif()
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -105,66 +101,7 @@ target_include_directories(${PROJECT_NAME}
 )
 set_project_warnings(${PROJECT_NAME})
 
-set(GVOX_FORMATS ${GVOX_DYNAMIC_FORMATS} ${GVOX_STATIC_FORMATS})
-
-foreach(FORMAT_NAME ${GVOX_FORMATS})
-    set(format_names_content "${format_names_content}
-    \"${FORMAT_NAME}\",")
-endforeach()
-
-set(formats_header_content "#pragma once
-
-#include <array>
-#include <string_view>
-
-static constexpr std::array format_names = {${format_names_content}
-};
-")
-
-set(formats_header_content "${formats_header_content}
-#pragma region STATIC_FORMATS
-
-struct StaticFormatInfo {
-    std::string_view name;
-    GVoxFormatCreateContextFunc create_context;
-    GVoxFormatDestroyContextFunc destroy_context;
-    GVoxFormatCreatePayloadFunc create_payload;
-    GVoxFormatDestroyPayloadFunc destroy_payload;
-    GVoxFormatParsePayloadFunc parse_payload;
-};
-")
-
-foreach(FORMAT_NAME ${GVOX_STATIC_FORMATS})
-    target_sources(${PROJECT_NAME} PRIVATE "src/formats/${FORMAT_NAME}.cpp")
-    string(MAKE_C_IDENTIFIER "${FORMAT_NAME}" FORMAT_NAME_UPPER)
-    string(TOUPPER "${FORMAT_NAME_UPPER}" FORMAT_NAME_UPPER)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_FORMAT_${FORMAT_NAME_UPPER}_BUILT_STATIC=1)
-    set(formats_header_content "${formats_header_content}
-extern \"C\" auto gvox_format_${FORMAT_NAME}_create_context() -> void *;
-extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_context(void *context_ptr);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_create_payload(void *context_ptr, GVoxScene const *scene) -> GVoxPayload;
-extern \"C\" void gvox_format_${FORMAT_NAME}_destroy_payload(void *context_ptr, GVoxPayload const *payload);
-extern \"C\" auto gvox_format_${FORMAT_NAME}_parse_payload(void *context_ptr, GVoxPayload const *payload) -> GVoxScene;
-")
-    set(static_format_infos_content "${static_format_infos_content}
-    StaticFormatInfo{
-        .name = \"gvox_format_${FORMAT_NAME}\",
-        .create_context = gvox_format_${FORMAT_NAME}_create_context,
-        .destroy_context = gvox_format_${FORMAT_NAME}_destroy_context,
-        .create_payload = gvox_format_${FORMAT_NAME}_create_payload,
-        .destroy_payload = gvox_format_${FORMAT_NAME}_destroy_payload,
-        .parse_payload = gvox_format_${FORMAT_NAME}_parse_payload,
-    },")
-endforeach()
-
-set(formats_header_content "${formats_header_content}
-static constexpr std::array static_format_infos = {${static_format_infos_content}
-};
-
-#pragma endregion
-")
-
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/formats.hpp" "${formats_header_content}")
+include("cmake/adapters.cmake")
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS
@@ -178,14 +115,6 @@ function(set_project_sanitizers TARGET_NAME)
 endfunction()
 
 set_project_sanitizers(${PROJECT_NAME})
-
-foreach(FORMAT_NAME ${GVOX_DYNAMIC_FORMATS})
-    add_library(gvox_format_${FORMAT_NAME} SHARED
-        "src/formats/${FORMAT_NAME}.cpp"
-    )
-    target_link_libraries(gvox_format_${FORMAT_NAME} PRIVATE gvox::gvox)
-    set_project_sanitizers(gvox_format_${FORMAT_NAME})
-endforeach()
 
 if(GVOX_ENABLE_TESTS)
     add_subdirectory(tests)
