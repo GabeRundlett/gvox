@@ -16,19 +16,19 @@ struct GvoxRawParseUserState {
     size_t offset{};
 };
 
-extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void *) {
     auto *user_state_ptr = malloc(sizeof(GvoxRawParseUserState));
-    auto &user_state = *(new (user_state_ptr) GvoxRawParseUserState());
+    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxRawParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_gvox_raw_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GvoxRawParseUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     uint32_t magic = 0;
@@ -49,10 +49,10 @@ extern "C" void gvox_parse_adapter_gvox_raw_blit_begin([[maybe_unused]] GvoxBlit
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_gvox_raw_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegionRange const *, uint32_t) -> uint32_t {
     return 0;
 }
 
@@ -80,9 +80,9 @@ extern "C" auto gvox_parse_adapter_gvox_raw_load_region(GvoxBlitContext *blit_ct
     return region;
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_unload_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion *region) {
+extern "C" void gvox_parse_adapter_gvox_raw_unload_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion *) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_sample_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, uint32_t /*channel_id*/) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion const *region, GvoxOffset3D const *, uint32_t) -> uint32_t {
     return static_cast<uint32_t>(reinterpret_cast<size_t>(region->data));
 }

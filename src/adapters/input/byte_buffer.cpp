@@ -20,16 +20,16 @@ extern "C" void gvox_input_adapter_byte_buffer_create(GvoxAdapterContext *ctx, v
     memcpy(user_state.bytes.data(), user_config.data, user_config.size);
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<ByteBufferInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~ByteBufferInputUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_byte_buffer_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
 extern "C" void gvox_input_adapter_byte_buffer_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {

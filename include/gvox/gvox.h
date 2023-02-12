@@ -53,10 +53,6 @@ typedef enum {
 
 typedef struct _GvoxContext GvoxContext;
 typedef struct _GvoxAdapter GvoxAdapter;
-typedef struct _GvoxInputAdapter GvoxInputAdapter;
-typedef struct _GvoxOutputAdapter GvoxOutputAdapter;
-typedef struct _GvoxParseAdapter GvoxParseAdapter;
-typedef struct _GvoxSerializeAdapter GvoxSerializeAdapter;
 typedef struct _GvoxAdapterContext GvoxAdapterContext;
 typedef struct _GvoxBlitContext GvoxBlitContext;
 

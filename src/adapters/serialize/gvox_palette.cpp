@@ -30,22 +30,22 @@ static void write_data(uint8_t *&buffer_ptr, T const &data) {
     buffer_ptr += sizeof(T);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_serialize_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void *) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteSerializeUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_palette_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GvoxPaletteSerializeUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
 auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_state, GvoxRegionRange const &range, uint32_t rx, uint32_t ry, uint32_t rz, uint32_t ci, std::vector<uint8_t> const &channels) -> size_t {

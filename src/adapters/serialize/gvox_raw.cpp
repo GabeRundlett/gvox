@@ -7,19 +7,19 @@
 #include <array>
 #include <vector>
 
-extern "C" void gvox_serialize_adapter_gvox_raw_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext *, void *) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_raw_destroy(GvoxAdapterContext *) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_raw_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_raw_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *, GvoxRegionRange const *range, uint32_t channel_flags) {
     size_t offset = 0;
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'r', '\0'});
     gvox_output_write(blit_ctx, offset, sizeof(uint32_t), &magic);

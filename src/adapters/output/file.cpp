@@ -32,10 +32,10 @@ extern "C" void gvox_output_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_file_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext *, GvoxAdapterContext *, void *) {
 }
 
-extern "C" void gvox_output_adapter_file_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_output_adapter_file_blit_end(GvoxBlitContext *, GvoxAdapterContext *ctx) {
     auto &user_state = *reinterpret_cast<OutputFileUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto file = std::ofstream(user_state.path, std::ios_base::binary);
     file.write(reinterpret_cast<char const *>(user_state.bytes.data()), static_cast<std::streamsize>(user_state.bytes.size()));

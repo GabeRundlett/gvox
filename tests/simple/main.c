@@ -7,8 +7,6 @@
 #include <gvox/adapters/serialize/gvox_raw.h>
 #include <gvox/adapters/serialize/colored_text.h>
 
-#include <stdio.h>
-
 void test_raw_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
 
@@ -55,7 +53,6 @@ void test_raw_file_io(void) {
             .byte_offset = 0,
         };
         GvoxColoredTextSerializeAdapterConfig s_config = {
-            .channel_id = GVOX_CHANNEL_ID_COLOR,
             .non_color_max_value = 5,
         };
         GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
@@ -70,7 +67,7 @@ void test_raw_file_io(void) {
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
             &region_range, &region_range,
-            GVOX_CHANNEL_BIT_COLOR);
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(i_ctx);
         gvox_destroy_adapter_context(o_ctx);
@@ -100,7 +97,7 @@ void test_palette_file_io(void) {
             .sample_region = procedural_sample_region,
         };
         GvoxFileOutputAdapterConfig o_config = {
-            .filepath = "tests/simple/raw.gvox",
+            .filepath = "tests/simple/palette.gvox",
         };
         GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "file"), &o_config);
         GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), NULL);
@@ -123,11 +120,10 @@ void test_palette_file_io(void) {
     // Load gvox_palette file
     {
         GvoxFileInputAdapterConfig i_config = {
-            .filepath = "tests/simple/raw.gvox",
+            .filepath = "tests/simple/palette.gvox",
             .byte_offset = 0,
         };
         GvoxColoredTextSerializeAdapterConfig s_config = {
-            .channel_id = GVOX_CHANNEL_ID_COLOR,
             .non_color_max_value = 5,
         };
         GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
@@ -142,7 +138,7 @@ void test_palette_file_io(void) {
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
             &region_range, &region_range,
-            GVOX_CHANNEL_BIT_COLOR);
+            GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(i_ctx);
         gvox_destroy_adapter_context(o_ctx);
@@ -160,43 +156,29 @@ void test_magicavoxel(void) {
             .filepath = "assets/test.vox",
             .byte_offset = 0,
         };
-        GvoxColoredTextSerializeAdapterConfig s_configs[] = {
-            {
-                .channel_id = GVOX_CHANNEL_ID_COLOR,
-            },
-            {
-                .channel_id = GVOX_CHANNEL_ID_MATERIAL_ID,
-                .non_color_max_value = 255,
-            },
-            {
-                .channel_id = GVOX_CHANNEL_ID_ROUGHNESS,
-            },
-            {
-                .channel_id = GVOX_CHANNEL_ID_TRANSPARENCY,
-            },
-            {
-                .channel_id = GVOX_CHANNEL_ID_EMISSIVE_COLOR,
-            },
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 255,
         };
-        for (uint32_t s_config_i = 0; s_config_i < sizeof(s_configs) / sizeof(s_configs[0]); ++s_config_i) {
-            GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
-            GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
-            GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "magicavoxel"), NULL);
-            GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_configs[s_config_i]);
-            GvoxRegionRange region_range = {
-                .offset = {-4, -4, +0},
-                .extent = {+8, +8, +8},
-            };
-            gvox_blit_region(
-                i_ctx, o_ctx, p_ctx, s_ctx,
-                &region_range, &region_range,
-                GVOX_CHANNEL_BIT_COLOR);
-            gvox_destroy_adapter_context(i_ctx);
-            gvox_destroy_adapter_context(o_ctx);
-            gvox_destroy_adapter_context(p_ctx);
-            gvox_destroy_adapter_context(s_ctx);
-            printf("\n\n");
-        }
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "magicavoxel"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+        GvoxRegionRange region_range = {
+            .offset = {-4, -4, +0},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            &region_range, &region_range,
+            GVOX_CHANNEL_BIT_COLOR |
+                GVOX_CHANNEL_BIT_MATERIAL_ID |
+                GVOX_CHANNEL_BIT_ROUGHNESS |
+                GVOX_CHANNEL_BIT_TRANSPARENCY |
+                GVOX_CHANNEL_BIT_EMISSIVE_COLOR);
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
     }
     gvox_destroy_context(gvox_ctx);
 }

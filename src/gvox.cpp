@@ -16,23 +16,23 @@
 struct _GvoxAdapter {
     GvoxAdapterBaseInfo base_info;
 };
-struct _GvoxInputAdapter {
+struct GvoxInputAdapter {
     GvoxInputAdapterInfo info;
 };
-struct _GvoxOutputAdapter {
+struct GvoxOutputAdapter {
     GvoxOutputAdapterInfo info;
 };
-struct _GvoxParseAdapter {
+struct GvoxParseAdapter {
     GvoxParseAdapterInfo info;
 };
-struct _GvoxSerializeAdapter {
+struct GvoxSerializeAdapter {
     GvoxSerializeAdapterInfo info;
 };
 struct _GvoxContext {
-    std::unordered_map<std::string, _GvoxInputAdapter *> input_adapter_table{};
-    std::unordered_map<std::string, _GvoxOutputAdapter *> output_adapter_table{};
-    std::unordered_map<std::string, _GvoxParseAdapter *> parse_adapter_table{};
-    std::unordered_map<std::string, _GvoxSerializeAdapter *> serialize_adapter_table{};
+    std::unordered_map<std::string, GvoxInputAdapter *> input_adapter_table{};
+    std::unordered_map<std::string, GvoxOutputAdapter *> output_adapter_table{};
+    std::unordered_map<std::string, GvoxParseAdapter *> parse_adapter_table{};
+    std::unordered_map<std::string, GvoxSerializeAdapter *> serialize_adapter_table{};
     std::vector<std::pair<std::string, GvoxResult>> errors{};
 #if GVOX_ENABLE_THREADSAFETY
     std::mutex mtx{};
@@ -122,7 +122,7 @@ void gvox_pop_result(GvoxContext *ctx) {
 }
 
 auto gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info) -> GvoxAdapter * {
-    auto *result = new _GvoxInputAdapter{
+    auto *result = new GvoxInputAdapter{
         *adapter_info,
     };
     ctx->input_adapter_table[adapter_info->base_info.name_str] = result;
@@ -139,7 +139,7 @@ auto gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 }
 
 auto gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info) -> GvoxAdapter * {
-    auto *result = new _GvoxOutputAdapter{
+    auto *result = new GvoxOutputAdapter{
         *adapter_info,
     };
     ctx->output_adapter_table[adapter_info->base_info.name_str] = result;
@@ -157,7 +157,7 @@ auto gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name) -> Gvox
 }
 
 auto gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info) -> GvoxAdapter * {
-    auto *result = new _GvoxParseAdapter{
+    auto *result = new GvoxParseAdapter{
         *adapter_info,
     };
     ctx->parse_adapter_table[adapter_info->base_info.name_str] = result;
@@ -174,7 +174,7 @@ auto gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 }
 
 auto gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info) -> GvoxAdapter * {
-    auto *result = new _GvoxSerializeAdapter{
+    auto *result = new GvoxSerializeAdapter{
         *adapter_info,
     };
     ctx->serialize_adapter_table[adapter_info->base_info.name_str] = result;
