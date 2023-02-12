@@ -30,23 +30,29 @@ static void write_data(uint8_t *&buffer_ptr, T const &data) {
     buffer_ptr += sizeof(T);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_serialize_adapter_gvox_palette_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteSerializeUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
-    gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_end([[maybe_unused]] GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
+extern "C" void gvox_serialize_adapter_gvox_palette_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GvoxPaletteSerializeUserState();
     free(&user_state);
 }
 
-auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_state, GvoxRegionRange const &range, uint32_t rx, uint32_t ry, uint32_t rz, uint32_t ci, std::vector<uint8_t> const &channels) -> size_t {
-    auto sample_u32_data = [ctx, ci, &channels](GvoxOffset3D const &pos) {
-        auto region = gvox_load_region(ctx, &pos, channels[ci]);
-        auto result = gvox_sample_region(ctx, &region, &pos, channels[ci]);
-        gvox_unload_region(ctx, &region);
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_state, GvoxRegionRange const &range, uint32_t rx, uint32_t ry, uint32_t rz, uint32_t ci, std::vector<uint8_t> const &channels) -> size_t {
+    auto sample_u32_data = [blit_ctx, ci, &channels](GvoxOffset3D const &pos) {
+        auto region = gvox_load_region(blit_ctx, &pos, channels[ci]);
+        auto result = gvox_sample_region(blit_ctx, &region, &pos, channels[ci]);
+        gvox_unload_region(blit_ctx, &region);
         if (channels[ci] == GVOX_CHANNEL_ID_NORMAL) {
             // TODO: potentially compress the normals?
         }
@@ -185,19 +191,19 @@ auto add_region(GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_sta
     return size;
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
+extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+    auto &user_state = *reinterpret_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'});
     auto channel_n = static_cast<uint32_t>(std::popcount(channel_flags));
-    gvox_output_write(ctx, user_state.offset, sizeof(uint32_t), &magic);
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
     user_state.offset += sizeof(magic);
-    gvox_output_write(ctx, user_state.offset, sizeof(*range), range);
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);
     auto blob_size_offset = user_state.offset;
     user_state.offset += sizeof(uint32_t);
-    gvox_output_write(ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
     user_state.offset += sizeof(channel_flags);
-    gvox_output_write(ctx, user_state.offset, sizeof(channel_n), &channel_n);
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(channel_n), &channel_n);
     user_state.offset += sizeof(channel_n);
     std::vector<uint8_t> channels;
     channels.resize(static_cast<size_t>(channel_n));
@@ -226,7 +232,7 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
             for (uint32_t xi = 0; xi < region_nx; ++xi) {
                 for (uint32_t ci = 0; ci < channels.size(); ++ci) {
                     thread_pool.enqueue([&, xi, yi, zi, ci]() {
-                        auto region_size = add_region(ctx, user_state, *range, xi, yi, zi, ci, channels);
+                        auto region_size = add_region(blit_ctx, ctx, user_state, *range, xi, yi, zi, ci, channels);
                         {
 #if ENABLE_THREAD_POOL
                             auto lock = std::lock_guard{size_mtx};
@@ -242,6 +248,6 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxAdapter
     }
     thread_pool.stop();
     auto blob_size = static_cast<uint32_t>(size - user_state.blobs_begin);
-    gvox_output_write(ctx, blob_size_offset, sizeof(blob_size), &blob_size);
-    gvox_output_write(ctx, user_state.offset, user_state.data.size(), user_state.data.data());
+    gvox_output_write(blit_ctx, blob_size_offset, sizeof(blob_size), &blob_size);
+    gvox_output_write(blit_ctx, user_state.offset, user_state.data.size(), user_state.data.data());
 }

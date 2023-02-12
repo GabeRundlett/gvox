@@ -13,10 +13,10 @@ struct ByteBufferOutputUserState {
     std::vector<uint8_t> bytes{};
 };
 
-extern "C" void gvox_output_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_output_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void *config) {
     auto *user_state_ptr = malloc(sizeof(ByteBufferOutputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferOutputUserState());
-    gvox_output_adapter_set_user_pointer(ctx, user_state_ptr);
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
         user_state.config = *reinterpret_cast<GvoxByteBufferOutputAdapterConfig *>(config);
     } else {
@@ -24,8 +24,25 @@ extern "C" void gvox_output_adapter_byte_buffer_begin(GvoxAdapterContext *ctx, v
     }
 }
 
-extern "C" void gvox_output_adapter_byte_buffer_end(GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_output_adapter_get_user_pointer(ctx));
+extern "C" void gvox_output_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.~ByteBufferOutputUserState();
+    free(&user_state);
+}
+
+extern "C" void gvox_output_adapter_byte_buffer_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, void *config) {
+    auto *user_state_ptr = malloc(sizeof(ByteBufferOutputUserState));
+    auto &user_state = *(new (user_state_ptr) ByteBufferOutputUserState());
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
+    if (config != nullptr) {
+        user_state.config = *reinterpret_cast<GvoxByteBufferOutputAdapterConfig *>(config);
+    } else {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_OUTPUT_ADAPTER, "Can't use this 'bytes' output adapter without a config");
+    }
+}
+
+extern "C" void gvox_output_adapter_byte_buffer_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     void *bytes = nullptr;
     if (user_state.config.allocate != nullptr) {
         bytes = user_state.config.allocate(user_state.bytes.size());
@@ -40,7 +57,7 @@ extern "C" void gvox_output_adapter_byte_buffer_end(GvoxAdapterContext *ctx) {
 }
 
 extern "C" void gvox_output_adapter_byte_buffer_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data) {
-    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_output_adapter_get_user_pointer(ctx));
+    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (position + size > user_state.bytes.size()) {
         user_state.bytes.resize(position + size);
     }
@@ -48,7 +65,7 @@ extern "C" void gvox_output_adapter_byte_buffer_write(GvoxAdapterContext *ctx, s
 }
 
 extern "C" void gvox_output_adapter_byte_buffer_reserve(GvoxAdapterContext *ctx, size_t size) {
-    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_output_adapter_get_user_pointer(ctx));
+    auto &user_state = *reinterpret_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (size > user_state.bytes.size()) {
         user_state.bytes.resize(size);
     }

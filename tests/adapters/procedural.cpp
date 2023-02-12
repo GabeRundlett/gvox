@@ -26,17 +26,20 @@ auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
     return sample_terrain(x, y, z);
 }
 
-extern "C" void gvox_parse_adapter_procedural_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void procedural_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+}
+extern "C" void procedural_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+extern "C" void procedural_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+extern "C" void procedural_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
 }
 
-extern "C" void gvox_parse_adapter_procedural_end([[maybe_unused]] GvoxAdapterContext *ctx) {
-}
-
-extern "C" auto gvox_parse_adapter_procedural_query_region_flags([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
+extern "C" auto procedural_query_region_flags([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
     return 0;
 }
 
-extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
+extern "C" auto procedural_load_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
     if (channel_id != GVOX_CHANNEL_ID_COLOR && channel_id != GVOX_CHANNEL_ID_NORMAL && channel_id != GVOX_CHANNEL_ID_MATERIAL_ID) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "procedural 'parser' does not generate anything other than color & normal");
         return {};
@@ -110,11 +113,11 @@ extern "C" auto gvox_parse_adapter_procedural_load_region([[maybe_unused]] GvoxA
     return region;
 }
 
-extern "C" void gvox_parse_adapter_procedural_unload_region([[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion *region) {
+extern "C" void procedural_unload_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion *region) {
     free(region->data);
 }
 
-extern "C" auto gvox_parse_adapter_procedural_sample_region([[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto procedural_sample_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
     uint32_t index = 0;
     switch (channel_id) {
     case GVOX_CHANNEL_ID_COLOR: index = 0; break;

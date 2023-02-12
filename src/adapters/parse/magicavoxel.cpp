@@ -12,6 +12,7 @@
 #include <new>
 #include <string>
 #include <memory>
+#include <sstream>
 
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});
@@ -349,12 +350,22 @@ void sample_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_nod
     }
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
     auto *user_state_ptr = malloc(sizeof(MagicavoxelParseUserState));
     auto &user_state = *(new (user_state_ptr) MagicavoxelParseUserState());
-    gvox_parse_adapter_set_user_pointer(ctx, user_state_ptr);
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
+}
+
+extern "C" void gvox_parse_adapter_magicavoxel_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.~MagicavoxelParseUserState();
+    free(&user_state);
+}
+
+extern "C" void gvox_parse_adapter_magicavoxel_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto read_var = [&](auto &var) {
-        gvox_input_read(ctx, user_state.offset, sizeof(var), &var);
+        gvox_input_read(blit_ctx, user_state.offset, sizeof(var), &var);
         user_state.offset += sizeof(var);
     };
     auto read_dict = [&](magicavoxel::Dictionary &temp_dict) {
@@ -373,7 +384,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
             }
             char *key = &temp_dict.buffer[temp_dict.buffer_mem_used];
             temp_dict.buffer_mem_used += key_string_size + 1;
-            gvox_input_read(ctx, user_state.offset, key_string_size, key);
+            gvox_input_read(blit_ctx, user_state.offset, key_string_size, key);
             user_state.offset += key_string_size;
             key[key_string_size] = 0;
             uint32_t value_string_size = 0;
@@ -383,7 +394,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
             }
             char *value = &temp_dict.buffer[temp_dict.buffer_mem_used];
             temp_dict.buffer_mem_used += value_string_size + 1;
-            gvox_input_read(ctx, user_state.offset, value_string_size, value);
+            gvox_input_read(blit_ctx, user_state.offset, value_string_size, value);
             user_state.offset += value_string_size;
             value[value_string_size] = 0;
             temp_dict.keys[temp_dict.num_key_value_pairs] = key;
@@ -450,7 +461,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
                 return;
             }
             auto packed_voxel_data = std::vector<uint8_t>(num_voxels_in_chunk * 4);
-            gvox_input_read(ctx, user_state.offset, packed_voxel_data.size(), packed_voxel_data.data());
+            gvox_input_read(blit_ctx, user_state.offset, packed_voxel_data.size(), packed_voxel_data.data());
             user_state.offset += packed_voxel_data.size();
             const uint32_t k_stride_x = 1;
             const uint32_t k_stride_y = model.extent.x;
@@ -510,11 +521,18 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
                 }
                 auto &trn = user_state.transform_keyframes[result_transform.keyframe_offset + i].transform;
                 auto r_str = temp_dict.get<char const *>("_r", nullptr);
-                if (r_str != nullptr)
+                if (r_str != nullptr) {
                     trn.rotation = static_cast<int8_t>(atoi(r_str));
+                    // auto ss = std::stringstream{};
+                    // ss.str(r_str);
+                    // ss >> trn.rotation;
+                }
                 auto t_str = temp_dict.get<char const *>("_t", nullptr);
                 if (t_str != nullptr) {
                     sscanf(t_str, "%i %i %i", &trn.offset.x, &trn.offset.y, &trn.offset.z);
+                    // auto ss = std::stringstream{};
+                    // ss.str(t_str);
+                    // ss >> trn.offset.x >> trn.offset.y >> trn.offset.z;
                 }
                 user_state.transform_keyframes[result_transform.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
             }
@@ -533,7 +551,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
             if (num_child_nodes) {
                 size_t prior_size = temp_scene_info.group_children_ids.size();
                 temp_scene_info.group_children_ids.resize(prior_size + num_child_nodes);
-                gvox_input_read(ctx, user_state.offset, sizeof(uint32_t) * num_child_nodes, &temp_scene_info.group_children_ids[prior_size]);
+                gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t) * num_child_nodes, &temp_scene_info.group_children_ids[prior_size]);
                 user_state.offset += sizeof(uint32_t) * num_child_nodes;
                 result_group.first_child_node_id_index = (uint32_t)prior_size;
                 result_group.num_child_nodes = num_child_nodes;
@@ -596,6 +614,9 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
             if (color_string != nullptr) {
                 uint32_t r, g, b;
                 sscanf(color_string, "%u %u %u", &r, &g, &b);
+                // auto ss = std::stringstream{};
+                // ss.str(color_string);
+                // ss >> r >> g >> b;
                 result_layer.color.r = static_cast<uint8_t>(r);
                 result_layer.color.g = static_cast<uint8_t>(g);
                 result_layer.color.b = static_cast<uint8_t>(b);
@@ -699,18 +720,15 @@ extern "C" void gvox_parse_adapter_magicavoxel_begin(GvoxAdapterContext *ctx, [[
     }
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_end([[maybe_unused]] GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<MagicavoxelParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
-    user_state.~MagicavoxelParseUserState();
-    free(&user_state);
+extern "C" void gvox_parse_adapter_magicavoxel_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
     return 0;
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
-    auto &user_state = *reinterpret_cast<MagicavoxelParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
+extern "C" auto gvox_parse_adapter_magicavoxel_load_region([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
+    auto &user_state = *reinterpret_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     auto palette_id = 255u;
     sample_scene(user_state.scene, user_state.scene.root_node, *offset, palette_id);
@@ -786,9 +804,9 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxAdapterContext *c
     return region;
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_unload_region([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion *region) {
+extern "C" void gvox_parse_adapter_magicavoxel_unload_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion *region) {
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_sample_region([[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, uint32_t /*channel_id*/) -> uint32_t {
+extern "C" auto gvox_parse_adapter_magicavoxel_sample_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, uint32_t /*channel_id*/) -> uint32_t {
     return static_cast<uint32_t>(reinterpret_cast<size_t>(region->data));
 }

@@ -7,12 +7,14 @@
 extern "C" {
 #endif
 
-void gvox_parse_adapter_procedural_begin(GvoxAdapterContext *ctx, void *config);
-void gvox_parse_adapter_procedural_end(GvoxAdapterContext *ctx);
-uint32_t gvox_parse_adapter_procedural_query_region_flags(GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
-GvoxRegion gvox_parse_adapter_procedural_load_region(GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
-void gvox_parse_adapter_procedural_unload_region(GvoxAdapterContext *ctx, GvoxRegion *region);
-uint32_t gvox_parse_adapter_procedural_sample_region(GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
+void procedural_create(GvoxAdapterContext *ctx, void *config);
+void procedural_destroy(GvoxAdapterContext *ctx);
+void procedural_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+void procedural_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+uint32_t procedural_query_region_flags(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
+GvoxRegion procedural_load_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+void procedural_unload_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
+uint32_t procedural_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
 
 // This adapter has no config
 

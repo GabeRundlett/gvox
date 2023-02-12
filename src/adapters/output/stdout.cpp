@@ -3,10 +3,16 @@
 
 #include <iostream>
 
-extern "C" void gvox_output_adapter_stdout_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_output_adapter_stdout_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
 }
 
-extern "C" void gvox_output_adapter_stdout_end([[maybe_unused]] GvoxAdapterContext *ctx) {
+extern "C" void gvox_output_adapter_stdout_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+extern "C" void gvox_output_adapter_stdout_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+extern "C" void gvox_output_adapter_stdout_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
 }
 
 extern "C" void gvox_output_adapter_stdout_write([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] size_t position, size_t size, void const *data) {

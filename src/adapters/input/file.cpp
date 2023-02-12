@@ -1,9 +1,11 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/input/file.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+#include <filesystem>
+#include <fstream>
 
 #include <new>
 
@@ -12,39 +14,44 @@
 #endif
 
 struct FileInputUserState {
-    FILE *file{};
+    std::filesystem::path path{};
+    std::ifstream file{};
     size_t byte_offset{};
 #if GVOX_ENABLE_THREADSAFETY
     std::mutex mtx{};
 #endif
 };
 
-extern "C" void gvox_input_adapter_file_begin(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_input_adapter_file_create(GvoxAdapterContext *ctx, void *config) {
     auto *user_state_ptr = malloc(sizeof(FileInputUserState));
     auto &user_state = *(new (user_state_ptr) FileInputUserState());
-    gvox_input_adapter_set_user_pointer(ctx, user_state_ptr);
-
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     auto &user_config = *reinterpret_cast<GvoxFileInputAdapterConfig *>(config);
     user_state.byte_offset = user_config.byte_offset;
-    fopen_s(&user_state.file, user_config.filepath, "rb");
+    user_state.path = user_config.filepath;
 }
 
-extern "C" void gvox_input_adapter_file_end(GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_input_adapter_get_user_pointer(ctx));
-    fclose(user_state.file);
+extern "C" void gvox_input_adapter_file_destroy(GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~FileInputUserState();
     free(&user_state);
 }
 
+extern "C" void gvox_input_adapter_file_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.file.open(user_state.path, std::ios::binary);
+}
+
+extern "C" void gvox_input_adapter_file_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.file.close();
+}
+
 extern "C" void gvox_input_adapter_file_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
-    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_input_adapter_get_user_pointer(ctx));
+    auto &user_state = *reinterpret_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
 #if GVOX_ENABLE_THREADSAFETY
     auto lock = std::lock_guard{user_state.mtx};
 #endif
-    auto ret = fseek(user_state.file, static_cast<long>(position + user_state.byte_offset), SEEK_SET);
-    if (ret != 0) {
-        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_INPUT_ADAPTER, "Failed to set the file read head");
-        return;
-    }
-    [[maybe_unused]] size_t const byte_n = fread(data, 1, size, user_state.file);
+    user_state.file.seekg(static_cast<std::streamoff>(position), std::ios_base::beg);
+    user_state.file.read(reinterpret_cast<char *>(data), static_cast<std::streamsize>(size));
 }

@@ -12,10 +12,10 @@ struct ColoredTextSerializeUserState {
     GvoxColoredTextSerializeAdapterConfig config;
 };
 
-extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_serialize_adapter_colored_text_create([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
     auto *user_state_ptr = malloc(sizeof(ColoredTextSerializeUserState));
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
-    gvox_serialize_adapter_set_user_pointer(ctx, user_state_ptr);
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
         user_state.config = *reinterpret_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
         user_state.config.downscale_factor = std::max(user_state.config.downscale_factor, 1u);
@@ -29,14 +29,20 @@ extern "C" void gvox_serialize_adapter_colored_text_begin([[maybe_unused]] GvoxA
     }
 }
 
-extern "C" void gvox_serialize_adapter_colored_text_end([[maybe_unused]] GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
+extern "C" void gvox_serialize_adapter_colored_text_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~ColoredTextSerializeUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channels) {
-    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_serialize_adapter_get_user_pointer(ctx));
+extern "C" void gvox_serialize_adapter_colored_text_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+extern "C" void gvox_serialize_adapter_colored_text_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
+}
+
+extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channels) {
+    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     std::vector<char> data;
     constexpr auto pixel = std::to_array("\033[48;2;000;000;000m  ");
     constexpr auto line_terminator = std::to_array("\033[0m ");
@@ -76,7 +82,7 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
                             user_state.config.downscale_factor,
                         },
                     };
-                    if (gvox_query_region_flags(ctx, &sub_range, user_state.config.channel_id) != 0u) {
+                    if (gvox_query_region_flags(blit_ctx, &sub_range, user_state.config.channel_id) != 0u) {
                         sub_n = 1;
                     }
                     for (uint32_t sub_zi = 0; sub_zi < sub_n && (zi + sub_zi < range->extent.z); ++sub_zi) {
@@ -87,9 +93,9 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
                                     static_cast<int32_t>(yi + sub_yi) + range->offset.y,
                                     static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi + sub_zi) - 1,
                                 };
-                                auto region = gvox_load_region(ctx, &pos, user_state.config.channel_id);
-                                auto voxel = gvox_sample_region(ctx, &region, &pos, user_state.config.channel_id);
-                                gvox_unload_region(ctx, &region);
+                                auto region = gvox_load_region(blit_ctx, &pos, user_state.config.channel_id);
+                                auto voxel = gvox_sample_region(blit_ctx, &region, &pos, user_state.config.channel_id);
+                                gvox_unload_region(blit_ctx, &region);
                                 if (is_3channel) {
                                     avg_r += static_cast<float>((voxel >> 0x00) & 0xff) * (1.0f / 255.0f);
                                     avg_g += static_cast<float>((voxel >> 0x08) & 0xff) * (1.0f / 255.0f);
@@ -116,9 +122,9 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
                         static_cast<int32_t>(yi) + range->offset.y,
                         static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi) - 1,
                     };
-                    auto region = gvox_load_region(ctx, &pos, user_state.config.channel_id);
-                    auto voxel = gvox_sample_region(ctx, &region, &pos, user_state.config.channel_id);
-                    gvox_unload_region(ctx, &region);
+                    auto region = gvox_load_region(blit_ctx, &pos, user_state.config.channel_id);
+                    auto voxel = gvox_sample_region(blit_ctx, &region, &pos, user_state.config.channel_id);
+                    gvox_unload_region(blit_ctx, &region);
                     if (is_3channel) {
                         r = (voxel >> 0x00) & 0xff;
                         g = (voxel >> 0x08) & 0xff;
@@ -152,5 +158,5 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxAdapter
         std::copy(newline_terminator.begin(), newline_terminator.end() - 1, data.data() + output_index);
         output_index += newline_terminator.size() - 1;
     }
-    gvox_output_write(ctx, 0, output_index, data.data());
+    gvox_output_write(blit_ctx, 0, output_index, data.data());
 }

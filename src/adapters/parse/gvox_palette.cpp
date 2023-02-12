@@ -30,13 +30,23 @@ struct GvoxPaletteParseUserState {
     std::array<uint32_t, 32> channel_indices{};
 };
 
-extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
+extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, [[maybe_unused]] void *config) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteParseUserState));
     auto &user_state = *(new (user_state_ptr) GvoxPaletteParseUserState());
-    gvox_parse_adapter_set_user_pointer(ctx, user_state_ptr);
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
+}
+
+extern "C" void gvox_parse_adapter_gvox_palette_destroy([[maybe_unused]] GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.~GvoxPaletteParseUserState();
+    free(&user_state);
+}
+
+extern "C" void gvox_parse_adapter_gvox_palette_blit_begin([[maybe_unused]] GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     uint32_t magic = 0;
-    gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &magic);
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
     user_state.offset += sizeof(uint32_t);
 
     if (magic != std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'})) {
@@ -44,16 +54,16 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [
         return;
     }
 
-    gvox_input_read(ctx, user_state.offset, sizeof(GvoxRegionRange), &user_state.range);
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(GvoxRegionRange), &user_state.range);
     user_state.offset += sizeof(GvoxRegionRange);
 
-    gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &user_state.blob_size);
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &user_state.blob_size);
     user_state.offset += sizeof(uint32_t);
 
-    gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_flags);
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_flags);
     user_state.offset += sizeof(uint32_t);
 
-    gvox_input_read(ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_n);
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &user_state.channel_n);
     user_state.offset += sizeof(uint32_t);
 
     uint32_t next_channel = 0;
@@ -72,23 +82,20 @@ extern "C" void gvox_parse_adapter_gvox_palette_begin(GvoxAdapterContext *ctx, [
     for (auto &region_header : user_state.region_headers) {
         region_header.channels.resize(user_state.channel_n);
         for (auto &channel_header : region_header.channels) {
-            gvox_input_read(ctx, user_state.offset, sizeof(ChannelHeader), &channel_header);
+            gvox_input_read(blit_ctx, user_state.offset, sizeof(ChannelHeader), &channel_header);
             user_state.offset += sizeof(ChannelHeader);
         }
     }
 
     user_state.buffer.resize(user_state.blob_size);
-    gvox_input_read(ctx, user_state.offset, user_state.blob_size, user_state.buffer.data());
+    gvox_input_read(blit_ctx, user_state.offset, user_state.blob_size, user_state.buffer.data());
 }
 
-extern "C" void gvox_parse_adapter_gvox_palette_end([[maybe_unused]] GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
-    user_state.~GvoxPaletteParseUserState();
-    free(&user_state);
+extern "C" void gvox_parse_adapter_gvox_palette_blit_end([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
-    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
+extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, GvoxRegionRange const *range, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
+    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     auto ax = static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) / REGION_SIZE;
     auto ay = static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) / REGION_SIZE;
@@ -117,8 +124,8 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags([[maybe_unuse
     return flags;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_load_region([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxOffset3D const *offset, [[maybe_unused]] uint32_t channel_id) -> GvoxRegion {
-    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
+extern "C" auto gvox_parse_adapter_gvox_palette_load_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxOffset3D const *offset, [[maybe_unused]] uint32_t channel_id) -> GvoxRegion {
+    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     GvoxRegion const region = {
         .range = {
             .offset = {0, 0, 0},
@@ -135,11 +142,11 @@ extern "C" auto gvox_parse_adapter_gvox_palette_load_region([[maybe_unused]] Gvo
     return region;
 }
 
-extern "C" void gvox_parse_adapter_gvox_palette_unload_region([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion *region) {
+extern "C" void gvox_parse_adapter_gvox_palette_unload_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion *region) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_sample_region([[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
-    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_parse_adapter_get_user_pointer(ctx));
+extern "C" auto gvox_parse_adapter_gvox_palette_sample_region([[maybe_unused]] GvoxBlitContext *blit_ctx, [[maybe_unused]] GvoxAdapterContext *ctx, [[maybe_unused]] GvoxRegion const *region, [[maybe_unused]] GvoxOffset3D const *offset, [[maybe_unused]] uint32_t channel_id) -> uint32_t {
+    auto &user_state = *reinterpret_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto const xi = static_cast<uint32_t>(offset->x - user_state.range.offset.x) / REGION_SIZE;
     auto const yi = static_cast<uint32_t>(offset->y - user_state.range.offset.y) / REGION_SIZE;
     auto const zi = static_cast<uint32_t>(offset->z - user_state.range.offset.z) / REGION_SIZE;
