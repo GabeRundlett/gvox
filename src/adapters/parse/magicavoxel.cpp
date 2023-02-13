@@ -13,6 +13,7 @@
 #include <string>
 #include <memory>
 #include <sstream>
+#include <limits>
 
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});

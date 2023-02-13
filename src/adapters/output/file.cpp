@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 #include <new>
 
 struct OutputFileUserState {

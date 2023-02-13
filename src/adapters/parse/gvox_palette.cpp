@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <bit>
 #include <vector>
 #include <new>
 
