@@ -38,5 +38,5 @@ extern "C" void gvox_input_adapter_byte_buffer_read(GvoxAdapterContext *ctx, siz
     if (position + size > user_state.bytes.size()) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_INPUT_ADAPTER, "Tried reading past the end of the provided input buffer");
     }
-    std::copy(user_state.bytes.begin(), user_state.bytes.end(), static_cast<uint8_t *>(data));
+    std::copy(user_state.bytes.data() + position, user_state.bytes.data() + position + size, static_cast<uint8_t *>(data));
 }
