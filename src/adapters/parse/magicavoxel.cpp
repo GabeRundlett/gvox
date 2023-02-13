@@ -498,7 +498,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             }
             auto result_transform = magicavoxel::SceneTransformInfo{};
             const auto *name_str = temp_dict.get<char const *>("_name", "");
-            std::copy(name_str, name_str + std::max<size_t>(strlen(name_str) + 1, 65), result_transform.name);
+            std::copy(name_str, name_str + std::min<size_t>(strlen(name_str) + 1, 65), result_transform.name);
             result_transform.hidden = temp_dict.get<bool>("_hidden", false);
             result_transform.loop = temp_dict.get<bool>("_loop", false);
             uint32_t reserved_id = 0;

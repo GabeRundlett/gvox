@@ -167,9 +167,19 @@ auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteS
                         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Trying to write past end of buffer, how did this happen?");
                         return 0;
                     }
+#if 0
+                    // Note: This is technically UB, since I think it breaks the strict aliasing rules of C++.
                     auto &output = *reinterpret_cast<uint32_t *>(output_buffer + byte_index);
                     output = output & ~(mask << bit_offset);
                     output = output | static_cast<uint32_t>(palette_id << bit_offset);
+                    // The "correct" solution is below.
+#else
+                    auto prev_val = std::bit_cast<uint32_t>(*reinterpret_cast<std::array<uint8_t, 4> *>(output_buffer + byte_index));
+                    auto output = prev_val & ~(mask << bit_offset);
+                    output = output | static_cast<uint32_t>(palette_id << bit_offset);
+                    auto output_bytes = std::bit_cast<std::array<uint8_t, 4>>(output);
+                    std::copy(output_bytes.begin(), output_bytes.end(), output_buffer + byte_index);
+#endif
                 }
             }
         }

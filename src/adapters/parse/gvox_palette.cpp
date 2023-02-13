@@ -187,7 +187,13 @@ extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * 
             auto const byte_index = bit_index / 8;
             auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
             auto const mask = get_mask(bits_per_variant);
-            auto &input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
+#if 0
+            // Note: This is technically UB, since I think it breaks the strict aliasing rules of C++.
+            auto input = *reinterpret_cast<uint32_t *>(buffer_ptr + byte_index);
+            // The "correct" solution is below.
+#else
+            auto input = std::bit_cast<uint32_t>(*reinterpret_cast<std::array<uint8_t, 4> *>(buffer_ptr + byte_index));
+#endif
             auto const palette_id = (input >> bit_offset) & mask;
             // return palette_id;
             return palette_begin[palette_id];

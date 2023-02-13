@@ -36,6 +36,7 @@ extern "C" void gvox_output_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*u
 extern "C" void gvox_output_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     void *bytes = nullptr;
+    // NOTE: This needs to be manually cleaned up by the user!
     if (user_state.config.allocate != nullptr) {
         bytes = user_state.config.allocate(user_state.bytes.size());
     } else {

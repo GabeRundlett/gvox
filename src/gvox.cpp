@@ -44,7 +44,6 @@ struct _GvoxAdapterContext {
     void *user_ptr;
 };
 struct _GvoxBlitContext {
-    GvoxContext *gvox_context_ptr;
     GvoxAdapterContext *i_ctx;
     GvoxAdapterContext *o_ctx;
     GvoxAdapterContext *p_ctx;

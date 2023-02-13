@@ -33,7 +33,7 @@ extern "C" void gvox_output_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, void * /*unused*/) {
+extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
 extern "C" void gvox_output_adapter_file_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
