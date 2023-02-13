@@ -8,17 +8,6 @@ check_required_components(gvox)
 set(GVOX_FORMATS @GVOX_FORMATS@)
 ]=])
 
-if(GVOX_ENABLE_ZLIB)
-    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-find_package(ZLIB REQUIRED)
-]=])
-endif()
-if(GVOX_ENABLE_GZIP)
-    file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
-find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-]=])
-endif()
-
 configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/gvox-config.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox

@@ -1,6 +1,6 @@
 
 function(GVOX_CREATE_TEST)
-    set(OPT_ARGS BRUH)
+    set(OPT_ARGS UNUSED)
     set(SNG_ARGS FILE LANG)
     set(MUL_ARGS FOLDER LIBS)
     cmake_parse_arguments(PARSE_ARGV 0 GCT "${OPT_ARGS}" "${SNG_ARGS}" "${MUL_ARGS}")
@@ -24,12 +24,6 @@ function(GVOX_CREATE_TEST)
 
     set_project_sanitizers(${TGT})
 endfunction()
-
-find_package(daxa CONFIG REQUIRED)
-find_package(assimp CONFIG REQUIRED)
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
-
-set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 
 add_library(procedural_parse_adapter "adapters/procedural.cpp")
 target_include_directories(procedural_parse_adapter PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
