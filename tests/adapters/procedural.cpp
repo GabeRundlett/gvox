@@ -5,10 +5,10 @@
 #include <cmath>
 #include <array>
 
-float stable_rand(float x) { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f); }
-float stable_rand(float x, float y) { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
-float stable_rand(float x, float y, float z) { return stable_rand(x + stable_rand(z), y + stable_rand(z)); }
-float stable_rand(int32_t xi, int32_t yi, int32_t zi) {
+auto stable_rand(float x) -> float { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f); }
+auto stable_rand(float x, float y) -> float { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
+auto stable_rand(float x, float y, float z) -> float { return stable_rand(x + stable_rand(z), y + stable_rand(z)); }
+auto stable_rand(int32_t xi, int32_t yi, int32_t zi) -> float {
     float const x = (static_cast<float>(xi) + 0.5f) * (1.0f / 8.0f);
     float const y = (static_cast<float>(yi) + 0.5f) * (1.0f / 8.0f);
     float const z = (static_cast<float>(zi) + 0.5f) * (1.0f / 8.0f);
@@ -26,24 +26,37 @@ auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
     return sample_terrain(x, y, z);
 }
 
-extern "C" void procedural_create(GvoxAdapterContext *, void *) {
+extern "C" void procedural_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
 }
-extern "C" void procedural_destroy(GvoxAdapterContext *) {
+extern "C" void procedural_destroy(GvoxAdapterContext * /*unused*/) {
 }
-extern "C" void procedural_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void procedural_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
-extern "C" void procedural_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void procedural_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" auto procedural_query_region_flags(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegionRange const *, uint32_t) -> uint32_t {
+extern "C" auto procedural_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
 
-extern "C" auto procedural_load_region(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
-    if (channel_id != GVOX_CHANNEL_ID_COLOR && channel_id != GVOX_CHANNEL_ID_NORMAL && channel_id != GVOX_CHANNEL_ID_MATERIAL_ID) {
+extern "C" auto procedural_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
+    auto const available_channels = uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID};
+    if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "procedural 'parser' does not generate anything other than color & normal");
-        return {};
     }
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    return region;
+}
+
+extern "C" void procedural_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
+}
+
+extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
     constexpr auto create_color = [](float rf, float gf, float bf, uint32_t const a) {
         uint32_t const r = static_cast<uint32_t>(std::max(std::min(rf, 1.0f), 0.0f) * 255.0f);
         uint32_t const g = static_cast<uint32_t>(std::max(std::min(gf, 1.0f), 0.0f) * 255.0f);
@@ -100,32 +113,12 @@ extern "C" auto procedural_load_region(GvoxBlitContext *, GvoxAdapterContext *ct
             id = 3u;
         }
     }
-    GvoxRegion const region = {
-        .range = {
-            .offset = *offset,
-            .extent = {1, 1, 1},
-        },
-        .channels = channel_id,
-        .flags = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID,
-        .data = malloc(sizeof(uint32_t) * 3),
-    };
-    *static_cast<std::array<uint32_t, 3> *>(region.data) = {color, normal, id};
-    return region;
-}
-
-extern "C" void procedural_unload_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion *region) {
-    free(region->data);
-}
-
-extern "C" auto procedural_sample_region(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *, uint32_t channel_id) -> uint32_t {
-    uint32_t index = 0;
     switch (channel_id) {
-    case GVOX_CHANNEL_ID_COLOR: index = 0; break;
-    case GVOX_CHANNEL_ID_NORMAL: index = 1; break;
-    case GVOX_CHANNEL_ID_MATERIAL_ID: index = 2; break;
+    case GVOX_CHANNEL_ID_COLOR: return color;
+    case GVOX_CHANNEL_ID_NORMAL: return normal;
+    case GVOX_CHANNEL_ID_MATERIAL_ID: return id;
     default:
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Tried sampling something other than color or normal");
         return 0;
     }
-    return (*static_cast<std::array<uint32_t, 3> const *>(region->data)).at(index);
 }

@@ -27,10 +27,10 @@ extern "C" void gvox_input_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx) 
     free(&user_state);
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_input_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
 extern "C" void gvox_input_adapter_byte_buffer_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {

@@ -7,19 +7,19 @@
 #include <array>
 #include <vector>
 
-extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext *, void *) {
+extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_destroy(GvoxAdapterContext *) {
+extern "C" void gvox_serialize_adapter_gvox_raw_destroy(GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_serialize_adapter_gvox_raw_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_serialize_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext * /*unused*/, GvoxRegionRange const *range, uint32_t channel_flags) {
     size_t offset = 0;
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'r', '\0'});
     gvox_output_write(blit_ctx, offset, sizeof(uint32_t), &magic);
@@ -49,7 +49,11 @@ extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext
                     static_cast<int32_t>(zi) + range->offset.z,
                 };
                 for (uint32_t channel_i = 0; channel_i < channels.size(); ++channel_i) {
-                    auto region = gvox_load_region(blit_ctx, &pos, channels[channel_i]);
+                    auto const sample_range = GvoxRegionRange{
+                        .offset = pos,
+                        .extent = GvoxExtent3D{1, 1, 1},
+                    };
+                    auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channels[channel_i]);
                     temp_voxel[channel_i] = gvox_sample_region(blit_ctx, &region, &pos, channels[channel_i]);
                     gvox_unload_region(blit_ctx, &region);
                 }

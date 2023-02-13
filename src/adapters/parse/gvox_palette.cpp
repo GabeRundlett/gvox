@@ -31,7 +31,7 @@ struct GvoxPaletteParseUserState {
     std::array<uint32_t, 32> channel_indices{};
 };
 
-extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void *) {
+extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
@@ -92,11 +92,16 @@ extern "C" void gvox_parse_adapter_gvox_palette_blit_begin(GvoxBlitContext *blit
     gvox_input_read(blit_ctx, user_state.offset, user_state.blob_size, user_state.buffer.data());
 }
 
-extern "C" void gvox_parse_adapter_gvox_palette_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_parse_adapter_gvox_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+
+    if ((channel_flags & user_state.channel_flags) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
+        return 0;
+    }
 
     auto ax = static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) / REGION_SIZE;
     auto ay = static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) / REGION_SIZE;
@@ -105,28 +110,36 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitConte
     auto by = (static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) + range->extent.y + (REGION_SIZE - 1)) / REGION_SIZE;
     auto bz = (static_cast<uint32_t>(range->offset.z - user_state.range.offset.z) + range->extent.z + (REGION_SIZE - 1)) / REGION_SIZE;
 
-    auto &a_channel_header = user_state.region_headers[ax + ay * user_state.r_nx + az * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
-
     uint32_t flags = 0;
-    if (a_channel_header.variant_n == 1) {
-        flags |= GVOX_REGION_FLAG_UNIFORM;
-        for (uint32_t zi = az; zi < bz; ++zi) {
-            for (uint32_t yi = ay; yi < by; ++yi) {
-                for (uint32_t xi = ax; xi < bx; ++xi) {
-                    auto &b_channel_header = user_state.region_headers[xi + yi * user_state.r_nx + zi * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
-                    if (b_channel_header.variant_n != 1 || b_channel_header.blob_offset != a_channel_header.blob_offset) {
-                        flags = 0;
-                        break;
+
+    for (uint32_t channel_id = 0; channel_id < 32; ++channel_id) {
+        if (((1u << channel_id) & channel_flags) != 0) {
+            auto &a_channel_header = user_state.region_headers[ax + ay * user_state.r_nx + az * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
+            if (a_channel_header.variant_n == 1) {
+                flags |= GVOX_REGION_FLAG_UNIFORM;
+                for (uint32_t zi = az; zi < bz; ++zi) {
+                    for (uint32_t yi = ay; yi < by; ++yi) {
+                        for (uint32_t xi = ax; xi < bx; ++xi) {
+                            auto &b_channel_header = user_state.region_headers[xi + yi * user_state.r_nx + zi * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
+                            if (b_channel_header.variant_n != 1 || b_channel_header.blob_offset != a_channel_header.blob_offset) {
+                                flags = 0;
+                                break;
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
     return flags;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_load_region(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxOffset3D const *, uint32_t) -> GvoxRegion {
+extern "C" auto gvox_parse_adapter_gvox_palette_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t channel_flags) -> GvoxRegion {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    if ((channel_flags & ~user_state.channel_flags) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
+    }
     GvoxRegion const region = {
         .range = {
             .offset = {0, 0, 0},
@@ -136,17 +149,17 @@ extern "C" auto gvox_parse_adapter_gvox_palette_load_region(GvoxBlitContext *, G
                 user_state.r_nz * REGION_SIZE,
             },
         },
-        .channels = GVOX_CHANNEL_BIT_COLOR,
+        .channels = channel_flags & user_state.channel_flags,
         .flags = 0,
         .data = nullptr,
     };
     return region;
 }
 
-extern "C" void gvox_parse_adapter_gvox_palette_unload_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion *) {
+extern "C" void gvox_parse_adapter_gvox_palette_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxRegion const *, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto const xi = static_cast<uint32_t>(offset->x - user_state.range.offset.x) / REGION_SIZE;
     auto const yi = static_cast<uint32_t>(offset->y - user_state.range.offset.y) / REGION_SIZE;

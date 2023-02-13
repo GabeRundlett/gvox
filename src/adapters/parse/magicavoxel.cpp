@@ -41,19 +41,19 @@ namespace magicavoxel {
     constexpr auto rotate(int8_t packed_rotation_bits, GvoxOffset3D offset) {
         auto result = std::array<int32_t, 3>{};
         uint32_t constexpr row2_index[] = {2, UINT32_MAX, 1, 0, UINT32_MAX};
-        uint32_t row0_vec_index = (packed_rotation_bits >> 0) & 3;
-        uint32_t row1_vec_index = (packed_rotation_bits >> 2) & 3;
-        uint32_t row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
+        uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
+        uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
+        uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
         result[row0_vec_index] = offset.x;
         result[row1_vec_index] = offset.y;
         result[row2_vec_index] = offset.z;
-        if (packed_rotation_bits & (1 << 4)) {
+        if ((packed_rotation_bits & (1 << 4)) != 0) {
             result[0] *= -1;
         }
-        if (packed_rotation_bits & (1 << 5)) {
+        if ((packed_rotation_bits & (1 << 5)) != 0) {
             result[1] *= -1;
         }
-        if (packed_rotation_bits & (1 << 6)) {
+        if ((packed_rotation_bits & (1 << 6)) != 0) {
             result[2] *= -1;
         }
         return std::bit_cast<GvoxOffset3D>(result);
@@ -61,9 +61,9 @@ namespace magicavoxel {
     constexpr auto rotate(int8_t packed_rotation_bits, GvoxExtent3D extent) {
         auto result = std::array<uint32_t, 3>{};
         uint32_t constexpr row2_index[] = {2, UINT32_MAX, 1, 0, UINT32_MAX};
-        uint32_t row0_vec_index = (packed_rotation_bits >> 0) & 3;
-        uint32_t row1_vec_index = (packed_rotation_bits >> 2) & 3;
-        uint32_t row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
+        uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
+        uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
+        uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
         result[row0_vec_index] = extent.x;
         result[row1_vec_index] = extent.y;
         result[row2_vec_index] = extent.z;
@@ -72,19 +72,19 @@ namespace magicavoxel {
     constexpr auto rotate(int8_t packed_rotation_bits, GvoxExtent3D p, GvoxExtent3D extent) {
         auto result = std::array<uint32_t, 3>{};
         uint32_t constexpr row2_index[] = {2, UINT32_MAX, 1, 0, UINT32_MAX};
-        uint32_t row0_vec_index = (packed_rotation_bits >> 0) & 3;
-        uint32_t row1_vec_index = (packed_rotation_bits >> 2) & 3;
-        uint32_t row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
+        uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
+        uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
+        uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
         result[row0_vec_index] = p.x;
         result[row1_vec_index] = p.y;
         result[row2_vec_index] = p.z;
-        if (packed_rotation_bits & (1 << 4)) {
+        if ((packed_rotation_bits & (1 << 4)) != 0) {
             result[0] = extent.x - 1 - result[0];
         }
-        if (packed_rotation_bits & (1 << 5)) {
+        if ((packed_rotation_bits & (1 << 5)) != 0) {
             result[1] = extent.y - 1 - result[1];
         }
-        if (packed_rotation_bits & (1 << 6)) {
+        if ((packed_rotation_bits & (1 << 6)) != 0) {
             result[2] = extent.z - 1 - result[2];
         }
         return std::bit_cast<GvoxExtent3D>(result);
@@ -95,9 +95,9 @@ namespace magicavoxel {
         ai[2] = row2_index[static_cast<size_t>((1 << ai[0]) | (1 << ai[1])) - 3];
         auto bi = std::array<int8_t, 3>{static_cast<int8_t>(rot_b & 3), static_cast<int8_t>((rot_b >> 2) & 3), 0};
         bi[2] = row2_index[static_cast<size_t>((1 << bi[0]) | (1 << bi[1])) - 3];
-        int8_t c0_i = ai[static_cast<size_t>(bi[0])];
-        int8_t c1_i = ai[static_cast<size_t>(bi[1])];
-        int8_t result = static_cast<int8_t>((c0_i << 0) | (c1_i << 2));
+        int8_t const c0_i = ai[static_cast<size_t>(bi[0])];
+        int8_t const c1_i = ai[static_cast<size_t>(bi[1])];
+        auto result = static_cast<int8_t>((c0_i << 0) | (c1_i << 2));
         if ((((rot_a >> (4 + bi[0])) & 1) ^ ((rot_b >> 4) & 1)) == 1) {
             result |= 1 << 4;
         }
@@ -117,7 +117,7 @@ namespace magicavoxel {
         bi[static_cast<size_t>(ai[0])] = 0;
         bi[static_cast<size_t>(ai[1])] = 1;
         bi[static_cast<size_t>(ai[2])] = 2;
-        int8_t result = static_cast<int8_t>((bi[0] << 0) | (bi[1] << 2));
+        auto result = static_cast<int8_t>((bi[0] << 0) | (bi[1] << 2));
         if (((rot_a >> 4) & 1) == 1) {
             result |= 1 << (4 + ai[0]);
         }
@@ -131,7 +131,7 @@ namespace magicavoxel {
     }
 
     struct TransformKeyframe {
-        uint32_t frame_index;
+        uint32_t frame_index{};
         Transform transform;
     };
 
@@ -193,8 +193,8 @@ namespace magicavoxel {
 
     struct Layer {
         std::string name;
-        Color color;
-        bool hidden;
+        Color color{};
+        bool hidden{};
     };
 
     static constexpr uint32_t MAX_DICT_SIZE = 4096;
@@ -221,14 +221,14 @@ namespace magicavoxel {
     };
 
     struct SceneTransformInfo {
-        char name[65];
+        char name[65]{};
         Transform transform;
-        uint32_t child_node_id;
-        uint32_t layer_id;
-        bool hidden;
-        uint32_t num_keyframes;
-        size_t keyframe_offset;
-        bool loop;
+        uint32_t child_node_id{};
+        uint32_t layer_id{};
+        bool hidden{};
+        uint32_t num_keyframes{};
+        size_t keyframe_offset{};
+        bool loop{};
     };
 
     struct SceneGroupInfo {
@@ -256,7 +256,7 @@ namespace magicavoxel {
 
     struct SceneGroup {
         Transform transform;
-        GvoxRegionRange range;
+        GvoxRegionRange range{};
         std::vector<std::unique_ptr<SceneNode>> nodes;
     };
 
@@ -324,8 +324,9 @@ void sample_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_nod
         auto &g_current_node = std::get<magicavoxel::SceneGroup>(current_node);
         for (auto &node : g_current_node.nodes) {
             sample_scene(scene, *node, sample_pos, sampled_voxel);
-            if (sampled_voxel != 255)
+            if (sampled_voxel != 255) {
                 break;
+            }
         }
     } else if (std::holds_alternative<magicavoxel::SceneModel>(current_node)) {
         auto &s_current_node = std::get<magicavoxel::SceneModel>(current_node);
@@ -351,7 +352,7 @@ void sample_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_nod
     }
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, void *) {
+extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, void * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(MagicavoxelParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) MagicavoxelParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
@@ -446,11 +447,11 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             user_state.scene.models.push_back(next_model);
         } break;
         case magicavoxel::CHUNK_ID_XYZI: {
-            if (user_state.scene.models.size() == 0 ||
+            if (user_state.scene.models.empty() ||
                 user_state.scene.models.back().extent.x == 0 ||
                 user_state.scene.models.back().extent.y == 0 ||
                 user_state.scene.models.back().extent.z == 0 ||
-                user_state.scene.models.back().palette_ids.size() > 0) {
+                !user_state.scene.models.back().palette_ids.empty()) {
                 gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "expected a SIZE chunk before XYZI chunk");
                 return;
             }
@@ -470,14 +471,14 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             model.palette_ids.resize(model.extent.x * model.extent.y * model.extent.z);
             std::fill(model.palette_ids.begin(), model.palette_ids.end(), uint8_t{255});
             for (uint32_t i = 0; i < num_voxels_in_chunk; i++) {
-                uint8_t x = packed_voxel_data[i * 4 + 0];
-                uint8_t y = packed_voxel_data[i * 4 + 1];
-                uint8_t z = packed_voxel_data[i * 4 + 2];
+                uint8_t const x = packed_voxel_data[i * 4 + 0];
+                uint8_t const y = packed_voxel_data[i * 4 + 1];
+                uint8_t const z = packed_voxel_data[i * 4 + 2];
                 if (x >= model.extent.x && y >= model.extent.y && z >= model.extent.z) {
                     gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "invalid data in XYZI chunk");
                     return;
                 }
-                uint8_t color_index = packed_voxel_data[i * 4 + 3];
+                uint8_t const color_index = packed_voxel_data[i * 4 + 3];
                 model.palette_ids[(x * k_stride_x) + (y * k_stride_y) + (z * k_stride_z)] = color_index - 1;
             }
         } break;
@@ -496,7 +497,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 return;
             }
             auto result_transform = magicavoxel::SceneTransformInfo{};
-            auto name_str = temp_dict.get<char const *>("_name", "");
+            const auto *name_str = temp_dict.get<char const *>("_name", "");
             std::copy(name_str, name_str + std::max<size_t>(strlen(name_str) + 1, 65), result_transform.name);
             result_transform.hidden = temp_dict.get<bool>("_hidden", false);
             result_transform.loop = temp_dict.get<bool>("_loop", false);
@@ -521,15 +522,15 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                     return;
                 }
                 auto &trn = user_state.transform_keyframes[result_transform.keyframe_offset + i].transform;
-                auto r_str = temp_dict.get<char const *>("_r", nullptr);
+                const auto *r_str = temp_dict.get<char const *>("_r", nullptr);
                 if (r_str != nullptr) {
                     auto ss = std::stringstream{};
                     ss.str(r_str);
-                    int32_t temp_int;
+                    int32_t temp_int = 0;
                     ss >> temp_int;
                     trn.rotation = static_cast<int8_t>(temp_int);
                 }
-                auto t_str = temp_dict.get<char const *>("_t", nullptr);
+                const auto *t_str = temp_dict.get<char const *>("_t", nullptr);
                 if (t_str != nullptr) {
                     auto ss = std::stringstream{};
                     ss.str(t_str);
@@ -549,8 +550,8 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             auto result_group = magicavoxel::SceneGroupInfo{};
             uint32_t num_child_nodes = 0;
             read_var(num_child_nodes);
-            if (num_child_nodes) {
-                size_t prior_size = temp_scene_info.group_children_ids.size();
+            if (num_child_nodes != 0u) {
+                size_t const prior_size = temp_scene_info.group_children_ids.size();
                 temp_scene_info.group_children_ids.resize(prior_size + num_child_nodes);
                 gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t) * num_child_nodes, &temp_scene_info.group_children_ids[prior_size]);
                 user_state.offset += sizeof(uint32_t) * num_child_nodes;
@@ -613,7 +614,9 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             };
             char const *color_string = temp_dict.get<char const *>("_color", nullptr);
             if (color_string != nullptr) {
-                uint32_t r, g, b;
+                uint32_t r = 0;
+                uint32_t g = 0;
+                uint32_t b = 0;
                 auto ss = std::stringstream{};
                 ss.str(color_string);
                 ss >> r >> g >> b;
@@ -633,7 +636,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 return;
             }
             char const *type_string = temp_dict.get<char const *>("_type", nullptr);
-            if (type_string) {
+            if (type_string != nullptr) {
                 if (0 == strcmp(type_string, "_diffuse")) {
                     user_state.materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::DIFFUSE;
                 } else if (0 == strcmp(type_string, "_metal")) {
@@ -667,7 +670,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             size_t field_offset = 0;
             for (auto const &[mat_str, mat_bit] : material_property_ids) {
                 char const *prop_str = temp_dict.get<char const *>(mat_str, NULL);
-                if (prop_str) {
+                if (prop_str != nullptr) {
                     user_state.materials[static_cast<size_t>(material_id)].content_flags |= mat_bit;
                     *(&user_state.materials[static_cast<size_t>(material_id)].metal + field_offset) = static_cast<float>(atof(prop_str));
                 }
@@ -715,19 +718,39 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         } break;
         }
     }
-    if (temp_scene_info.node_infos.size() != 0) {
+    if (!temp_scene_info.node_infos.empty()) {
         construct_scene(user_state.scene, temp_scene_info, user_state.scene.root_node, 0, 0, {});
     }
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_parse_adapter_magicavoxel_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegionRange const *, uint32_t) -> uint32_t {
+extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext *, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
+extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
+    auto const available_channels =
+        uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
+                 GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
+                 GVOX_CHANNEL_BIT_EMISSIVE_COLOR | GVOX_CHANNEL_BIT_EMISSIVE_POWER};
+    if ((channel_flags & ~available_channels) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
+    }
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    return region;
+}
+
+extern "C" void gvox_parse_adapter_magicavoxel_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
+}
+
+extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     auto palette_id = 255u;
@@ -745,28 +768,28 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext *, Gv
         voxel_data = palette_id;
         break;
     case GVOX_CHANNEL_ID_ROUGHNESS:
-        if (palette_id < 255 && user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_ROUGH_BIT) {
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u)) {
             voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].rough);
         } else {
             voxel_data = 0;
         }
         break;
     case GVOX_CHANNEL_ID_METALNESS:
-        if (palette_id < 255 && user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_METAL_BIT) {
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_METAL_BIT) != 0u)) {
             voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].metal);
         } else {
             voxel_data = 0;
         }
         break;
     case GVOX_CHANNEL_ID_TRANSPARENCY:
-        if (palette_id < 255 && user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_ALPHA_BIT) {
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_ALPHA_BIT) != 0u)) {
             voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].alpha);
         } else {
             voxel_data = 0;
         }
         break;
     case GVOX_CHANNEL_ID_IOR:
-        if (palette_id < 255 && user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_IOR_BIT) {
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_IOR_BIT) != 0u)) {
             voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].ior);
         } else {
             voxel_data = 0;
@@ -782,7 +805,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext *, Gv
         }
         break;
     case GVOX_CHANNEL_ID_EMISSIVE_POWER:
-        if (palette_id < 255 && user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_EMIT_BIT) {
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)) {
             voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].emit);
         } else {
             voxel_data = 0;
@@ -792,21 +815,6 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext *, Gv
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Requested unsupported channel from magicavoxel file");
         break;
     }
-    GvoxRegion const region = {
-        .range = {
-            .offset = *offset,
-            .extent = {1, 1, 1},
-        },
-        .channels = channel_id,
-        .flags = GVOX_REGION_FLAG_UNIFORM,
-        .data = reinterpret_cast<void *>(static_cast<size_t>(voxel_data)),
-    };
-    return region;
-}
 
-extern "C" void gvox_parse_adapter_magicavoxel_unload_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion *) {
-}
-
-extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext *, GvoxAdapterContext *, GvoxRegion const *region, GvoxOffset3D const *, uint32_t) -> uint32_t {
-    return static_cast<uint32_t>(reinterpret_cast<size_t>(region->data));
+    return voxel_data;
 }

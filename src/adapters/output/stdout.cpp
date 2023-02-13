@@ -3,22 +3,22 @@
 
 #include <iostream>
 
-extern "C" void gvox_output_adapter_stdout_create(GvoxAdapterContext *, void *) {
+extern "C" void gvox_output_adapter_stdout_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_stdout_destroy(GvoxAdapterContext *) {
+extern "C" void gvox_output_adapter_stdout_destroy(GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_stdout_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_output_adapter_stdout_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_stdout_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_output_adapter_stdout_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_stdout_write(GvoxAdapterContext *, size_t, size_t size, void const *data) {
+extern "C" void gvox_output_adapter_stdout_write(GvoxAdapterContext * /*unused*/, size_t /*unused*/, size_t size, void const *data) {
     auto str = std::string_view{static_cast<char const *>(data), size};
     std::cout << str;
 }
 
-extern "C" void gvox_output_adapter_stdout_reserve(GvoxAdapterContext *, size_t) {
+extern "C" void gvox_output_adapter_stdout_reserve(GvoxAdapterContext * /*unused*/, size_t /*unused*/) {
 }

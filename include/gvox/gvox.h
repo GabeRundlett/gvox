@@ -101,8 +101,8 @@ typedef struct {
 
 typedef struct {
     GvoxAdapterBaseInfo base_info;
-    uint32_t (*query_region_flags)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_id);
-    GvoxRegion (*load_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+    uint32_t (*query_region_flags)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+    GvoxRegion (*load_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
     void (*unload_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
     uint32_t (*sample_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
 } GvoxParseAdapterInfo;
@@ -137,15 +137,14 @@ void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
 void gvox_blit_region(
     GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
     GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
-    GvoxRegionRange const *input_range, GvoxRegionRange const *output_range,
-    uint32_t channel_flags);
+    GvoxRegionRange const *range, uint32_t channel_flags);
 
 // Adapter API
 
-GvoxRegion gvox_load_region(GvoxBlitContext *blit_ctx, GvoxOffset3D const *offset, uint32_t channel_id);
+uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+GvoxRegion gvox_load_region(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 void gvox_unload_region(GvoxBlitContext *blit_ctx, GvoxRegion *region);
 uint32_t gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id);
-uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_id);
 
 void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
 void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);

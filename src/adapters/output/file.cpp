@@ -33,10 +33,10 @@ extern "C" void gvox_output_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext *, GvoxAdapterContext *, void *) {
+extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, void * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_file_blit_end(GvoxBlitContext *, GvoxAdapterContext *ctx) {
+extern "C" void gvox_output_adapter_file_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<OutputFileUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto file = std::ofstream(user_state.path, std::ios_base::binary);
     file.write(reinterpret_cast<char const *>(user_state.bytes.data()), static_cast<std::streamsize>(user_state.bytes.size()));
@@ -52,6 +52,6 @@ extern "C" void gvox_output_adapter_file_reserve(GvoxAdapterContext *ctx, size_t
 extern "C" void gvox_output_adapter_file_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data) {
     auto &user_state = *static_cast<OutputFileUserState *>(gvox_adapter_get_user_pointer(ctx));
     gvox_output_adapter_file_reserve(ctx, position + size);
-    auto bytes = static_cast<uint8_t const *>(data);
+    const auto *bytes = static_cast<uint8_t const *>(data);
     std::copy(bytes, bytes + size, user_state.bytes.data() + position);
 }

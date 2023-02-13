@@ -30,10 +30,10 @@ extern "C" void gvox_output_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx)
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_byte_buffer_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_output_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_byte_buffer_blit_end(GvoxBlitContext *, GvoxAdapterContext *ctx) {
+extern "C" void gvox_output_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     void *bytes = nullptr;
     if (user_state.config.allocate != nullptr) {
@@ -51,7 +51,7 @@ extern "C" void gvox_output_adapter_byte_buffer_write(GvoxAdapterContext *ctx, s
     if (position + size > user_state.bytes.size()) {
         user_state.bytes.resize(position + size);
     }
-    auto bytes = static_cast<uint8_t const *>(data);
+    const auto *bytes = static_cast<uint8_t const *>(data);
     std::copy(bytes, bytes + size, user_state.bytes.data() + position);
 }
 

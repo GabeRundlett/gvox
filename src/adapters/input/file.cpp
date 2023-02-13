@@ -37,12 +37,12 @@ extern "C" void gvox_input_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_input_adapter_file_blit_begin(GvoxBlitContext *, GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.file.open(user_state.path, std::ios::binary);
 }
 
-extern "C" void gvox_input_adapter_file_blit_end(GvoxBlitContext *, GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_file_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.file.close();
 }

@@ -34,10 +34,10 @@ extern "C" void gvox_serialize_adapter_colored_text_destroy(GvoxAdapterContext *
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_colored_text_blit_begin(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_serialize_adapter_colored_text_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext *, GvoxAdapterContext *) {
+extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
 extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
@@ -99,19 +99,22 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
                                 user_state.config.downscale_factor,
                             },
                         };
-                        if (gvox_query_region_flags(blit_ctx, &sub_range, channel_id) != 0u) {
+                        if (gvox_query_region_flags(blit_ctx, &sub_range, 1u << channel_id) != 0u) {
                             sub_n = 1;
                         }
                         for (uint32_t sub_zi = 0; sub_zi < sub_n && (zi + sub_zi < range->extent.z); ++sub_zi) {
                             for (uint32_t sub_yi = 0; sub_yi < sub_n && (yi + sub_yi < range->extent.y); ++sub_yi) {
                                 for (uint32_t sub_xi = 0; sub_xi < sub_n && (xi + sub_xi < range->extent.x); ++sub_xi) {
-                                    auto const pos = GvoxOffset3D{
-                                        static_cast<int32_t>(xi + sub_xi) + range->offset.x,
-                                        static_cast<int32_t>(yi + sub_yi) + range->offset.y,
-                                        static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi + sub_zi) - 1,
+                                    auto const sample_range = GvoxRegionRange{
+                                        .offset = GvoxOffset3D{
+                                            static_cast<int32_t>(xi + sub_xi) + range->offset.x,
+                                            static_cast<int32_t>(yi + sub_yi) + range->offset.y,
+                                            static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi + sub_zi) - 1,
+                                        },
+                                        .extent = GvoxExtent3D{1, 1, 1},
                                     };
-                                    auto region = gvox_load_region(blit_ctx, &pos, channel_id);
-                                    auto voxel = gvox_sample_region(blit_ctx, &region, &pos, channel_id);
+                                    auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channel_id);
+                                    auto voxel = gvox_sample_region(blit_ctx, &region, &sample_range.offset, channel_id);
                                     gvox_unload_region(blit_ctx, &region);
                                     if (is_3channel) {
                                         avg_r += static_cast<float>((voxel >> 0x00) & 0xff) * (1.0f / 255.0f);
@@ -134,13 +137,16 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
                         g = static_cast<uint8_t>(avg_g / sample_n * 255.0f);
                         b = static_cast<uint8_t>(avg_b / sample_n * 255.0f);
                     } else {
-                        auto const pos = GvoxOffset3D{
-                            static_cast<int32_t>(xi) + range->offset.x,
-                            static_cast<int32_t>(yi) + range->offset.y,
-                            static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi) - 1,
+                        auto const sample_range = GvoxRegionRange{
+                            .offset = GvoxOffset3D{
+                                static_cast<int32_t>(xi) + range->offset.x,
+                                static_cast<int32_t>(yi) + range->offset.y,
+                                static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi) - 1,
+                            },
+                            .extent = GvoxExtent3D{1, 1, 1},
                         };
-                        auto region = gvox_load_region(blit_ctx, &pos, channel_id);
-                        auto voxel = gvox_sample_region(blit_ctx, &region, &pos, channel_id);
+                        auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channel_id);
+                        auto voxel = gvox_sample_region(blit_ctx, &region, &sample_range.offset, channel_id);
                         gvox_unload_region(blit_ctx, &region);
                         if (is_3channel) {
                             r = (voxel >> 0x00) & 0xff;

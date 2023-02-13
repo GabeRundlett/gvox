@@ -38,7 +38,7 @@ void test_raw_file_io(void) {
         };
         gvox_blit_region(
             NULL, o_ctx, p_ctx, s_ctx,
-            &region_range, &region_range,
+            &region_range,
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(o_ctx);
@@ -66,7 +66,7 @@ void test_raw_file_io(void) {
         };
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
-            &region_range, &region_range,
+            &region_range,
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(i_ctx);
@@ -109,7 +109,7 @@ void test_palette_file_io(void) {
         };
         gvox_blit_region(
             NULL, o_ctx, p_ctx, s_ctx,
-            &region_range, &region_range,
+            &region_range,
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(o_ctx);
@@ -137,7 +137,7 @@ void test_palette_file_io(void) {
         };
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
-            &region_range, &region_range,
+            &region_range,
             GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID);
 
         gvox_destroy_adapter_context(i_ctx);
@@ -169,7 +169,7 @@ void test_magicavoxel(void) {
         };
         gvox_blit_region(
             i_ctx, o_ctx, p_ctx, s_ctx,
-            &region_range, &region_range,
+            &region_range,
             GVOX_CHANNEL_BIT_COLOR |
                 GVOX_CHANNEL_BIT_MATERIAL_ID |
                 GVOX_CHANNEL_BIT_ROUGHNESS |
