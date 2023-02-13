@@ -17,7 +17,7 @@ extern "C" void gvox_serialize_adapter_colored_text_create(GvoxAdapterContext *c
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
-        user_state.config = *reinterpret_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
+        user_state.config = *static_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
         user_state.config.downscale_factor = std::max(user_state.config.downscale_factor, 1u);
     } else {
         user_state.config = {
@@ -29,7 +29,7 @@ extern "C" void gvox_serialize_adapter_colored_text_create(GvoxAdapterContext *c
 }
 
 extern "C" void gvox_serialize_adapter_colored_text_destroy(GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto &user_state = *static_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~ColoredTextSerializeUserState();
     free(&user_state);
 }
@@ -41,7 +41,7 @@ extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext *, 
 }
 
 extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    auto &user_state = *reinterpret_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto &user_state = *static_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     auto channels = std::vector<uint8_t>{};
     channels.resize(static_cast<size_t>(std::popcount(channel_flags)));

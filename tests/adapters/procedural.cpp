@@ -109,7 +109,7 @@ extern "C" auto procedural_load_region(GvoxBlitContext *, GvoxAdapterContext *ct
         .flags = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID,
         .data = malloc(sizeof(uint32_t) * 3),
     };
-    *reinterpret_cast<std::array<uint32_t, 3> *>(region.data) = {color, normal, id};
+    *static_cast<std::array<uint32_t, 3> *>(region.data) = {color, normal, id};
     return region;
 }
 
@@ -127,5 +127,5 @@ extern "C" auto procedural_sample_region(GvoxBlitContext *, GvoxAdapterContext *
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Tried sampling something other than color or normal");
         return 0;
     }
-    return (*reinterpret_cast<std::array<uint32_t, 3> const *>(region->data)).at(index);
+    return (*static_cast<std::array<uint32_t, 3> const *>(region->data)).at(index);
 }

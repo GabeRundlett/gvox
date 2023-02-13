@@ -16,7 +16,7 @@ extern "C" void gvox_output_adapter_stdout_blit_end(GvoxBlitContext *, GvoxAdapt
 }
 
 extern "C" void gvox_output_adapter_stdout_write(GvoxAdapterContext *, size_t, size_t size, void const *data) {
-    auto str = std::string_view{reinterpret_cast<char const *>(data), size};
+    auto str = std::string_view{static_cast<char const *>(data), size};
     std::cout << str;
 }
 

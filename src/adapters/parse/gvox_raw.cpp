@@ -23,13 +23,13 @@ extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void
 }
 
 extern "C" void gvox_parse_adapter_gvox_raw_destroy(GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GvoxRawParseUserState();
     free(&user_state);
 }
 
 extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
-    auto &user_state = *reinterpret_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     uint32_t magic = 0;
     gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
@@ -57,7 +57,7 @@ extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags(GvoxBlitContext *
 }
 
 extern "C" auto gvox_parse_adapter_gvox_raw_load_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxRegion {
-    auto &user_state = *reinterpret_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto base_offset = user_state.offset;
     uint32_t voxel_data = 0;
     uint32_t voxel_channel_index = 0;
