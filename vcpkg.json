@@ -8,9 +8,7 @@
       "description": "Enable file IO library features"
     },
     "tests": {
-      "description": "Build Tests",
-      "dependencies": [
-      ]
+      "description": "Build Tests"
     }
   },
   "builtin-baseline": "877e3dc2323a4d4c3c75e7168c22a0c4e921d4db"
