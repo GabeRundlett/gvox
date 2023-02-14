@@ -736,7 +736,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*u
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVE_COLOR | GVOX_CHANNEL_BIT_EMISSIVE_POWER};
+                 GVOX_CHANNEL_BIT_EMISSIVITY};
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
@@ -797,18 +797,12 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /
             voxel_data = 0;
         }
         break;
-    case GVOX_CHANNEL_ID_EMISSIVE_COLOR:
+    case GVOX_CHANNEL_ID_EMISSIVITY:
         if (palette_id < 255) {
+            // std::bit_cast<uint32_t>(user_state.materials[palette_id].emit)
             auto const palette_val = user_state.palette[palette_id];
             auto is_emissive = (user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_EMIT_BIT) != 0;
             voxel_data = std::bit_cast<uint32_t>(palette_val) * static_cast<uint32_t>(is_emissive);
-        } else {
-            voxel_data = 0;
-        }
-        break;
-    case GVOX_CHANNEL_ID_EMISSIVE_POWER:
-        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)) {
-            voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].emit);
         } else {
             voxel_data = 0;
         }

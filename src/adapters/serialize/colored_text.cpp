@@ -68,13 +68,12 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
     for (auto channel_id : channels) {
         bool const is_3channel =
             (channel_id == GVOX_CHANNEL_ID_COLOR) ||
-            (channel_id == GVOX_CHANNEL_ID_EMISSIVE_COLOR) ||
+            (channel_id == GVOX_CHANNEL_BIT_EMISSIVITY) ||
             (channel_id == GVOX_CHANNEL_ID_NORMAL);
         bool const is_normalized_float =
             (channel_id == GVOX_CHANNEL_ID_ROUGHNESS) ||
             (channel_id == GVOX_CHANNEL_ID_METALNESS) ||
-            (channel_id == GVOX_CHANNEL_ID_TRANSPARENCY) ||
-            (channel_id == GVOX_CHANNEL_ID_EMISSIVE_POWER);
+            (channel_id == GVOX_CHANNEL_ID_TRANSPARENCY);
         for (uint32_t zi = 0; zi < range->extent.z; zi += user_state.config.downscale_factor) {
             for (uint32_t yi = 0; yi < range->extent.y; yi += user_state.config.downscale_factor) {
                 for (uint32_t xi = 0; xi < range->extent.x; xi += user_state.config.downscale_factor) {
@@ -113,9 +112,9 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
                                         },
                                         .extent = GvoxExtent3D{1, 1, 1},
                                     };
-                                    auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channel_id);
+                                    auto region = gvox_load_region_range(blit_ctx, &sample_range, 1u << channel_id);
                                     auto voxel = gvox_sample_region(blit_ctx, &region, &sample_range.offset, channel_id);
-                                    gvox_unload_region(blit_ctx, &region);
+                                    gvox_unload_region_range(blit_ctx, &region, &sample_range);
                                     if (is_3channel) {
                                         avg_r += static_cast<float>((voxel >> 0x00) & 0xff) * (1.0f / 255.0f);
                                         avg_g += static_cast<float>((voxel >> 0x08) & 0xff) * (1.0f / 255.0f);
@@ -145,9 +144,9 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
                             },
                             .extent = GvoxExtent3D{1, 1, 1},
                         };
-                        auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channel_id);
+                        auto region = gvox_load_region_range(blit_ctx, &sample_range, 1u << channel_id);
                         auto voxel = gvox_sample_region(blit_ctx, &region, &sample_range.offset, channel_id);
-                        gvox_unload_region(blit_ctx, &region);
+                        gvox_unload_region_range(blit_ctx, &region, &sample_range);
                         if (is_3channel) {
                             r = (voxel >> 0x00) & 0xff;
                             g = (voxel >> 0x08) & 0xff;

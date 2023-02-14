@@ -54,9 +54,9 @@ auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteS
             .offset = pos,
             .extent = GvoxExtent3D{1, 1, 1},
         };
-        auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channels[ci]);
+        auto region = gvox_load_region_range(blit_ctx, &sample_range, 1u << channels[ci]);
         auto result = gvox_sample_region(blit_ctx, &region, &pos, channels[ci]);
-        gvox_unload_region(blit_ctx, &region);
+        gvox_unload_region_range(blit_ctx, &region, &sample_range);
         if (channels[ci] == GVOX_CHANNEL_ID_NORMAL) {
             // TODO: potentially compress the normals?
         }

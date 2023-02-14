@@ -268,11 +268,11 @@ auto gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *r
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     return p_adapter.info.query_region_flags(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), range, channel_flags);
 }
-auto gvox_load_region(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
+auto gvox_load_region_range(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     return p_adapter.info.load_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), range, channel_flags);
 }
-void gvox_unload_region(GvoxBlitContext *blit_ctx, GvoxRegion *region) {
+void gvox_unload_region_range(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxRegionRange const * /*range*/) {
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     p_adapter.info.unload_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region);
 }

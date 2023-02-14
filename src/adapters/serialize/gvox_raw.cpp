@@ -53,9 +53,9 @@ extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext
                         .offset = pos,
                         .extent = GvoxExtent3D{1, 1, 1},
                     };
-                    auto region = gvox_load_region(blit_ctx, &sample_range, 1u << channels[channel_i]);
+                    auto region = gvox_load_region_range(blit_ctx, &sample_range, 1u << channels[channel_i]);
                     temp_voxel[channel_i] = gvox_sample_region(blit_ctx, &region, &pos, channels[channel_i]);
-                    gvox_unload_region(blit_ctx, &region);
+                    gvox_unload_region_range(blit_ctx, &region, &sample_range);
                 }
                 gvox_output_write(blit_ctx, offset, voxel_size, temp_voxel.data());
                 offset += voxel_size;

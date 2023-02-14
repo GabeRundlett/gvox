@@ -258,7 +258,7 @@ void test_magicavoxel(void) {
                 GVOX_CHANNEL_BIT_MATERIAL_ID |
                 GVOX_CHANNEL_BIT_ROUGHNESS |
                 GVOX_CHANNEL_BIT_TRANSPARENCY |
-                GVOX_CHANNEL_BIT_EMISSIVE_COLOR);
+                GVOX_CHANNEL_BIT_EMISSIVITY);
         gvox_destroy_adapter_context(i_ctx);
         gvox_destroy_adapter_context(o_ctx);
         gvox_destroy_adapter_context(p_ctx);
@@ -287,7 +287,7 @@ void test_magicavoxel(void) {
                 GVOX_CHANNEL_BIT_MATERIAL_ID |
                 GVOX_CHANNEL_BIT_ROUGHNESS |
                 GVOX_CHANNEL_BIT_TRANSPARENCY |
-                GVOX_CHANNEL_BIT_EMISSIVE_COLOR);
+                GVOX_CHANNEL_BIT_EMISSIVITY);
         gvox_destroy_adapter_context(i_ctx);
         gvox_destroy_adapter_context(o_ctx);
         gvox_destroy_adapter_context(p_ctx);

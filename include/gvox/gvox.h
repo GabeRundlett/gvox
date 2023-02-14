@@ -8,7 +8,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-// User API
+// Consumer API
 
 typedef enum {
     GVOX_RESULT_SUCCESS = 0,
@@ -32,10 +32,10 @@ typedef enum {
 #define GVOX_CHANNEL_ID_METALNESS 4
 #define GVOX_CHANNEL_ID_TRANSPARENCY 5
 #define GVOX_CHANNEL_ID_IOR 6
-#define GVOX_CHANNEL_ID_EMISSIVE_COLOR 7
-#define GVOX_CHANNEL_ID_EMISSIVE_POWER 8
-#define GVOX_CHANNEL_ID_HARDNESS 9
-#define GVOX_CHANNEL_ID_LAST_STANDARD 15
+#define GVOX_CHANNEL_ID_EMISSIVITY 7
+#define GVOX_CHANNEL_ID_HARDNESS 8
+#define GVOX_CHANNEL_ID_LAST_STANDARD 23
+#define GVOX_CHANNEL_ID_LAST 31
 
 #define GVOX_CHANNEL_BIT_COLOR (1 << GVOX_CHANNEL_ID_COLOR)
 #define GVOX_CHANNEL_BIT_NORMAL (1 << GVOX_CHANNEL_ID_NORMAL)
@@ -44,10 +44,10 @@ typedef enum {
 #define GVOX_CHANNEL_BIT_METALNESS (1 << GVOX_CHANNEL_ID_METALNESS)
 #define GVOX_CHANNEL_BIT_TRANSPARENCY (1 << GVOX_CHANNEL_ID_TRANSPARENCY)
 #define GVOX_CHANNEL_BIT_IOR (1 << GVOX_CHANNEL_ID_IOR)
-#define GVOX_CHANNEL_BIT_EMISSIVE_COLOR (1 << GVOX_CHANNEL_ID_EMISSIVE_COLOR)
-#define GVOX_CHANNEL_BIT_EMISSIVE_POWER (1 << GVOX_CHANNEL_ID_EMISSIVE_POWER)
+#define GVOX_CHANNEL_BIT_EMISSIVITY (1 << GVOX_CHANNEL_ID_EMISSIVITY)
 #define GVOX_CHANNEL_BIT_HARDNESS (1 << GVOX_CHANNEL_ID_HARDNESS)
 #define GVOX_CHANNEL_BIT_LAST_STANDARD (1 << GVOX_CHANNEL_ID_LAST_STANDARD)
+#define GVOX_CHANNEL_BIT_LAST (1 << GVOX_CHANNEL_ID_LAST)
 
 #define GVOX_REGION_FLAG_UNIFORM 0x00000001
 
@@ -142,8 +142,8 @@ void gvox_blit_region(
 // Adapter API
 
 uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
-GvoxRegion gvox_load_region(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
-void gvox_unload_region(GvoxBlitContext *blit_ctx, GvoxRegion *region);
+GvoxRegion gvox_load_region_range(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+void gvox_unload_region_range(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxRegionRange const *range);
 uint32_t gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id);
 
 void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
