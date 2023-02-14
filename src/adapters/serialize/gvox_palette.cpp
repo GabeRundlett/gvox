@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <mutex>
 
+using namespace gvox_detail::thread_pool;
+
 struct GvoxPaletteSerializeUserState {
     size_t offset{};
     size_t blobs_begin{};
