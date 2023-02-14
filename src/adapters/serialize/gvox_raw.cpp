@@ -7,7 +7,7 @@
 #include <array>
 #include <vector>
 
-extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
+extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext * /*unused*/, void const * /*unused*/) {
 }
 
 extern "C" void gvox_serialize_adapter_gvox_raw_destroy(GvoxAdapterContext * /*unused*/) {

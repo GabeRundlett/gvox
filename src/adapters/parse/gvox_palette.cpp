@@ -31,7 +31,7 @@ struct GvoxPaletteParseUserState {
     std::array<uint32_t, 32> channel_indices{};
 };
 
-extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void * /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
@@ -135,22 +135,15 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitConte
     return flags;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t channel_flags) -> GvoxRegion {
+extern "C" auto gvox_parse_adapter_gvox_palette_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     if ((channel_flags & ~user_state.channel_flags) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
     GvoxRegion const region = {
-        .range = {
-            .offset = {0, 0, 0},
-            .extent = {
-                user_state.r_nx * REGION_SIZE,
-                user_state.r_ny * REGION_SIZE,
-                user_state.r_nz * REGION_SIZE,
-            },
-        },
+        .range = *range,
         .channels = channel_flags & user_state.channel_flags,
-        .flags = 0,
+        .flags = 0u,
         .data = nullptr,
     };
     return region;

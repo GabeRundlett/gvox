@@ -22,11 +22,11 @@ struct FileInputUserState {
 #endif
 };
 
-extern "C" void gvox_input_adapter_file_create(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_input_adapter_file_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(FileInputUserState));
     auto &user_state = *(new (user_state_ptr) FileInputUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-    auto &user_config = *static_cast<GvoxFileInputAdapterConfig *>(config);
+    auto &user_config = *static_cast<GvoxFileInputAdapterConfig const *>(config);
     user_state.byte_offset = user_config.byte_offset;
     user_state.path = user_config.filepath;
 }

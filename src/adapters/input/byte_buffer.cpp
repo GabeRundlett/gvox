@@ -12,11 +12,11 @@ struct ByteBufferInputUserState {
     std::vector<uint8_t> bytes{};
 };
 
-extern "C" void gvox_input_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_input_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ByteBufferInputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferInputUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-    auto &user_config = *static_cast<GvoxByteBufferInputAdapterConfig *>(config);
+    auto &user_config = *static_cast<GvoxByteBufferInputAdapterConfig const *>(config);
     user_state.bytes.resize(user_config.size);
     std::copy(user_config.data, user_config.data + user_config.size, user_state.bytes.begin());
 }

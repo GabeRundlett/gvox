@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-extern "C" void gvox_output_adapter_stdout_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
+extern "C" void gvox_output_adapter_stdout_create(GvoxAdapterContext * /*unused*/, void const * /*unused*/) {
 }
 
 extern "C" void gvox_output_adapter_stdout_destroy(GvoxAdapterContext * /*unused*/) {

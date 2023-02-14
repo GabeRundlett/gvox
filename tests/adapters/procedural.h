@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void procedural_create(GvoxAdapterContext *ctx, void *config);
+void procedural_create(GvoxAdapterContext *ctx, void const *config);
 void procedural_destroy(GvoxAdapterContext *ctx);
 void procedural_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 void procedural_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);

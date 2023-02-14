@@ -45,7 +45,7 @@ set(GVOX_OUTPUT_ADAPTERS
 set(GVOX_PARSE_ADAPTERS
     "gvox_raw"
     "gvox_palette"
-    # ace_of_spades
+    "voxlap"
     "magicavoxel"
 )
 set(GVOX_SERIALIZE_ADAPTERS

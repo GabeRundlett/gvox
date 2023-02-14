@@ -199,7 +199,7 @@ void gvox_adapter_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     }
 }
 
-auto gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void *config) -> GvoxAdapterContext * {
+auto gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void const *config) -> GvoxAdapterContext * {
     auto *ctx = new GvoxAdapterContext{
         .gvox_context_ptr = gvox_ctx,
         .adapter = adapter,

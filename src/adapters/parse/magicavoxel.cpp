@@ -352,7 +352,7 @@ void sample_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_nod
     }
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, void * /*unused*/) {
+extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(MagicavoxelParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) MagicavoxelParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);

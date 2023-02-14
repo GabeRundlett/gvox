@@ -13,12 +13,12 @@ struct ByteBufferOutputUserState {
     std::vector<uint8_t> bytes{};
 };
 
-extern "C" void gvox_output_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_output_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ByteBufferOutputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferOutputUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
-        user_state.config = *static_cast<GvoxByteBufferOutputAdapterConfig *>(config);
+        user_state.config = *static_cast<GvoxByteBufferOutputAdapterConfig const *>(config);
     } else {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_OUTPUT_ADAPTER, "Can't use this 'bytes' output adapter without a config");
     }

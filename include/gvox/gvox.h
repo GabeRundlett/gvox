@@ -82,7 +82,7 @@ typedef struct {
 
 typedef struct {
     char const *name_str;
-    void (*create)(GvoxAdapterContext *ctx, void *config);
+    void (*create)(GvoxAdapterContext *ctx, void const *config);
     void (*destroy)(GvoxAdapterContext *ctx);
     void (*blit_begin)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
     void (*blit_end)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
@@ -131,7 +131,7 @@ GvoxAdapter *gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name);
 GvoxAdapter *gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info);
 GvoxAdapter *gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name);
 
-GvoxAdapterContext *gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void *config);
+GvoxAdapterContext *gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void const *config);
 void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
 
 void gvox_blit_region(

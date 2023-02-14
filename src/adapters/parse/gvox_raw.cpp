@@ -16,7 +16,7 @@ struct GvoxRawParseUserState {
     size_t offset{};
 };
 
-extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void * /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxRawParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxRawParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);

@@ -15,12 +15,12 @@ struct OutputFileUserState {
     std::vector<uint8_t> bytes{};
 };
 
-extern "C" void gvox_output_adapter_file_create(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_output_adapter_file_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(OutputFileUserState));
     auto &user_state = *(new (user_state_ptr) OutputFileUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
-        auto *user_config = static_cast<GvoxFileOutputAdapterConfig *>(config);
+        auto *user_config = static_cast<GvoxFileOutputAdapterConfig const *>(config);
         user_state.path = user_config->filepath;
     } else {
         user_state.path = "gvox_file_out.bin";

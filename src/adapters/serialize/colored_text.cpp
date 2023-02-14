@@ -12,12 +12,12 @@ struct ColoredTextSerializeUserState {
     GvoxColoredTextSerializeAdapterConfig config;
 };
 
-extern "C" void gvox_serialize_adapter_colored_text_create(GvoxAdapterContext *ctx, void *config) {
+extern "C" void gvox_serialize_adapter_colored_text_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ColoredTextSerializeUserState));
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
-        user_state.config = *static_cast<GvoxColoredTextSerializeAdapterConfig *>(config);
+        user_state.config = *static_cast<GvoxColoredTextSerializeAdapterConfig const *>(config);
         user_state.config.downscale_factor = std::max(user_state.config.downscale_factor, 1u);
     } else {
         user_state.config = {

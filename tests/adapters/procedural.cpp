@@ -26,7 +26,7 @@ auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
     return sample_terrain(x, y, z);
 }
 
-extern "C" void procedural_create(GvoxAdapterContext * /*unused*/, void * /*unused*/) {
+extern "C" void procedural_create(GvoxAdapterContext * /*unused*/, void const * /*unused*/) {
 }
 extern "C" void procedural_destroy(GvoxAdapterContext * /*unused*/) {
 }

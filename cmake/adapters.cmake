@@ -89,7 +89,7 @@ foreach(NAME ${GVOX_INPUT_ADAPTERS})
     string(TOUPPER "${NAME_UPPER}" NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_INPUT_ADAPTER_${NAME_UPPER}_BUILT_STATIC=1)
     set(ADAPTERS_HEADER_CONTENT "${ADAPTERS_HEADER_CONTENT}
-extern \"C\" void gvox_input_adapter_${NAME}_create(GvoxAdapterContext *ctx, void *config);
+extern \"C\" void gvox_input_adapter_${NAME}_create(GvoxAdapterContext *ctx, void const *config);
 extern \"C\" void gvox_input_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_input_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_input_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
@@ -101,7 +101,7 @@ endforeach()
     string(TOUPPER "${NAME_UPPER}" NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_OUTPUT_ADAPTER_${NAME_UPPER}_BUILT_STATIC=1)
     set(ADAPTERS_HEADER_CONTENT "${ADAPTERS_HEADER_CONTENT}
-extern \"C\" void gvox_output_adapter_${NAME}_create(GvoxAdapterContext *ctx, void *config);
+extern \"C\" void gvox_output_adapter_${NAME}_create(GvoxAdapterContext *ctx, void const *config);
 extern \"C\" void gvox_output_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_output_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_output_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
@@ -114,7 +114,7 @@ foreach(NAME ${GVOX_PARSE_ADAPTERS})
     string(TOUPPER "${NAME_UPPER}" NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_PARSE_ADAPTER_${NAME_UPPER}_BUILT_STATIC=1)
     set(ADAPTERS_HEADER_CONTENT "${ADAPTERS_HEADER_CONTENT}
-extern \"C\" void gvox_parse_adapter_${NAME}_create(GvoxAdapterContext *ctx, void *config);
+extern \"C\" void gvox_parse_adapter_${NAME}_create(GvoxAdapterContext *ctx, void const *config);
 extern \"C\" void gvox_parse_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_parse_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_parse_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
@@ -129,7 +129,7 @@ foreach(NAME ${GVOX_SERIALIZE_ADAPTERS})
     string(TOUPPER "${NAME_UPPER}" NAME_UPPER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_SERIALIZE_ADAPTER_${NAME_UPPER}_BUILT_STATIC=1)
     set(ADAPTERS_HEADER_CONTENT "${ADAPTERS_HEADER_CONTENT}
-extern \"C\" void gvox_serialize_adapter_${NAME}_create(GvoxAdapterContext *ctx, void *config);
+extern \"C\" void gvox_serialize_adapter_${NAME}_create(GvoxAdapterContext *ctx, void const *config);
 extern \"C\" void gvox_serialize_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_serialize_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_serialize_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
