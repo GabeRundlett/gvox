@@ -300,8 +300,7 @@ void test_magicavoxel(void) {
 
 void test_voxlap(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
-    FILE *f;
-    fopen_s(&f, "assets/arab.vxl", "rb");
+    FILE *f = fopen("assets/arab.vxl", "rb");
     fseek(f, 0, SEEK_END);
     size_t size = (size_t)ftell(f);
     fseek(f, 0, SEEK_SET);
