@@ -1,6 +1,6 @@
 {
   "name": "gvox",
-  "version-string": "nightly",
+  "version-semver": "1.0.0",
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "features": {
