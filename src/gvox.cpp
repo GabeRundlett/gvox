@@ -120,6 +120,11 @@ void gvox_pop_result(GvoxContext *ctx) {
 }
 
 auto gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto adapter_iter = ctx->input_adapter_table.find(adapter_info->base_info.name_str);
+    if (adapter_iter != ctx->input_adapter_table.end()) {
+        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter with an adapter already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        return nullptr;
+    }
     auto *result = new GvoxInputAdapter{
         *adapter_info,
     };
@@ -137,6 +142,11 @@ auto gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 }
 
 auto gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto adapter_iter = ctx->output_adapter_table.find(adapter_info->base_info.name_str);
+    if (adapter_iter != ctx->output_adapter_table.end()) {
+        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        return nullptr;
+    }
     auto *result = new GvoxOutputAdapter{
         *adapter_info,
     };
@@ -144,7 +154,6 @@ auto gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const 
     return reinterpret_cast<GvoxAdapter *>(result);
 }
 auto gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxAdapter * {
-    return reinterpret_cast<GvoxAdapter *>(ctx->output_adapter_table.at(adapter_name));
     auto adapter_iter = ctx->output_adapter_table.find(adapter_name);
     if (adapter_iter == ctx->output_adapter_table.end()) {
         return nullptr;
@@ -155,6 +164,11 @@ auto gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name) -> Gvox
 }
 
 auto gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto adapter_iter = ctx->parse_adapter_table.find(adapter_info->base_info.name_str);
+    if (adapter_iter != ctx->parse_adapter_table.end()) {
+        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        return nullptr;
+    }
     auto *result = new GvoxParseAdapter{
         *adapter_info,
     };
@@ -172,6 +186,11 @@ auto gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 }
 
 auto gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info) -> GvoxAdapter * {
+    auto adapter_iter = ctx->serialize_adapter_table.find(adapter_info->base_info.name_str);
+    if (adapter_iter != ctx->serialize_adapter_table.end()) {
+        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        return nullptr;
+    }
     auto *result = new GvoxSerializeAdapter{
         *adapter_info,
     };
