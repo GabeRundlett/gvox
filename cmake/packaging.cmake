@@ -24,4 +24,4 @@ install(
     ${CMAKE_INSTALL_DATADIR}/gvox)
 install(TARGETS gvox EXPORT gvox-targets)
 install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ TYPE INCLUDE)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/../include/ TYPE INCLUDE)
