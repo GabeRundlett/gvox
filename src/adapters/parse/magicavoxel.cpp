@@ -262,7 +262,7 @@ namespace magicavoxel {
 
     struct SceneModel {
         int8_t rotation{1 << 2};
-        GvoxRegionRange range;
+        GvoxRegionRange range{};
         uint32_t index;
     };
 
@@ -284,7 +284,7 @@ struct MagicavoxelParseUserState {
     size_t offset{};
 };
 
-void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_info, magicavoxel::SceneNode &current_node, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn) {
+void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_info, magicavoxel::SceneNode &current_node, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p) {
     auto const &node_info = scene_info.node_infos[node_index];
     if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
         auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
@@ -294,7 +294,7 @@ void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_in
         new_trn.offset.y += rotated_offset.y;
         new_trn.offset.z += rotated_offset.z;
         new_trn.rotation = magicavoxel::rotate(new_trn.rotation, t_node_info.transform.rotation);
-        construct_scene(scene, scene_info, current_node, t_node_info.child_node_id, depth + 1, new_trn);
+        construct_scene(scene, scene_info, current_node, t_node_info.child_node_id, depth + 1, new_trn, min_p, max_p);
     } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
         auto const &g_node_info = std::get<magicavoxel::SceneGroupInfo>(node_info);
         auto &g_current_node = std::get<magicavoxel::SceneGroup>(current_node = magicavoxel::SceneGroup{});
@@ -303,9 +303,29 @@ void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_in
         for (auto &node : g_current_node.nodes) {
             node = std::make_unique<magicavoxel::SceneNode>();
         }
+        GvoxOffset3D temp_min_p{
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+        };
+        GvoxOffset3D temp_max_p{
+            std::numeric_limits<int32_t>::min(),
+            std::numeric_limits<int32_t>::min(),
+            std::numeric_limits<int32_t>::min(),
+        };
         for (uint32_t child_i = 0; child_i < g_node_info.num_child_nodes; ++child_i) {
-            construct_scene(scene, scene_info, *g_current_node.nodes[child_i], scene_info.group_children_ids[g_node_info.first_child_node_id_index + child_i], depth + 1, trn);
+            construct_scene(scene, scene_info, *g_current_node.nodes[child_i], scene_info.group_children_ids[g_node_info.first_child_node_id_index + child_i], depth + 1, trn, temp_min_p, temp_max_p);
         }
+        g_current_node.range.offset = temp_min_p;
+        g_current_node.range.extent.x = static_cast<uint32_t>(temp_max_p.x - temp_min_p.x);
+        g_current_node.range.extent.y = static_cast<uint32_t>(temp_max_p.y - temp_min_p.y);
+        g_current_node.range.extent.z = static_cast<uint32_t>(temp_max_p.z - temp_min_p.z);
+        min_p.x = std::min(min_p.x, temp_min_p.x);
+        min_p.y = std::min(min_p.y, temp_min_p.y);
+        min_p.z = std::min(min_p.z, temp_min_p.z);
+        max_p.x = std::max(max_p.x, temp_max_p.x);
+        max_p.y = std::max(max_p.y, temp_max_p.y);
+        max_p.z = std::max(max_p.z, temp_max_p.z);
     } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node_info)) {
         auto const &s_node_info = std::get<magicavoxel::SceneShapeInfo>(node_info);
         auto &s_current_node = std::get<magicavoxel::SceneModel>(current_node = magicavoxel::SceneModel{});
@@ -316,12 +336,28 @@ void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_in
         s_current_node.range.offset.x = trn.offset.x - static_cast<int32_t>(s_current_node.range.extent.x + ((trn.rotation >> 4) & 1)) / 2;
         s_current_node.range.offset.y = trn.offset.y - static_cast<int32_t>(s_current_node.range.extent.y + ((trn.rotation >> 5) & 1)) / 2;
         s_current_node.range.offset.z = trn.offset.z - static_cast<int32_t>(s_current_node.range.extent.z + ((trn.rotation >> 6) & 1)) / 2;
+        min_p.x = std::min(min_p.x, s_current_node.range.offset.x);
+        min_p.y = std::min(min_p.y, s_current_node.range.offset.y);
+        min_p.z = std::min(min_p.z, s_current_node.range.offset.z);
+        max_p.x = std::max(max_p.x, s_current_node.range.offset.x + static_cast<int32_t>(s_current_node.range.extent.x));
+        max_p.y = std::max(max_p.y, s_current_node.range.offset.y + static_cast<int32_t>(s_current_node.range.extent.y));
+        max_p.z = std::max(max_p.z, s_current_node.range.offset.z + static_cast<int32_t>(s_current_node.range.extent.z));
     }
 }
 
 void sample_scene(magicavoxel::Scene &scene, magicavoxel::SceneNode &current_node, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
     if (std::holds_alternative<magicavoxel::SceneGroup>(current_node)) {
         auto &g_current_node = std::get<magicavoxel::SceneGroup>(current_node);
+        auto offset = g_current_node.range.offset;
+        auto extent = g_current_node.range.extent;
+        if (sample_pos.x < offset.x ||
+            sample_pos.y < offset.y ||
+            sample_pos.z < offset.z ||
+            sample_pos.x >= offset.x + static_cast<int32_t>(extent.x) ||
+            sample_pos.y >= offset.y + static_cast<int32_t>(extent.y) ||
+            sample_pos.z >= offset.z + static_cast<int32_t>(extent.z)) {
+            return;
+        }
         for (auto &node : g_current_node.nodes) {
             sample_scene(scene, *node, sample_pos, sampled_voxel);
             if (sampled_voxel != 255) {
@@ -721,7 +757,17 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         }
     }
     if (!temp_scene_info.node_infos.empty()) {
-        construct_scene(user_state.scene, temp_scene_info, user_state.scene.root_node, 0, 0, {});
+        GvoxOffset3D temp_min_p{
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+        };
+        GvoxOffset3D temp_max_p{
+            std::numeric_limits<int32_t>::min(),
+            std::numeric_limits<int32_t>::min(),
+            std::numeric_limits<int32_t>::min(),
+        };
+        construct_scene(user_state.scene, temp_scene_info, user_state.scene.root_node, 0, 0, {}, temp_min_p, temp_max_p);
     }
 }
 
