@@ -54,7 +54,11 @@ set(GVOX_SERIALIZE_ADAPTERS
     "colored_text"
 )
 
-add_library(${PROJECT_NAME} STATIC
+if(GVOX_BUILD_FOR_JAVA)
+    set(BUILD_SHARED_LIBS ON)
+endif()
+
+add_library(${PROJECT_NAME}
     "src/gvox.cpp"
 )
 
@@ -62,6 +66,10 @@ if(GVOX_ENABLE_THREADSAFETY)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=1)
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
+endif()
+
+if(GVOX_BUILD_FOR_WEB)
+    set(GVOX_ENABLE_MULTITHREADED_ADAPTERS false)
 endif()
 
 if(GVOX_BUILD_FOR_RUST)
@@ -74,6 +82,32 @@ if(GVOX_BUILD_FOR_ODIN)
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=1)
 else()
     target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=0)
+endif()
+
+if(GVOX_BUILD_FOR_JAVA)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_JAVA=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_JAVA=0)
+endif()
+
+if(GVOX_ENABLE_MULTITHREADED_ADAPTERS)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=1)
+else()
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=0)
+endif()
+
+if(BUILD_SHARED_LIBS)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_compile_definitions(${PROJECT_NAME}
+            PRIVATE "GVOX_EXPORT=__declspec(dllexport)"
+            INTERFACE "GVOX_EXPORT=__declspec(dllimport)")
+    else()
+        target_compile_definitions(${PROJECT_NAME}
+            PUBLIC "GVOX_EXPORT=")
+    endif()
+else()
+    target_compile_definitions(${PROJECT_NAME}
+        PUBLIC "GVOX_EXPORT=")
 endif()
 
 if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)

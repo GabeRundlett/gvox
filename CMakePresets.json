@@ -14,10 +14,12 @@
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": true,
+                "GVOX_ENABLE_MULTITHREADED_ADAPTERS": true,
                 "GVOX_ENABLE_THREADSAFETY": true,
                 "GVOX_ENABLE_TESTS": true,
                 "GVOX_ENABLE_ASAN": false,
                 "GVOX_ENABLE_STATIC_ANALYSIS": false,
+                "GVOX_BUILD_FOR_WEB": false,
                 "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg_triplets"
             }
         },
@@ -58,6 +60,7 @@
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
+                "GVOX_BUILD_FOR_WEB": true,
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake"
             }
@@ -72,6 +75,7 @@
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
+                "GVOX_BUILD_FOR_WEB": true,
                 "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake"
             }
