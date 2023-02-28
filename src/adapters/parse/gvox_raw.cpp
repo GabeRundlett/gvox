@@ -49,6 +49,11 @@ extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
 }
 
+extern "C" auto gvox_parse_adapter_gvox_raw_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
+    auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    return user_state.range;
+}
+
 extern "C" void gvox_parse_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 

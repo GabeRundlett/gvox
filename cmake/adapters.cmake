@@ -48,6 +48,7 @@ endforeach()
         .query_region_flags = gvox_parse_adapter_${NAME}_query_region_flags,
         .load_region = gvox_parse_adapter_${NAME}_load_region,
         .unload_region = gvox_parse_adapter_${NAME}_unload_region,
+        .query_parsable_range= gvox_parse_adapter_${NAME}_query_parsable_range,
         .sample_region = gvox_parse_adapter_${NAME}_sample_region,
     },")
 endforeach()
@@ -121,6 +122,7 @@ extern \"C\" void gvox_parse_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx,
 extern \"C\" auto gvox_parse_adapter_${NAME}_query_region_flags(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t;
 extern \"C\" auto gvox_parse_adapter_${NAME}_load_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion;
 extern \"C\" void gvox_parse_adapter_${NAME}_unload_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
+extern \"C\" auto gvox_parse_adapter_${NAME}_query_parsable_range(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) -> GvoxRegionRange;
 extern \"C\" auto gvox_parse_adapter_${NAME}_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t;
 ")
 endforeach()

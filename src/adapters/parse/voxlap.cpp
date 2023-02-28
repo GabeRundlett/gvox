@@ -159,6 +159,11 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
 extern "C" void gvox_parse_adapter_voxlap_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+extern "C" auto gvox_parse_adapter_voxlap_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
+    auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    return {{0, 0, 0}, {user_state.config.size_x, user_state.config.size_y, user_state.config.size_z}};
+}
+
 extern "C" auto gvox_parse_adapter_voxlap_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }

@@ -244,43 +244,31 @@ void gvox_blit_region(
         gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The serialize adapter mustn't null");
         return;
     }
-    // if (input_range == nullptr) {
-    //     gvox_adapter_push_error(input_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The input range mustn't be null");
-    //     return;
-    // }
     auto blit_ctx = GvoxBlitContext{
         .i_ctx = input_ctx,
         .o_ctx = output_ctx,
         .p_ctx = parse_ctx,
         .s_ctx = serialize_ctx,
-        .range = *range,
         .channel_flags = channel_flags,
     };
-    // if (blit_ctx.o_range.extent.x > blit_ctx.i_range.extent.x ||
-    //     blit_ctx.o_range.extent.y > blit_ctx.i_range.extent.y ||
-    //     blit_ctx.o_range.extent.z > blit_ctx.i_range.extent.z) {
-    //     gvox_adapter_push_error(input_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: It doesn't make sense to have a larger output than input");
-    //     return;
-    // }
-    // if (blit_ctx.o_range.extent.x == 0) {
-    //     blit_ctx.o_range.extent.x = blit_ctx.i_range.extent.x;
-    // }
-    // if (blit_ctx.o_range.extent.y == 0) {
-    //     blit_ctx.o_range.extent.y = blit_ctx.i_range.extent.y;
-    // }
-    // if (blit_ctx.o_range.extent.z == 0) {
-    //     blit_ctx.o_range.extent.z = blit_ctx.i_range.extent.z;
-    // }
 
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.i_ctx);
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.o_ctx);
-    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx);
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx);
+
+    GvoxRegionRange actual_range;
+    if (range != nullptr) {
+        blit_ctx.range = *range;
+    } else {
+        blit_ctx.range = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.query_parsable_range(&blit_ctx, parse_ctx);
+    }
+
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx);
     reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &blit_ctx.range, channel_flags);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
-    gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
 }
 
 auto gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t {

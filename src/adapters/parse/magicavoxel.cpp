@@ -904,6 +904,22 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
 extern "C" void gvox_parse_adapter_magicavoxel_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
+    auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    if (user_state.scene.bvh_nodes.size() > 0) {
+        auto const &root_node = user_state.scene.bvh_nodes[0];
+        return {
+            root_node.aabb_min,
+            {
+                static_cast<uint32_t>(root_node.aabb_max.x - root_node.aabb_min.x),
+                static_cast<uint32_t>(root_node.aabb_max.y - root_node.aabb_min.y),
+                static_cast<uint32_t>(root_node.aabb_max.z - root_node.aabb_min.z),
+            },
+        };
+    }
+    return {{0, 0, 0}, {0, 0, 0}};
+}
+
 extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }

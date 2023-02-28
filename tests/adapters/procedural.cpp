@@ -56,6 +56,10 @@ extern "C" auto procedural_load_region(GvoxBlitContext * /*unused*/, GvoxAdapter
 extern "C" void procedural_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
+extern "C" auto procedural_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) -> GvoxRegionRange {
+    return {{0, 0, 0}, {0, 0, 0}};
+}
+
 extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
     constexpr auto create_color = [](float rf, float gf, float bf, uint32_t const a) {
         uint32_t const r = static_cast<uint32_t>(std::max(std::min(rf, 1.0f), 0.0f) * 255.0f);

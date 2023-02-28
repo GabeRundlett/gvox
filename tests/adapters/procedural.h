@@ -14,6 +14,7 @@ void procedural_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 uint32_t procedural_query_region_flags(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 GvoxRegion procedural_load_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 void procedural_unload_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
+GvoxRegionRange procedural_query_parsable_range(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 uint32_t procedural_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
 
 // This adapter has no config
