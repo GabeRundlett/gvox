@@ -22,6 +22,7 @@ struct FileInputUserState {
 #endif
 };
 
+// Base
 extern "C" void gvox_input_adapter_file_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(FileInputUserState));
     auto &user_state = *(new (user_state_ptr) FileInputUserState());
@@ -47,6 +48,7 @@ extern "C" void gvox_input_adapter_file_blit_end(GvoxBlitContext * /*unused*/, G
     user_state.file.close();
 }
 
+// General
 extern "C" void gvox_input_adapter_file_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
 #if GVOX_ENABLE_THREADSAFETY

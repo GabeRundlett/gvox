@@ -48,7 +48,6 @@ struct _GvoxBlitContext {
     GvoxAdapterContext *o_ctx;
     GvoxAdapterContext *p_ctx;
     GvoxAdapterContext *s_ctx;
-    GvoxRegionRange range;
     uint32_t channel_flags;
 };
 
@@ -235,13 +234,19 @@ void gvox_destroy_adapter_context(GvoxAdapterContext *ctx) {
     }
     delete ctx;
 }
-void gvox_blit_region(
+
+static void gvox_blit_region_impl(
     GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
     GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
-    GvoxRegionRange const *range,
-    uint32_t channel_flags) {
+    GvoxRegionRange const *requested_range,
+    uint32_t channel_flags,
+    GvoxBlitMode blit_mode) {
+    if (parse_ctx->adapter == nullptr) {
+        gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The parse adapter mustn't be null");
+        return;
+    }
     if (serialize_ctx->adapter == nullptr) {
-        gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The serialize adapter mustn't null");
+        gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The serialize adapter mustn't be null");
         return;
     }
     auto blit_ctx = GvoxBlitContext{
@@ -257,20 +262,118 @@ void gvox_blit_region(
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx);
 
     GvoxRegionRange actual_range;
-    if (range != nullptr) {
-        blit_ctx.range = *range;
+    if (requested_range != nullptr) {
+        actual_range = *requested_range;
     } else {
-        blit_ctx.range = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.query_parsable_range(&blit_ctx, parse_ctx);
+        actual_range = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.query_parsable_range(&blit_ctx, parse_ctx);
     }
 
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx);
-    reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &blit_ctx.range, channel_flags);
+    switch (blit_mode) {
+    default:
+    case GVOX_BLIT_MODE_PARSE_DRIVEN:
+        reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.parse_driven_begin(&blit_ctx, parse_ctx, &actual_range);
+        reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.parse_region(&blit_ctx, parse_ctx, &actual_range, channel_flags);
+        break;
+    case GVOX_BLIT_MODE_SERIALIZE_DRIVEN:
+        reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &actual_range, channel_flags);
+        break;
+    }
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
 }
 
+void gvox_blit_region(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range,
+    uint32_t channel_flags) {
+    if (parse_ctx->adapter == nullptr) {
+        gvox_adapter_push_error(serialize_ctx, GVOX_RESULT_ERROR_INVALID_PARAMETER, "[BLIT ERROR]: The parse adapter mustn't be null");
+        return;
+    }
+    auto *parse_adapter = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter);
+    // Backwards compat cope
+    auto preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE;
+    if (parse_adapter->info.query_details != nullptr) {
+        preferred_blit_mode = parse_adapter->info.query_details().preferred_blit_mode;
+    }
+
+    gvox_blit_region_impl(
+        input_ctx, output_ctx,
+        parse_ctx, serialize_ctx,
+        requested_range,
+        channel_flags,
+        preferred_blit_mode);
+}
+
+void gvox_blit_region_parse_driven(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range,
+    uint32_t channel_flags) {
+    gvox_blit_region_impl(
+        input_ctx, output_ctx,
+        parse_ctx, serialize_ctx,
+        requested_range,
+        channel_flags,
+        GVOX_BLIT_MODE_PARSE_DRIVEN);
+}
+
+void gvox_blit_region_serialize_driven(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range,
+    uint32_t channel_flags) {
+    gvox_blit_region_impl(
+        input_ctx, output_ctx,
+        parse_ctx, serialize_ctx,
+        requested_range,
+        channel_flags,
+        GVOX_BLIT_MODE_SERIALIZE_DRIVEN);
+}
+
+// Adapter API
+
+// Input
+void gvox_input_read(GvoxBlitContext *blit_ctx, size_t position, size_t size, void *data) {
+    auto &i_adapter = *reinterpret_cast<GvoxInputAdapter *>(blit_ctx->i_ctx->adapter);
+    i_adapter.info.read(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->i_ctx), position, size, data);
+}
+// Output
+void gvox_output_write(GvoxBlitContext *blit_ctx, size_t position, size_t size, void const *data) {
+    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
+    o_adapter.info.write(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), position, size, data);
+}
+void gvox_output_reserve(GvoxBlitContext *blit_ctx, size_t size) {
+    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
+    o_adapter.info.reserve(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), size);
+}
+// General
+void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message) {
+#if GVOX_ENABLE_THREADSAFETY
+    auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
+#endif
+    ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
+#if !GVOX_BUILD_FOR_RUST && !GVOX_BUILD_FOR_ODIN
+    assert(0 && message);
+#endif
+}
+void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {
+    ctx->user_ptr = ptr;
+}
+auto gvox_adapter_get_user_pointer(GvoxAdapterContext *ctx) -> void * {
+    return ctx->user_ptr;
+}
+auto gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
+    auto offset_copy = *offset;
+    return p_adapter.info.sample_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region, &offset_copy, channel_id);
+}
+
+// Serialize Driven
 auto gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t {
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     return p_adapter.info.query_region_flags(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), range, channel_flags);
@@ -283,41 +386,9 @@ void gvox_unload_region_range(GvoxBlitContext *blit_ctx, GvoxRegion *region, Gvo
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     p_adapter.info.unload_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region);
 }
-auto gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
-    auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
-    auto offset_copy = *offset;
-    return p_adapter.info.sample_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region, &offset_copy, channel_id);
-}
 
-void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message) {
-#if GVOX_ENABLE_THREADSAFETY
-    auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
-#endif
-    ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
-#if !GVOX_BUILD_FOR_RUST && !GVOX_BUILD_FOR_ODIN
-    assert(0 && message);
-#endif
-}
-
-void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {
-    ctx->user_ptr = ptr;
-}
-
-auto gvox_adapter_get_user_pointer(GvoxAdapterContext *ctx) -> void * {
-    return ctx->user_ptr;
-}
-
-void gvox_input_read(GvoxBlitContext *blit_ctx, size_t position, size_t size, void *data) {
-    auto &i_adapter = *reinterpret_cast<GvoxInputAdapter *>(blit_ctx->i_ctx->adapter);
-    i_adapter.info.read(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->i_ctx), position, size, data);
-}
-
-void gvox_output_write(GvoxBlitContext *blit_ctx, size_t position, size_t size, void const *data) {
-    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
-    o_adapter.info.write(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), position, size, data);
-}
-
-void gvox_output_reserve(GvoxBlitContext *blit_ctx, size_t size) {
-    auto &o_adapter = *reinterpret_cast<GvoxOutputAdapter *>(blit_ctx->o_ctx->adapter);
-    o_adapter.info.reserve(reinterpret_cast<GvoxAdapterContext *>(blit_ctx->o_ctx), size);
+// Parse Driven
+void gvox_emit_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region) {
+    auto &s_adapter = *reinterpret_cast<GvoxSerializeAdapter *>(blit_ctx->s_ctx->adapter);
+    s_adapter.info.receive_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->s_ctx), region);
 }

@@ -12,6 +12,7 @@ struct ColoredTextSerializeUserState {
     GvoxColoredTextSerializeAdapterConfig config;
 };
 
+// Base
 extern "C" void gvox_serialize_adapter_colored_text_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ColoredTextSerializeUserState));
     auto &user_state = *(new (user_state_ptr) ColoredTextSerializeUserState());
@@ -41,6 +42,7 @@ extern "C" void gvox_serialize_adapter_colored_text_blit_begin(GvoxBlitContext *
 extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// Serialize Driven
 extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
 
@@ -208,4 +210,11 @@ extern "C" void gvox_serialize_adapter_colored_text_serialize_region(GvoxBlitCon
         output_index += channel_terminator.size() - 1;
     }
     gvox_output_write(blit_ctx, 0, output_index, data.data());
+}
+
+// Parse Driven
+extern "C" void gvox_serialize_adapter_colored_text_parse_driven_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range) {
+}
+
+extern "C" void gvox_serialize_adapter_colored_text_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
 }

@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 
+// Base
 extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext * /*unused*/, void const * /*unused*/) {
 }
 
@@ -19,6 +20,7 @@ extern "C" void gvox_serialize_adapter_gvox_raw_blit_begin(GvoxBlitContext * /*u
 extern "C" void gvox_serialize_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// Serialize Driven
 extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext * /*unused*/, GvoxRegionRange const *range, uint32_t channel_flags) {
     size_t offset = 0;
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'r', '\0'});
@@ -62,4 +64,11 @@ extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext
             }
         }
     }
+}
+
+// Parse Driven
+extern "C" void gvox_serialize_adapter_gvox_raw_parse_driven_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range) {
+}
+
+extern "C" void gvox_serialize_adapter_gvox_raw_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
 }

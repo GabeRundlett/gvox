@@ -12,6 +12,7 @@ struct ByteBufferInputUserState {
     std::vector<uint8_t> bytes{};
 };
 
+// Base
 extern "C" void gvox_input_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ByteBufferInputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferInputUserState());
@@ -33,6 +34,7 @@ extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*un
 extern "C" void gvox_input_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// General
 extern "C" void gvox_input_adapter_byte_buffer_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
     auto &user_state = *static_cast<ByteBufferInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (position + size > user_state.bytes.size()) {

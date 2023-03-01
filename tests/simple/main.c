@@ -26,10 +26,12 @@ void test_raw_file_io(void) {
                 .blit_begin = procedural_blit_begin,
                 .blit_end = procedural_blit_end,
             },
+            .query_details = procedural_query_details,
             .query_region_flags = procedural_query_region_flags,
             .load_region = procedural_load_region,
             .unload_region = procedural_unload_region,
             .sample_region = procedural_sample_region,
+            .parse_region = procedural_parse_region,
         };
         GvoxFileOutputAdapterConfig o_config = {
             .filepath = "tests/simple/raw.gvox",
@@ -100,10 +102,12 @@ void test_palette_buffer_io(void) {
                 .blit_begin = procedural_blit_begin,
                 .blit_end = procedural_blit_end,
             },
+            .query_details = procedural_query_details,
             .query_region_flags = procedural_query_region_flags,
             .load_region = procedural_load_region,
             .unload_region = procedural_unload_region,
             .sample_region = procedural_sample_region,
+            .parse_region = procedural_parse_region,
         };
         GvoxByteBufferOutputAdapterConfig o_config = {
             .out_byte_buffer_ptr = &data,
@@ -177,10 +181,12 @@ void test_palette_file_io(void) {
                 .blit_begin = procedural_blit_begin,
                 .blit_end = procedural_blit_end,
             },
+            .query_details = procedural_query_details,
             .query_region_flags = procedural_query_region_flags,
             .load_region = procedural_load_region,
             .unload_region = procedural_unload_region,
             .sample_region = procedural_sample_region,
+            .parse_region = procedural_parse_region,
         };
         GvoxFileOutputAdapterConfig o_config = {
             .filepath = "tests/simple/palette.gvox",

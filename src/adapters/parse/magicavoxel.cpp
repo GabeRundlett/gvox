@@ -515,6 +515,7 @@ void sample_scene(magicavoxel::Scene &scene, GvoxOffset3D const &sample_pos, uin
     sample_scene_bvh(scene, scene.bvh_nodes[0], sample_pos, sampled_voxel);
 }
 
+// Base
 extern "C" void gvox_parse_adapter_magicavoxel_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(MagicavoxelParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) MagicavoxelParseUserState());
@@ -904,6 +905,13 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
 extern "C" void gvox_parse_adapter_magicavoxel_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// General
+extern "C" auto gvox_parse_adapter_magicavoxel_query_details() -> GvoxParseAdapterDetails {
+    return {
+        .preferred_blit_mode = GVOX_BLIT_MODE_PARSE_DRIVEN,
+    };
+}
+
 extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (user_state.scene.bvh_nodes.size() > 0) {
@@ -918,30 +926,6 @@ extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitCont
         };
     }
     return {{0, 0, 0}, {0, 0, 0}};
-}
-
-extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
-    return 0;
-}
-
-extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
-    auto const available_channels =
-        uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
-                 GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVITY};
-    if ((channel_flags & ~available_channels) != 0) {
-        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
-    }
-    GvoxRegion const region = {
-        .range = *range,
-        .channels = channel_flags & available_channels,
-        .flags = 0u,
-        .data = nullptr,
-    };
-    return region;
-}
-
-extern "C" void gvox_parse_adapter_magicavoxel_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
 extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
@@ -1005,4 +989,48 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /
     }
 
     return voxel_data;
+}
+
+// Serialize Driven
+extern "C" auto gvox_parse_adapter_magicavoxel_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
+    return 0;
+}
+
+extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
+    auto const available_channels =
+        uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
+                 GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
+                 GVOX_CHANNEL_BIT_EMISSIVITY};
+    if ((channel_flags & ~available_channels) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
+    }
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    return region;
+}
+
+extern "C" void gvox_parse_adapter_magicavoxel_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
+}
+
+// Parse Driven
+extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+    // TODO(grundlett): Specialize this! This function was added to make parsing Magicavoxel faster
+    auto const available_channels =
+        uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
+                 GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
+                 GVOX_CHANNEL_BIT_EMISSIVITY};
+    if ((channel_flags & ~available_channels) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
+    }
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    gvox_emit_region(blit_ctx, &region);
 }

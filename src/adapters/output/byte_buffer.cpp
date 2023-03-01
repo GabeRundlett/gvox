@@ -13,6 +13,7 @@ struct ByteBufferOutputUserState {
     std::vector<uint8_t> bytes{};
 };
 
+// Base
 extern "C" void gvox_output_adapter_byte_buffer_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(ByteBufferOutputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferOutputUserState());
@@ -47,6 +48,7 @@ extern "C" void gvox_output_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unu
     *user_state.config.out_size = user_state.bytes.size();
 }
 
+// General
 extern "C" void gvox_output_adapter_byte_buffer_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data) {
     auto &user_state = *static_cast<ByteBufferOutputUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (position + size > user_state.bytes.size()) {

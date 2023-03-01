@@ -45,11 +45,16 @@ endforeach()
             .blit_begin = gvox_parse_adapter_${NAME}_blit_begin,
             .blit_end = gvox_parse_adapter_${NAME}_blit_end,
         },
+
+        .query_details = gvox_parse_adapter_${NAME}_query_details,
+        .query_parsable_range= gvox_parse_adapter_${NAME}_query_parsable_range,
+        .sample_region = gvox_parse_adapter_${NAME}_sample_region,
+
         .query_region_flags = gvox_parse_adapter_${NAME}_query_region_flags,
         .load_region = gvox_parse_adapter_${NAME}_load_region,
         .unload_region = gvox_parse_adapter_${NAME}_unload_region,
-        .query_parsable_range= gvox_parse_adapter_${NAME}_query_parsable_range,
-        .sample_region = gvox_parse_adapter_${NAME}_sample_region,
+
+        .parse_region = gvox_parse_adapter_${NAME}_parse_region,
     },")
 endforeach()
     foreach(NAME ${GVOX_SERIALIZE_ADAPTERS})
@@ -65,7 +70,11 @@ endforeach()
             .blit_begin = gvox_serialize_adapter_${NAME}_blit_begin,
             .blit_end = gvox_serialize_adapter_${NAME}_blit_end,
         },
+
         .serialize_region = gvox_serialize_adapter_${NAME}_serialize_region,
+
+        .parse_driven_begin = gvox_serialize_adapter_${NAME}_parse_driven_begin,
+        .receive_region = gvox_serialize_adapter_${NAME}_receive_region,
     },")
 endforeach()
 
@@ -94,6 +103,7 @@ extern \"C\" void gvox_input_adapter_${NAME}_create(GvoxAdapterContext *ctx, voi
 extern \"C\" void gvox_input_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_input_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_input_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+
 extern \"C\" void gvox_input_adapter_${NAME}_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data);
 ")
 endforeach()
@@ -106,6 +116,7 @@ extern \"C\" void gvox_output_adapter_${NAME}_create(GvoxAdapterContext *ctx, vo
 extern \"C\" void gvox_output_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_output_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_output_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+
 extern \"C\" void gvox_output_adapter_${NAME}_write(GvoxAdapterContext *ctx, size_t position, size_t size, void const *data);
 extern \"C\" void gvox_output_adapter_${NAME}_reserve(GvoxAdapterContext *ctx, size_t size);
 ")
@@ -119,11 +130,16 @@ extern \"C\" void gvox_parse_adapter_${NAME}_create(GvoxAdapterContext *ctx, voi
 extern \"C\" void gvox_parse_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_parse_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_parse_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+
+extern \"C\" auto gvox_parse_adapter_${NAME}_query_details() -> GvoxParseAdapterDetails;
+extern \"C\" auto gvox_parse_adapter_${NAME}_query_parsable_range(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) -> GvoxRegionRange;
+extern \"C\" auto gvox_parse_adapter_${NAME}_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t;
+
 extern \"C\" auto gvox_parse_adapter_${NAME}_query_region_flags(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t;
 extern \"C\" auto gvox_parse_adapter_${NAME}_load_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion;
 extern \"C\" void gvox_parse_adapter_${NAME}_unload_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion *region);
-extern \"C\" auto gvox_parse_adapter_${NAME}_query_parsable_range(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) -> GvoxRegionRange;
-extern \"C\" auto gvox_parse_adapter_${NAME}_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t;
+
+extern \"C\" void gvox_parse_adapter_${NAME}_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 ")
 endforeach()
 foreach(NAME ${GVOX_SERIALIZE_ADAPTERS})
@@ -135,7 +151,11 @@ extern \"C\" void gvox_serialize_adapter_${NAME}_create(GvoxAdapterContext *ctx,
 extern \"C\" void gvox_serialize_adapter_${NAME}_destroy(GvoxAdapterContext *ctx);
 extern \"C\" void gvox_serialize_adapter_${NAME}_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 extern \"C\" void gvox_serialize_adapter_${NAME}_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+
 extern \"C\" void gvox_serialize_adapter_${NAME}_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
+
+extern \"C\" void gvox_serialize_adapter_${NAME}_parse_driven_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range);
+extern \"C\" void gvox_serialize_adapter_${NAME}_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region);
 ")
 endforeach()
 

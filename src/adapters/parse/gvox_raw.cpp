@@ -16,6 +16,7 @@ struct GvoxRawParseUserState {
     size_t offset{};
 };
 
+// Base
 extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxRawParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxRawParseUserState());
@@ -49,14 +50,37 @@ extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
 }
 
+extern "C" void gvox_parse_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+}
+
+// General
+extern "C" auto gvox_parse_adapter_gvox_raw_query_details() -> GvoxParseAdapterDetails {
+    return {
+        .preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE,
+    };
+}
+
 extern "C" auto gvox_parse_adapter_gvox_raw_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
     auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     return user_state.range;
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+    auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto base_offset = user_state.offset;
+    uint32_t voxel_data = 0;
+    uint32_t voxel_channel_index = 0;
+    for (uint32_t channel_index = 0; channel_index < channel_id; ++channel_index) {
+        if (((user_state.channel_flags >> channel_index) & 0x1) != 0) {
+            ++voxel_channel_index;
+        }
+    }
+    auto read_offset = base_offset + sizeof(uint32_t) * (voxel_channel_index + user_state.channel_n * (static_cast<size_t>(offset->x - user_state.range.offset.x) + static_cast<size_t>(offset->y - user_state.range.offset.y) * user_state.range.extent.x + static_cast<size_t>(offset->z - user_state.range.offset.z) * user_state.range.extent.x * user_state.range.extent.y));
+    gvox_input_read(blit_ctx, read_offset, sizeof(voxel_data), &voxel_data);
+    return voxel_data;
 }
 
+// Serialize Driven
 extern "C" auto gvox_parse_adapter_gvox_raw_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
@@ -78,17 +102,17 @@ extern "C" auto gvox_parse_adapter_gvox_raw_load_region(GvoxBlitContext * /*unus
 extern "C" void gvox_parse_adapter_gvox_raw_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+// Parse Driven
+extern "C" void gvox_parse_adapter_gvox_raw_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
-    auto base_offset = user_state.offset;
-    uint32_t voxel_data = 0;
-    uint32_t voxel_channel_index = 0;
-    for (uint32_t channel_index = 0; channel_index < channel_id; ++channel_index) {
-        if (((user_state.channel_flags >> channel_index) & 0x1) != 0) {
-            ++voxel_channel_index;
-        }
+    if ((channel_flags & ~user_state.channel_flags) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
-    auto read_offset = base_offset + sizeof(uint32_t) * (voxel_channel_index + user_state.channel_n * (static_cast<size_t>(offset->x - user_state.range.offset.x) + static_cast<size_t>(offset->y - user_state.range.offset.y) * user_state.range.extent.x + static_cast<size_t>(offset->z - user_state.range.offset.z) * user_state.range.extent.x * user_state.range.extent.y));
-    gvox_input_read(blit_ctx, read_offset, sizeof(voxel_data), &voxel_data);
-    return voxel_data;
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & user_state.channel_flags,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    gvox_emit_region(blit_ctx, &region);
 }

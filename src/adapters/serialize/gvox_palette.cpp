@@ -32,24 +32,6 @@ static void write_data(uint8_t *&buffer_ptr, T const &data) {
     buffer_ptr += sizeof(T);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
-    auto *user_state_ptr = malloc(sizeof(GvoxPaletteSerializeUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
-    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-}
-
-extern "C" void gvox_serialize_adapter_gvox_palette_destroy(GvoxAdapterContext *ctx) {
-    auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
-    user_state.~GvoxPaletteSerializeUserState();
-    free(&user_state);
-}
-
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
-}
-
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
-}
-
 auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteSerializeUserState &user_state, GvoxRegionRange const &range, uint32_t rx, uint32_t ry, uint32_t rz, uint32_t ci, std::vector<uint8_t> const &channels) -> size_t {
     auto sample_u32_data = [blit_ctx, ci, &channels](GvoxOffset3D const &pos) {
         auto const sample_range = GvoxRegionRange{
@@ -207,6 +189,26 @@ auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteS
     return size;
 }
 
+// Base
+extern "C" void gvox_serialize_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+    auto *user_state_ptr = malloc(sizeof(GvoxPaletteSerializeUserState));
+    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
+    gvox_adapter_set_user_pointer(ctx, user_state_ptr);
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_destroy(GvoxAdapterContext *ctx) {
+    auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.~GvoxPaletteSerializeUserState();
+    free(&user_state);
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+}
+
+// Serialize Driven
 extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'});
@@ -266,4 +268,11 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitCon
     auto blob_size = static_cast<uint32_t>(size - user_state.blobs_begin);
     gvox_output_write(blit_ctx, blob_size_offset, sizeof(blob_size), &blob_size);
     gvox_output_write(blit_ctx, user_state.offset, user_state.data.size(), user_state.data.data());
+}
+
+// Parse Driven
+extern "C" void gvox_serialize_adapter_gvox_palette_parse_driven_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range) {
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
 }

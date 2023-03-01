@@ -18,6 +18,7 @@ struct VoxlapParseUserState {
     std::vector<bool> is_solid{};
 };
 
+// Base
 extern "C" void gvox_parse_adapter_voxlap_create(GvoxAdapterContext *ctx, void const *config) {
     auto *user_state_ptr = malloc(sizeof(VoxlapParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) VoxlapParseUserState());
@@ -159,11 +160,38 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
 extern "C" void gvox_parse_adapter_voxlap_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// General
+extern "C" auto gvox_parse_adapter_voxlap_query_details() -> GvoxParseAdapterDetails {
+    return {
+        .preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE,
+    };
+}
+
 extern "C" auto gvox_parse_adapter_voxlap_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
     auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     return {{0, 0, 0}, {user_state.config.size_x, user_state.config.size_y, user_state.config.size_z}};
 }
 
+extern "C" auto gvox_parse_adapter_voxlap_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+    auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    if (offset->x < 0 || offset->y < 0 || offset->z < 0 ||
+        static_cast<uint32_t>(offset->x) >= user_state.config.size_x ||
+        static_cast<uint32_t>(offset->y) >= user_state.config.size_y ||
+        static_cast<uint32_t>(offset->z) >= user_state.config.size_z) {
+        return 0;
+    }
+    auto voxel_index =
+        static_cast<uint32_t>(offset->x) +
+        static_cast<uint32_t>(offset->y) * user_state.config.size_x +
+        static_cast<uint32_t>(offset->z) * user_state.config.size_x * user_state.config.size_y;
+    switch (channel_id) {
+    case GVOX_CHANNEL_ID_COLOR: return user_state.colors[voxel_index] | (static_cast<uint32_t>(user_state.is_solid[voxel_index]) << 0x18);
+    case GVOX_CHANNEL_ID_MATERIAL_ID: return static_cast<uint32_t>(user_state.is_solid[voxel_index]);
+    }
+    return 0;
+}
+
+// Serialize Driven
 extern "C" auto gvox_parse_adapter_voxlap_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
@@ -185,21 +213,17 @@ extern "C" auto gvox_parse_adapter_voxlap_load_region(GvoxBlitContext * /*unused
 extern "C" void gvox_parse_adapter_voxlap_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
-extern "C" auto gvox_parse_adapter_voxlap_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
-    auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
-    if (offset->x < 0 || offset->y < 0 || offset->z < 0 ||
-        static_cast<uint32_t>(offset->x) >= user_state.config.size_x ||
-        static_cast<uint32_t>(offset->y) >= user_state.config.size_y ||
-        static_cast<uint32_t>(offset->z) >= user_state.config.size_z) {
-        return 0;
+// Parse Driven
+extern "C" void gvox_parse_adapter_voxlap_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+    uint32_t available_channels = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID;
+    if ((channel_flags & ~available_channels) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
-    auto voxel_index =
-        static_cast<uint32_t>(offset->x) +
-        static_cast<uint32_t>(offset->y) * user_state.config.size_x +
-        static_cast<uint32_t>(offset->z) * user_state.config.size_x * user_state.config.size_y;
-    switch (channel_id) {
-    case GVOX_CHANNEL_ID_COLOR: return user_state.colors[voxel_index] | (static_cast<uint32_t>(user_state.is_solid[voxel_index]) << 0x18);
-    case GVOX_CHANNEL_ID_MATERIAL_ID: return static_cast<uint32_t>(user_state.is_solid[voxel_index]);
-    }
-    return 0;
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    gvox_emit_region(blit_ctx, &region);
 }

@@ -26,15 +26,31 @@ auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
     return sample_terrain(x, y, z);
 }
 
+// Base
 extern "C" void procedural_create(GvoxAdapterContext * /*unused*/, void const * /*unused*/) {
 }
+
 extern "C" void procedural_destroy(GvoxAdapterContext * /*unused*/) {
 }
+
 extern "C" void procedural_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
+
 extern "C" void procedural_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
+// General
+extern "C" auto procedural_query_details() -> GvoxParseAdapterDetails {
+    return {
+        .preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE,
+    };
+}
+
+extern "C" auto procedural_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) -> GvoxRegionRange {
+    return {{0, 0, 0}, {0, 0, 0}};
+}
+
+// Serialize Driven
 extern "C" auto procedural_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
@@ -54,10 +70,6 @@ extern "C" auto procedural_load_region(GvoxBlitContext * /*unused*/, GvoxAdapter
 }
 
 extern "C" void procedural_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
-}
-
-extern "C" auto procedural_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) -> GvoxRegionRange {
-    return {{0, 0, 0}, {0, 0, 0}};
 }
 
 extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
@@ -125,4 +137,19 @@ extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapt
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Tried sampling something other than color or normal");
         return 0;
     }
+}
+
+// Parse Driven
+extern "C" void procedural_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+    auto const available_channels = uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_NORMAL | GVOX_CHANNEL_BIT_MATERIAL_ID};
+    if ((channel_flags & ~available_channels) != 0) {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "procedural 'parser' does not generate anything other than color & normal");
+    }
+    GvoxRegion const region = {
+        .range = *range,
+        .channels = channel_flags & available_channels,
+        .flags = 0u,
+        .data = nullptr,
+    };
+    gvox_emit_region(blit_ctx, &region);
 }
