@@ -10,7 +10,7 @@ extern "C" void gvox_output_adapter_stdout_create(GvoxAdapterContext * /*unused*
 extern "C" void gvox_output_adapter_stdout_destroy(GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void gvox_output_adapter_stdout_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void gvox_output_adapter_stdout_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void gvox_output_adapter_stdout_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {

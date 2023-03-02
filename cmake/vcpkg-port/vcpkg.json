@@ -1,7 +1,7 @@
 {
   "name": "gvox",
   "version-string": "local",
-  "port-version": 9,
+  "port-version": 1,
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "features": {

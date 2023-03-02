@@ -21,7 +21,7 @@ extern "C" void gvox_output_adapter_file_create(GvoxAdapterContext *ctx, void co
     auto &user_state = *(new (user_state_ptr) OutputFileUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
     if (config != nullptr) {
-        auto *user_config = static_cast<GvoxFileOutputAdapterConfig const *>(config);
+        const auto *user_config = static_cast<GvoxFileOutputAdapterConfig const *>(config);
         user_state.path = user_config->filepath;
     } else {
         user_state.path = "gvox_file_out.bin";
@@ -34,7 +34,7 @@ extern "C" void gvox_output_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void gvox_output_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void gvox_output_adapter_file_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {

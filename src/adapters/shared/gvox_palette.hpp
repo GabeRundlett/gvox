@@ -2,7 +2,7 @@
 
 #include <array>
 
-static constexpr auto REGION_SIZE = 8;
+static constexpr auto REGION_SIZE = 8ull;
 
 static constexpr auto ceil_log2(uint32_t x) -> uint32_t {
     constexpr auto const t = std::array<uint32_t, 5>{

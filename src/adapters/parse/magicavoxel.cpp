@@ -202,19 +202,19 @@ namespace magicavoxel {
     static constexpr uint32_t MAX_DICT_SIZE = 4096;
     static constexpr uint32_t MAX_DICT_PAIRS = 256;
     struct Dictionary {
-        char const *keys[MAX_DICT_PAIRS];
-        char const *values[MAX_DICT_PAIRS];
+        std::array<char const *, MAX_DICT_PAIRS> keys;
+        std::array<char const *, MAX_DICT_PAIRS> values;
         uint32_t num_key_value_pairs;
-        char buffer[MAX_DICT_SIZE + 4]; // max 4096, +4 for safety
+        std::array<char, MAX_DICT_SIZE + 4> buffer; // max 4096, +4 for safety
         uint32_t buffer_mem_used;
         template <typename T>
         auto get(char const *requested_key, T const &default_value) -> T const & {
             for (uint32_t key_i = 0u; key_i < num_key_value_pairs; ++key_i) {
-                if (strcmp(keys[key_i], requested_key) == 0) {
+                if (strcmp(keys.at(key_i), requested_key) == 0) {
                     if constexpr (std::is_same_v<T, char const *>) {
-                        return values[key_i];
+                        return values.at(key_i);
                     } else {
-                        return *reinterpret_cast<T const *>(values[key_i]);
+                        return *reinterpret_cast<T const *>(values.at(key_i));
                     }
                 }
             }
@@ -223,7 +223,7 @@ namespace magicavoxel {
     };
 
     struct SceneTransformInfo {
-        char name[65]{};
+        std::array<char, 65> name{};
         Transform transform;
         uint32_t child_node_id{};
         uint32_t layer_id{};
@@ -272,10 +272,10 @@ namespace magicavoxel {
         GvoxOffset3D aabb_min;
         GvoxOffset3D aabb_max;
         std::variant<Children, Range> data;
-        bool is_leaf() const {
+        [[nodiscard]] auto is_leaf() const -> bool {
             return std::holds_alternative<Range>(data);
         }
-        bool needs_subdivide() const {
+        [[nodiscard]] auto needs_subdivide() const -> bool {
             if (std::holds_alternative<Children>(data)) {
                 return true;
             }
@@ -394,7 +394,7 @@ void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instance
         return;
     }
     auto const &node_range = std::get<magicavoxel::BvhNode::Range>(node.data);
-    GvoxOffset3D extent = {
+    GvoxOffset3D const extent = {
         node.aabb_max.x - node.aabb_min.x,
         node.aabb_max.y - node.aabb_min.y,
         node.aabb_max.z - node.aabb_min.z,
@@ -402,15 +402,17 @@ void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instance
     int32_t axis = 0;
     int32_t split_p = 0;
     if (extent.y > extent.x) {
-        if (extent.z > extent.y)
+        if (extent.z > extent.y) {
             axis = 2;
-        else
+        } else {
             axis = 1;
+        }
     } else {
-        if (extent.z > extent.x)
+        if (extent.z > extent.x) {
             axis = 2;
-        else
+        } else {
             axis = 0;
+        }
     }
     switch (axis) {
     default:
@@ -450,7 +452,7 @@ void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instance
 
 void construct_scene_bvh(magicavoxel::Scene &scene) {
     scene.bvh_nodes.reserve(scene.model_instances.size() * 2 - 1);
-    uint32_t root_node_i = 0;
+    uint32_t const root_node_i = 0;
     auto &root = scene.bvh_nodes[root_node_i];
     root.data = magicavoxel::BvhNode::Range{0, static_cast<uint32_t>(scene.model_instances.size())};
     subdivide_scene_bvh(scene.model_instances, scene.bvh_nodes, root);
@@ -492,26 +494,30 @@ void sample_scene_bvh(magicavoxel::Scene const &scene, magicavoxel::BvhNode cons
                 rel_p.z >= model.extent.z) {
                 continue;
             }
-            if (index >= model.palette_ids.size())
+            if (index >= model.palette_ids.size()) {
                 continue;
+            }
             sampled_voxel = model.palette_ids[index];
-            if (sampled_voxel != 255)
+            if (sampled_voxel != 255) {
                 break;
+            }
         }
     } else {
         auto const &node_data = std::get<magicavoxel::BvhNode::Children>(node.data);
         auto const &node_a = scene.bvh_nodes[node_data.offset + 0];
         auto const &node_b = scene.bvh_nodes[node_data.offset + 1];
         sample_scene_bvh(scene, node_a, sample_pos, sampled_voxel);
-        if (sampled_voxel != 255)
+        if (sampled_voxel != 255) {
             return;
+        }
         sample_scene_bvh(scene, node_b, sample_pos, sampled_voxel);
     }
 }
 
 void sample_scene(magicavoxel::Scene &scene, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
-    if (scene.bvh_nodes.size() == 0)
+    if (scene.bvh_nodes.empty()) {
         return;
+    }
     sample_scene_bvh(scene, scene.bvh_nodes[0], sample_pos, sampled_voxel);
 }
 
@@ -528,7 +534,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_destroy(GvoxAdapterContext *ctx) 
     free(&user_state);
 }
 
-extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto read_var = [&](auto &var) {
         gvox_input_read(blit_ctx, user_state.offset, sizeof(var), &var);
@@ -663,7 +669,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             auto result_transform = magicavoxel::SceneTransformInfo{};
             const auto *name_str = temp_dict.get<char const *>("_name", nullptr);
             if (name_str != nullptr) {
-                std::copy(name_str, name_str + std::min<size_t>(strlen(name_str) + 1, 65), result_transform.name);
+                std::copy(name_str, name_str + std::min<size_t>(strlen(name_str) + 1, 65), result_transform.name.begin());
             }
             result_transform.hidden = temp_dict.get<bool>("_hidden", false);
             result_transform.loop = temp_dict.get<bool>("_loop", false);
@@ -876,6 +882,9 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 user_state.materials[static_cast<size_t>(material_id)].content_flags |= magicavoxel::MATERIAL_EMIT_BIT;
                 user_state.materials[static_cast<size_t>(material_id)].emit = material_weight;
                 break;
+            default:
+                // This should never happen.
+                break;
             }
             user_state.offset += chunk_size - 16u;
         } break;
@@ -914,7 +923,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_query_details() -> GvoxParseAdapt
 
 extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
-    if (user_state.scene.bvh_nodes.size() > 0) {
+    if (!user_state.scene.bvh_nodes.empty()) {
         auto const &root_node = user_state.scene.bvh_nodes[0];
         return {
             root_node.aabb_min,

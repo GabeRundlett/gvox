@@ -94,7 +94,7 @@ typedef struct {
     char const *name_str;
     void (*create)(GvoxAdapterContext *ctx, void const *config);
     void (*destroy)(GvoxAdapterContext *ctx);
-    void (*blit_begin)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+    void (*blit_begin)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
     void (*blit_end)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 } GvoxAdapterBaseInfo;
 
@@ -128,7 +128,6 @@ typedef struct {
     // Serialize Driven
     void (*serialize_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
     // Parse Driven
-    void (*parse_driven_begin)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range);
     void (*receive_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region);
 } GvoxSerializeAdapterInfo;
 

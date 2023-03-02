@@ -27,7 +27,7 @@ extern "C" void gvox_input_adapter_file_create(GvoxAdapterContext *ctx, void con
     auto *user_state_ptr = malloc(sizeof(FileInputUserState));
     auto &user_state = *(new (user_state_ptr) FileInputUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-    auto &user_config = *static_cast<GvoxFileInputAdapterConfig const *>(config);
+    const auto &user_config = *static_cast<GvoxFileInputAdapterConfig const *>(config);
     user_state.byte_offset = user_config.byte_offset;
     user_state.path = user_config.filepath;
 }
@@ -38,7 +38,7 @@ extern "C" void gvox_input_adapter_file_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_input_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {
+extern "C" void gvox_input_adapter_file_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.file.open(user_state.path, std::ios::binary);
 }

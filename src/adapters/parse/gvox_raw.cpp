@@ -29,7 +29,7 @@ extern "C" void gvox_parse_adapter_gvox_raw_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     uint32_t magic = 0;

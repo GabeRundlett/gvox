@@ -206,9 +206,9 @@ auto gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name) -> G
     }
 }
 
-void gvox_adapter_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+void gvox_adapter_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     if (ctx != nullptr && ctx->adapter != nullptr) {
-        ctx->adapter->base_info.blit_begin(blit_ctx, ctx);
+        ctx->adapter->base_info.blit_begin(blit_ctx, ctx, range, channel_flags);
     }
 }
 void gvox_adapter_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
@@ -257,9 +257,9 @@ static void gvox_blit_region_impl(
         .channel_flags = channel_flags,
     };
 
-    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.i_ctx);
-    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.o_ctx);
-    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.i_ctx, nullptr, 0);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.o_ctx, nullptr, 0);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx, nullptr, 0);
 
     GvoxRegionRange actual_range;
     if (requested_range != nullptr) {
@@ -268,21 +268,20 @@ static void gvox_blit_region_impl(
         actual_range = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.query_parsable_range(&blit_ctx, parse_ctx);
     }
 
-    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx);
+    gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx, &actual_range, channel_flags);
     switch (blit_mode) {
     default:
     case GVOX_BLIT_MODE_PARSE_DRIVEN:
-        reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.parse_driven_begin(&blit_ctx, parse_ctx, &actual_range);
         reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.parse_region(&blit_ctx, parse_ctx, &actual_range, channel_flags);
         break;
     case GVOX_BLIT_MODE_SERIALIZE_DRIVEN:
         reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &actual_range, channel_flags);
         break;
     }
-    gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
-    gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
-    gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
+    gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
 }
 
 void gvox_blit_region(

@@ -9,7 +9,7 @@ extern "C" {
 
 void procedural_create(GvoxAdapterContext *ctx, void const *config);
 void procedural_destroy(GvoxAdapterContext *ctx);
-void procedural_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
+void procedural_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 void procedural_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
 
 GvoxParseAdapterDetails procedural_query_details(void);

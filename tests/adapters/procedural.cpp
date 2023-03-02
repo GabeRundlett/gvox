@@ -33,7 +33,7 @@ extern "C" void procedural_create(GvoxAdapterContext * /*unused*/, void const * 
 extern "C" void procedural_destroy(GvoxAdapterContext * /*unused*/) {
 }
 
-extern "C" void procedural_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void procedural_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void procedural_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {

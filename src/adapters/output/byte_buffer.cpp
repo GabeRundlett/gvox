@@ -31,7 +31,7 @@ extern "C" void gvox_output_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx)
     free(&user_state);
 }
 
-extern "C" void gvox_output_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void gvox_output_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void gvox_output_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) {

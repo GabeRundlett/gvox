@@ -19,8 +19,12 @@ Checks: "*,
         -bugprone-easily-swappable-parameters,
         -readability-simplify-boolean-expr,
         -hicpp-signed-bitwise,
-        -cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers,
+        -cppcoreguidelines-avoid-magic-numbers,
         -readability-magic-numbers,
+        -cppcoreguidelines-owning-memory,
+        -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+        -cppcoreguidelines-no-malloc,
+        -hicpp-no-malloc
 "
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

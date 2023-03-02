@@ -23,7 +23,7 @@ extern "C" void gvox_parse_adapter_voxlap_create(GvoxAdapterContext *ctx, void c
     auto *user_state_ptr = malloc(sizeof(VoxlapParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) VoxlapParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-    if (config) {
+    if (config != nullptr) {
         user_state.config = *static_cast<GvoxVoxlapParseAdapterConfig const *>(config);
         if (user_state.config.size_x == std::numeric_limits<uint32_t>::max()) {
             user_state.config.size_x = 1024;
@@ -53,7 +53,7 @@ extern "C" void gvox_parse_adapter_voxlap_destroy(GvoxAdapterContext *ctx) {
     free(&user_state);
 }
 
-extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto temp_i = uint32_t{};
     if (user_state.config.is_ace_of_spades == 0) {
@@ -78,13 +78,16 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
         // gvox_input_read(blit_ctx, user_state.offset, sizeof(double) * 3, &ifor); // unit forward vector
         user_state.offset += sizeof(double) * 3;
     }
-    uint32_t x = 0, y = 0, z = 0;
-    uint32_t voxel_n = user_state.config.size_x * user_state.config.size_y * user_state.config.size_z;
+    uint32_t x = 0;
+    uint32_t y = 0;
+    uint32_t z = 0;
+    uint32_t const voxel_n = user_state.config.size_x * user_state.config.size_y * user_state.config.size_z;
     user_state.colors.resize(voxel_n);
     user_state.is_solid.resize(voxel_n);
     auto setgeom = [&user_state](uint32_t x, uint32_t y, uint32_t z, bool solid) {
-        if (z >= user_state.config.size_z)
+        if (z >= user_state.config.size_z) {
             return;
+        }
         if (solid) {
             auto index = x + (user_state.config.size_y - 1 - y) * user_state.config.size_x + (user_state.config.size_z - 1 - z) * user_state.config.size_x * user_state.config.size_y;
             user_state.is_solid[index] = true;
@@ -92,8 +95,9 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
         }
     };
     auto setcol = [&user_state](uint32_t x, uint32_t y, uint32_t z, uint32_t color) {
-        if (z >= user_state.config.size_z)
+        if (z >= user_state.config.size_z) {
             return;
+        }
         auto index = x + (user_state.config.size_y - 1 - y) * user_state.config.size_x + (user_state.config.size_z - 1 - z) * user_state.config.size_x * user_state.config.size_y;
         uint32_t c = 0;
         c |= ((color >> 0x10) & 0xff) << 0x00;
@@ -104,7 +108,7 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
     for (y = 0; y < user_state.config.size_y; ++y) {
         for (x = 0; x < user_state.config.size_x; ++x) {
             for (z = 0; z < user_state.config.size_z; ++z) {
-                setgeom(x, y, z, user_state.config.make_solid);
+                setgeom(x, y, z, user_state.config.make_solid != 0u);
             }
             z = 0;
             auto v = std::array<uint8_t, 4>{};
@@ -117,15 +121,15 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
                 uint32_t bottom_color_end = 0;
                 uint32_t len_top = 0;
                 uint32_t len_bottom = 0;
-                if (user_state.config.make_solid) {
+                if (user_state.config.make_solid != 0u) {
                     for (auto i = z; i < top_color_start; ++i) {
-                        setgeom(x, y, i, 0);
+                        setgeom(x, y, i, false);
                     }
                 }
                 auto color_offset = user_state.offset + 4;
                 for (z = top_color_start; z <= top_color_end; ++z) {
-                    if (!user_state.config.make_solid) {
-                        setgeom(x, y, z, 1);
+                    if (user_state.config.make_solid == 0u) {
+                        setgeom(x, y, z, true);
                     }
                     auto col = uint32_t{};
                     gvox_input_read(blit_ctx, color_offset, sizeof(col), &col);
@@ -144,7 +148,7 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
                 bottom_color_end = v[3]; // aka air start
                 bottom_color_start = bottom_color_end - len_top;
                 for (z = bottom_color_start; z < bottom_color_end; ++z) {
-                    if (!user_state.config.make_solid) {
+                    if (user_state.config.make_solid == 0u) {
                         setgeom(x, y, z, 1);
                     }
                     auto col = uint32_t{};
@@ -187,6 +191,7 @@ extern "C" auto gvox_parse_adapter_voxlap_sample_region(GvoxBlitContext * /*unus
     switch (channel_id) {
     case GVOX_CHANNEL_ID_COLOR: return user_state.colors[voxel_index] | (static_cast<uint32_t>(user_state.is_solid[voxel_index]) << 0x18);
     case GVOX_CHANNEL_ID_MATERIAL_ID: return static_cast<uint32_t>(user_state.is_solid[voxel_index]);
+    default: break;
     }
     return 0;
 }
@@ -197,7 +202,7 @@ extern "C" auto gvox_parse_adapter_voxlap_query_region_flags(GvoxBlitContext * /
 }
 
 extern "C" auto gvox_parse_adapter_voxlap_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
-    uint32_t available_channels = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID;
+    uint32_t const available_channels = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID;
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
@@ -215,7 +220,7 @@ extern "C" void gvox_parse_adapter_voxlap_unload_region(GvoxBlitContext * /*unus
 
 // Parse Driven
 extern "C" void gvox_parse_adapter_voxlap_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    uint32_t available_channels = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID;
+    uint32_t const available_channels = GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID;
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }

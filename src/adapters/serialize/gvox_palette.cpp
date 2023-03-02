@@ -17,13 +17,31 @@
 
 using namespace gvox_detail::thread_pool;
 
+struct PaletteRegion {
+#if ENABLE_THREAD_POOL
+    std::mutex mtx{};
+#endif
+    std::unordered_set<uint32_t> palette;
+    std::array<uint32_t, REGION_SIZE * REGION_SIZE * REGION_SIZE> data;
+};
+
+using PaletteRegionChannels = std::vector<PaletteRegion>;
+
 struct GvoxPaletteSerializeUserState {
     size_t offset{};
     size_t blobs_begin{};
     std::vector<uint8_t> data{};
+    std::vector<uint8_t> channels;
+    uint32_t region_nx{};
+    uint32_t region_ny{};
+    uint32_t region_nz{};
+    size_t size{};
+    size_t blob_size_offset{};
 #if ENABLE_THREAD_POOL
     std::mutex mtx{};
 #endif
+    // Parse driven
+    std::vector<PaletteRegionChannels> palette_region_channels;
 };
 
 template <typename T>
@@ -143,7 +161,7 @@ auto add_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxPaletteS
                         return 0;
                     }
                     auto const palette_id = static_cast<size_t>(palette_iter - palette_begin);
-                    auto const bit_index = static_cast<size_t>(in_region_index * bits_per_variant);
+                    auto const bit_index = static_cast<size_t>(in_region_index) * bits_per_variant;
                     auto const byte_index = bit_index / 8;
                     auto const bit_offset = static_cast<uint32_t>(bit_index - byte_index * 8);
                     auto const mask = get_mask(bits_per_variant);
@@ -202,14 +220,7 @@ extern "C" void gvox_serialize_adapter_gvox_palette_destroy(GvoxAdapterContext *
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
-}
-
-extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
-}
-
-// Serialize Driven
-extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'v', 'p', '\0'});
     auto channel_n = static_cast<uint32_t>(std::popcount(channel_flags));
@@ -217,45 +228,56 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitCon
     user_state.offset += sizeof(magic);
     gvox_output_write(blit_ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);
-    auto blob_size_offset = user_state.offset;
+    user_state.blob_size_offset = user_state.offset;
     user_state.offset += sizeof(uint32_t);
     gvox_output_write(blit_ctx, user_state.offset, sizeof(channel_flags), &channel_flags);
     user_state.offset += sizeof(channel_flags);
     gvox_output_write(blit_ctx, user_state.offset, sizeof(channel_n), &channel_n);
     user_state.offset += sizeof(channel_n);
-    std::vector<uint8_t> channels;
-    channels.resize(static_cast<size_t>(channel_n));
+    user_state.channels.resize(static_cast<size_t>(channel_n));
     uint32_t next_channel = 0;
     for (uint8_t channel_i = 0; channel_i < 32; ++channel_i) {
         if ((channel_flags & (1u << channel_i)) != 0) {
-            channels[next_channel] = channel_i;
+            user_state.channels[next_channel] = channel_i;
             ++next_channel;
         }
     }
-    auto region_nx = (range->extent.x + REGION_SIZE - 1) / REGION_SIZE;
-    auto region_ny = (range->extent.y + REGION_SIZE - 1) / REGION_SIZE;
-    auto region_nz = (range->extent.z + REGION_SIZE - 1) / REGION_SIZE;
-    auto size = (sizeof(ChannelHeader) * channels.size()) * region_nx * region_ny * region_nz;
-    user_state.blobs_begin = size;
-    auto const two_percent_raw_size = static_cast<size_t>(range->extent.x * range->extent.y * range->extent.z) * sizeof(uint32_t) * channels.size() / 50;
-    user_state.data.reserve(size + two_percent_raw_size);
-    user_state.data.resize(size);
+    user_state.region_nx = (range->extent.x + REGION_SIZE - 1) / REGION_SIZE;
+    user_state.region_ny = (range->extent.y + REGION_SIZE - 1) / REGION_SIZE;
+    user_state.region_nz = (range->extent.z + REGION_SIZE - 1) / REGION_SIZE;
+    user_state.size = (sizeof(ChannelHeader) * user_state.channels.size()) * user_state.region_nx * user_state.region_ny * user_state.region_nz;
+    user_state.blobs_begin = user_state.size;
+    auto const two_percent_raw_size = static_cast<size_t>(range->extent.x * range->extent.y * range->extent.z) * sizeof(uint32_t) * user_state.channels.size() / 50;
+    user_state.data.reserve(user_state.size + two_percent_raw_size);
+    user_state.data.resize(user_state.size);
+}
+
+extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
+    auto blob_size = static_cast<uint32_t>(user_state.size - user_state.blobs_begin);
+    gvox_output_write(blit_ctx, user_state.blob_size_offset, sizeof(blob_size), &blob_size);
+    gvox_output_write(blit_ctx, user_state.offset, user_state.data.size(), user_state.data.data());
+}
+
+// Serialize Driven
+extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /*channel_flags*/) {
+    auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto thread_pool = ThreadPool{};
     thread_pool.start();
 #if ENABLE_THREAD_POOL
     auto size_mtx = std::mutex{};
 #endif
-    for (uint32_t zi = 0; zi < region_nz; ++zi) {
-        for (uint32_t yi = 0; yi < region_ny; ++yi) {
-            for (uint32_t xi = 0; xi < region_nx; ++xi) {
-                for (uint32_t ci = 0; ci < channels.size(); ++ci) {
+    for (uint32_t zi = 0; zi < user_state.region_nz; ++zi) {
+        for (uint32_t yi = 0; yi < user_state.region_ny; ++yi) {
+            for (uint32_t xi = 0; xi < user_state.region_nx; ++xi) {
+                for (uint32_t ci = 0; ci < user_state.channels.size(); ++ci) {
                     thread_pool.enqueue([&, xi, yi, zi, ci]() {
-                        auto region_size = add_region(blit_ctx, ctx, user_state, *range, xi, yi, zi, ci, channels);
+                        auto region_size = add_region(blit_ctx, ctx, user_state, *range, xi, yi, zi, ci, user_state.channels);
                         {
 #if ENABLE_THREAD_POOL
                             auto lock = std::lock_guard{size_mtx};
 #endif
-                            size += region_size;
+                            user_state.size += region_size;
                         }
                     });
                 }
@@ -265,14 +287,24 @@ extern "C" void gvox_serialize_adapter_gvox_palette_serialize_region(GvoxBlitCon
     while (thread_pool.busy()) {
     }
     thread_pool.stop();
-    auto blob_size = static_cast<uint32_t>(size - user_state.blobs_begin);
-    gvox_output_write(blit_ctx, blob_size_offset, sizeof(blob_size), &blob_size);
-    gvox_output_write(blit_ctx, user_state.offset, user_state.data.size(), user_state.data.data());
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_gvox_palette_parse_driven_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range) {
-}
-
 extern "C" void gvox_serialize_adapter_gvox_palette_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+    auto &user_state = *static_cast<GvoxPaletteSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
+    for (uint32_t zi = 0; zi < user_state.region_nz; ++zi) {
+        for (uint32_t yi = 0; yi < user_state.region_ny; ++yi) {
+            for (uint32_t xi = 0; xi < user_state.region_nx; ++xi) {
+                for (uint32_t ci = 0; ci < user_state.channels.size(); ++ci) {
+                    ChannelHeader region_header{.variant_n = 1};
+                    auto *channel_header_ptr =
+                        user_state.data.data() +
+                        (xi + yi * user_state.region_nx + zi * user_state.region_nx * user_state.region_ny) *
+                            (sizeof(ChannelHeader) * user_state.channels.size()) +
+                        (sizeof(ChannelHeader) * ci);
+                    write_data<ChannelHeader>(channel_header_ptr, region_header);
+                }
+            }
+        }
+    }
 }

@@ -17,7 +17,7 @@ extern "C" void gvox_input_adapter_byte_buffer_create(GvoxAdapterContext *ctx, v
     auto *user_state_ptr = malloc(sizeof(ByteBufferInputUserState));
     auto &user_state = *(new (user_state_ptr) ByteBufferInputUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
-    auto &user_config = *static_cast<GvoxByteBufferInputAdapterConfig const *>(config);
+    const auto &user_config = *static_cast<GvoxByteBufferInputAdapterConfig const *>(config);
     user_state.bytes.resize(user_config.size);
     std::copy(user_config.data, user_config.data + user_config.size, user_state.bytes.begin());
 }
@@ -28,7 +28,7 @@ extern "C" void gvox_input_adapter_byte_buffer_destroy(GvoxAdapterContext *ctx) 
     free(&user_state);
 }
 
-extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void gvox_input_adapter_byte_buffer_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void gvox_input_adapter_byte_buffer_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
