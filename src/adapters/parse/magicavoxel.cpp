@@ -18,7 +18,9 @@
 
 #include "../shared/thread_pool.hpp"
 using namespace gvox_detail::thread_pool;
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
 using namespace std::chrono_literals;
+#endif
 
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});

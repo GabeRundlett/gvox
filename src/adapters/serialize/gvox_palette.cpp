@@ -16,7 +16,9 @@
 #include <mutex>
 
 using namespace gvox_detail::thread_pool;
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
 using namespace std::chrono_literals;
+#endif
 
 struct PaletteRegion {
     std::unordered_set<uint32_t> palette{};
