@@ -9,7 +9,7 @@
 
 #include <new>
 
-#if GVOX_ENABLE_THREADSAFETY
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
 #include <mutex>
 #endif
 
@@ -17,7 +17,7 @@ struct FileInputUserState {
     std::filesystem::path path{};
     std::ifstream file{};
     size_t byte_offset{};
-#if GVOX_ENABLE_THREADSAFETY
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
     std::mutex mtx{};
 #endif
 };
@@ -51,7 +51,7 @@ extern "C" void gvox_input_adapter_file_blit_end(GvoxBlitContext * /*unused*/, G
 // General
 extern "C" void gvox_input_adapter_file_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
-#if GVOX_ENABLE_THREADSAFETY
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
     auto lock = std::lock_guard{user_state.mtx};
 #endif
     user_state.file.seekg(static_cast<std::streamoff>(position), std::ios_base::beg);

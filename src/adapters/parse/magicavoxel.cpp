@@ -16,7 +16,6 @@
 #include <limits>
 #include <numeric>
 
-#include <thread>
 #include "../shared/thread_pool.hpp"
 using namespace gvox_detail::thread_pool;
 using namespace std::chrono_literals;
@@ -426,10 +425,11 @@ void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instance
     case 1: split_p = node.aabb_min.y + extent.y / 2; break;
     case 2: split_p = node.aabb_min.z + extent.z / 2; break;
     }
-    auto first_iter = model_instances.begin() + node_range.first;
+    using IterDiff = std::vector<magicavoxel::ModelInstance>::difference_type;
+    auto first_iter = model_instances.begin() + static_cast<IterDiff>(node_range.first);
     auto split_iter = std::partition(
         first_iter,
-        first_iter + node_range.count,
+        first_iter + static_cast<IterDiff>(node_range.count),
         [axis, split_p](auto const &i) -> bool {
             switch (axis) {
             default:
@@ -1080,7 +1080,9 @@ extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *bli
     user_state.thread_pool.start();
     foreach_bvh_leaf(blit_ctx, user_state, user_state.scene, user_state.scene.bvh_nodes[0], channel_flags & available_channels);
     while (user_state.thread_pool.busy()) {
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
         std::this_thread::sleep_for(10ms);
+#endif
     }
     user_state.thread_pool.stop();
 }
