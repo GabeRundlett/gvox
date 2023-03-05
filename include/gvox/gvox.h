@@ -88,7 +88,7 @@ typedef struct {
 
 typedef struct {
     uint32_t data;
-    uint8_t present;
+    uint8_t is_present;
 } GvoxSample;
 
 typedef struct {

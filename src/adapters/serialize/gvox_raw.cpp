@@ -95,7 +95,7 @@ extern "C" void gvox_serialize_adapter_gvox_raw_serialize_region(GvoxBlitContext
             };
             auto region = gvox_load_region_range(blit_ctx, &sample_range, 1u << user_state.channels[channel_i]);
             auto sample = gvox_sample_region(blit_ctx, &region, &pos, user_state.channels[channel_i]);
-            if (sample.present == 0u) {
+            if (sample.is_present == 0u) {
                 sample.data = 0u;
             }
             user_state.voxels[output_index] = sample.data;
@@ -110,7 +110,7 @@ extern "C" void gvox_serialize_adapter_gvox_raw_receive_region(GvoxBlitContext *
         user_state, &region->range,
         [blit_ctx, region, &user_state](uint32_t channel_i, size_t output_index, GvoxOffset3D const &pos) {
             auto sample = gvox_sample_region(blit_ctx, region, &pos, user_state.channels[channel_i]);
-            if (sample.present != 0u) {
+            if (sample.is_present != 0u) {
                 user_state.voxels[output_index] = sample.data;
             }
         });

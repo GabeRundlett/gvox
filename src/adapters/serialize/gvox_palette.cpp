@@ -242,7 +242,7 @@ static void handle_single_palette(
                 };
                 if (px < user_state.range.extent.x && py < user_state.range.extent.y && pz < user_state.range.extent.z) {
                     auto sample = gvox_sample_region(blit_ctx, region_ptr, &pos, channel_id);
-                    if (sample.present != 0u) {
+                    if (sample.is_present != 0u) {
                         palette_region.palette.insert(sample.data);
                         at_least_one_present = true;
                     }
@@ -271,7 +271,7 @@ static void handle_single_palette(
                     if (px < user_state.range.extent.x && py < user_state.range.extent.y && pz < user_state.range.extent.z) {
                         auto sample = gvox_sample_region(blit_ctx, region_ptr, &pos, channel_id);
                         u32_voxel = sample.data;
-                        is_present = (sample.present != 0u);
+                        is_present = (sample.is_present != 0u);
                     }
                     auto const [prev_u32_voxel, prev_present] = (*palette_region.data)[palette_region_index];
                     if (!prev_present && is_present) {
