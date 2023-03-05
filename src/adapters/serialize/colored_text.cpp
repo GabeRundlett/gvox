@@ -68,19 +68,15 @@ extern "C" void gvox_serialize_adapter_colored_text_blit_begin(GvoxBlitContext *
         range->extent.y * range->extent.z * user_state.channels.size() * (user_state.line_terminator.size() - 1) +
         range->extent.z * user_state.channels.size() * (newline_terminator.size() - 1) +
         user_state.channels.size() * (channel_terminator.size() - 1));
-}
 
-extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
-    auto &user_state = *static_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     size_t output_index = 0;
     for ([[maybe_unused]] auto channel_id : user_state.channels) {
         for (uint32_t zi = 0; zi < user_state.range.extent.z; zi += user_state.config.downscale_factor) {
             for (uint32_t yi = 0; yi < user_state.range.extent.y; yi += user_state.config.downscale_factor) {
-                output_index += user_state.range.extent.x * pixel_stride;
-                // for (uint32_t xi = 0; xi < range->extent.x; xi += user_state.config.downscale_factor) {
-                //     std::copy(next_pixel.begin(), next_pixel.end() - 1, data.data() + output_index);
-                //     output_index += pixel.size() - 1;
-                // }
+                for (uint32_t xi = 0; xi < range->extent.x; xi += user_state.config.downscale_factor) {
+                    std::copy(pixel.begin(), pixel.end() - 1, user_state.data.data() + output_index);
+                    output_index += pixel.size() - 1;
+                }
                 std::copy(user_state.line_terminator.begin(), user_state.line_terminator.end() - 1, user_state.data.data() + output_index);
                 output_index += user_state.line_terminator.size() - 1;
             }
@@ -90,6 +86,10 @@ extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext *bl
         std::copy(channel_terminator.begin(), channel_terminator.end() - 1, user_state.data.data() + output_index);
         output_index += channel_terminator.size() - 1;
     }
+}
+
+extern "C" void gvox_serialize_adapter_colored_text_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+    auto &user_state = *static_cast<ColoredTextSerializeUserState *>(gvox_adapter_get_user_pointer(ctx));
     gvox_output_write(blit_ctx, 0, user_state.data.size(), user_state.data.data());
 }
 
@@ -123,6 +123,9 @@ static void handle_region(ColoredTextSerializeUserState &user_state, GvoxRegionR
                     auto output_rel_x = static_cast<size_t>(out_pos.x - user_state.range.offset.x);
                     auto output_rel_y = static_cast<size_t>(out_pos.y - user_state.range.offset.y);
                     auto output_rel_z = static_cast<size_t>(out_pos.z - user_state.range.offset.z);
+                    if (user_state.config.vertical != 0u) {
+                        std::swap(output_rel_y, output_rel_z);
+                    }
                     auto line_stride = pixel_stride * user_state.range.extent.x + user_state.line_terminator.size() - 1;
                     auto newline_stride = line_stride * user_state.range.extent.y + newline_terminator.size() - 1;
                     auto channel_stride = newline_stride * user_state.range.extent.z + channel_terminator.size() - 1;
@@ -140,30 +143,16 @@ static void handle_region(ColoredTextSerializeUserState &user_state, GvoxRegionR
                         float avg_b = 0.0f;
                         float sample_n = 0.0f;
                         uint32_t const sub_n = user_state.config.downscale_factor;
-                        // GvoxRegionRange const sub_range = {
-                        //     .offset = {
-                        //         static_cast<int32_t>(xi) + range->offset.x,
-                        //         static_cast<int32_t>(yi) + range->offset.y,
-                        //         static_cast<int32_t>(zi) + range->offset.z,
-                        //     },
-                        //     .extent = {
-                        //         user_state.config.downscale_factor,
-                        //         user_state.config.downscale_factor,
-                        //         user_state.config.downscale_factor,
-                        //     },
-                        // };
-                        // if (gvox_query_region_flags(blit_ctx, &sub_range, 1u << channel_i) != 0u) {
-                        //     sub_n = 1;
-                        // }
                         for (uint32_t sub_zi = 0; sub_zi < sub_n && (zi + sub_zi < range->extent.z); ++sub_zi) {
                             for (uint32_t sub_yi = 0; sub_yi < sub_n && (yi + sub_yi < range->extent.y); ++sub_yi) {
                                 for (uint32_t sub_xi = 0; sub_xi < sub_n && (xi + sub_xi < range->extent.x); ++sub_xi) {
                                     auto const pos = GvoxOffset3D{
                                         static_cast<int32_t>(xi + sub_xi) + range->offset.x,
-                                        static_cast<int32_t>(yi + sub_yi) + range->offset.y,
+                                        static_cast<int32_t>(range->extent.y) + range->offset.y - static_cast<int32_t>(yi + sub_yi) - 1,
                                         static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi + sub_zi) - 1,
                                     };
-                                    auto voxel = user_func(channel_id, pos);
+                                    auto sample = user_func(channel_id, pos);
+                                    auto voxel = sample.data;
                                     if (is_3channel) {
                                         avg_r += static_cast<float>((voxel >> 0x00) & 0xff) * (1.0f / 255.0f);
                                         avg_g += static_cast<float>((voxel >> 0x08) & 0xff) * (1.0f / 255.0f);
@@ -187,10 +176,11 @@ static void handle_region(ColoredTextSerializeUserState &user_state, GvoxRegionR
                     } else {
                         auto const pos = GvoxOffset3D{
                             static_cast<int32_t>(xi) + range->offset.x,
-                            static_cast<int32_t>(yi) + range->offset.y,
+                            static_cast<int32_t>(range->extent.y) + range->offset.y - static_cast<int32_t>(yi) - 1,
                             static_cast<int32_t>(range->extent.z) + range->offset.z - static_cast<int32_t>(zi) - 1,
                         };
-                        auto voxel = user_func(channel_id, pos);
+                        auto sample = user_func(channel_id, pos);
+                        auto voxel = sample.data;
                         if (is_3channel) {
                             r = (voxel >> 0x00) & 0xff;
                             g = (voxel >> 0x08) & 0xff;

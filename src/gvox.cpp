@@ -366,7 +366,7 @@ void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {
 auto gvox_adapter_get_user_pointer(GvoxAdapterContext *ctx) -> void * {
     return ctx->user_ptr;
 }
-auto gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+auto gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &p_adapter = *reinterpret_cast<GvoxParseAdapter *>(blit_ctx->p_ctx->adapter);
     auto offset_copy = *offset;
     return p_adapter.info.sample_region(blit_ctx, reinterpret_cast<GvoxAdapterContext *>(blit_ctx->p_ctx), region, &offset_copy, channel_id);

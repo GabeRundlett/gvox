@@ -176,24 +176,24 @@ extern "C" auto gvox_parse_adapter_voxlap_query_parsable_range(GvoxBlitContext *
     return {{0, 0, 0}, {user_state.config.size_x, user_state.config.size_y, user_state.config.size_z}};
 }
 
-extern "C" auto gvox_parse_adapter_voxlap_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_voxlap_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<VoxlapParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     if (offset->x < 0 || offset->y < 0 || offset->z < 0 ||
         static_cast<uint32_t>(offset->x) >= user_state.config.size_x ||
         static_cast<uint32_t>(offset->y) >= user_state.config.size_y ||
         static_cast<uint32_t>(offset->z) >= user_state.config.size_z) {
-        return 0;
+        return {0u, 0u};
     }
     auto voxel_index =
         static_cast<uint32_t>(offset->x) +
         static_cast<uint32_t>(offset->y) * user_state.config.size_x +
         static_cast<uint32_t>(offset->z) * user_state.config.size_x * user_state.config.size_y;
     switch (channel_id) {
-    case GVOX_CHANNEL_ID_COLOR: return user_state.colors[voxel_index] | (static_cast<uint32_t>(user_state.is_solid[voxel_index]) << 0x18);
-    case GVOX_CHANNEL_ID_MATERIAL_ID: return static_cast<uint32_t>(user_state.is_solid[voxel_index]);
+    case GVOX_CHANNEL_ID_COLOR: return {user_state.colors[voxel_index], static_cast<uint8_t>(user_state.is_solid[voxel_index])};
+    case GVOX_CHANNEL_ID_MATERIAL_ID: return {static_cast<uint32_t>(user_state.is_solid[voxel_index]), static_cast<uint8_t>(user_state.is_solid[voxel_index])};
     default: break;
     }
-    return 0;
+    return {0u, 0u};
 }
 
 // Serialize Driven

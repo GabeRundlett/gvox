@@ -16,6 +16,11 @@
 #include <limits>
 #include <numeric>
 
+#include <thread>
+#include "../shared/thread_pool.hpp"
+using namespace gvox_detail::thread_pool;
+using namespace std::chrono_literals;
+
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});
     static constexpr uint32_t CHUNK_ID_MAIN = std::bit_cast<uint32_t>(std::array{'M', 'A', 'I', 'N'});
@@ -304,6 +309,7 @@ struct MagicavoxelParseUserState {
     std::array<uint8_t, 256> index_map{};
     bool found_index_map_chunk{};
     size_t offset{};
+    ThreadPool thread_pool{};
 };
 
 void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p) {
@@ -937,11 +943,16 @@ extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitCont
     return {{0, 0, 0}, {0, 0, 0}};
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     auto palette_id = 255u;
-    sample_scene(user_state.scene, *offset, palette_id);
+    if (region->data != nullptr) {
+        auto const &node = *reinterpret_cast<magicavoxel::BvhNode const *>(region->data);
+        sample_scene_bvh(user_state.scene, node, *offset, palette_id);
+    } else {
+        sample_scene(user_state.scene, *offset, palette_id);
+    }
     switch (channel_id) {
     case GVOX_CHANNEL_ID_COLOR:
         if (palette_id < 255) {
@@ -952,7 +963,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /
         }
         break;
     case GVOX_CHANNEL_ID_MATERIAL_ID:
-        voxel_data = palette_id;
+        voxel_data = static_cast<uint8_t>(palette_id + 1);
         break;
     case GVOX_CHANNEL_ID_ROUGHNESS:
         if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u)) {
@@ -997,7 +1008,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /
         break;
     }
 
-    return voxel_data;
+    return {voxel_data, static_cast<uint8_t>(palette_id != 255u)};
 }
 
 // Serialize Driven
@@ -1025,9 +1036,39 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*u
 extern "C" void gvox_parse_adapter_magicavoxel_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
+void foreach_bvh_leaf(GvoxBlitContext *blit_ctx, MagicavoxelParseUserState &user_state, magicavoxel::Scene const &scene, magicavoxel::BvhNode const &node, uint32_t channel_flags) {
+    if (node.is_leaf()) {
+        user_state.thread_pool.enqueue([blit_ctx, &node, channel_flags]() {
+            GvoxRegion const region = {
+                .range = GvoxRegionRange{
+                    .offset = {
+                        node.aabb_min.x,
+                        node.aabb_min.y,
+                        node.aabb_min.z,
+                    },
+                    .extent = {
+                        static_cast<uint32_t>(node.aabb_max.x - node.aabb_min.x),
+                        static_cast<uint32_t>(node.aabb_max.y - node.aabb_min.y),
+                        static_cast<uint32_t>(node.aabb_max.z - node.aabb_min.z),
+                    },
+                },
+                .channels = channel_flags,
+                .flags = 0u,
+                .data = &node,
+            };
+            gvox_emit_region(blit_ctx, &region);
+        });
+    } else {
+        auto const &node_data = std::get<magicavoxel::BvhNode::Children>(node.data);
+        auto const &node_a = scene.bvh_nodes[node_data.offset + 0];
+        auto const &node_b = scene.bvh_nodes[node_data.offset + 1];
+        foreach_bvh_leaf(blit_ctx, user_state, scene, node_a, channel_flags);
+        foreach_bvh_leaf(blit_ctx, user_state, scene, node_b, channel_flags);
+    }
+}
+
 // Parse Driven
-extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    // TODO(grundlett): Specialize this! This function was added to make parsing Magicavoxel faster
+extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*range*/, uint32_t channel_flags) {
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
@@ -1035,11 +1076,11 @@ extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *bli
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
-    GvoxRegion const region = {
-        .range = *range,
-        .channels = channel_flags & available_channels,
-        .flags = 0u,
-        .data = nullptr,
-    };
-    gvox_emit_region(blit_ctx, &region);
+    auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    user_state.thread_pool.start();
+    foreach_bvh_leaf(blit_ctx, user_state, user_state.scene, user_state.scene.bvh_nodes[0], channel_flags & available_channels);
+    while (user_state.thread_pool.busy()) {
+        std::this_thread::sleep_for(10ms);
+    }
+    user_state.thread_pool.stop();
 }

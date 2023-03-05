@@ -13,13 +13,72 @@
 
 namespace gvox_detail::thread_pool {
     struct ThreadPool {
-        void start();
-        void enqueue(std::function<void()> const &job);
-        void stop();
-        auto busy() -> bool;
+        void start() {
+#if ENABLE_THREAD_POOL
+            uint32_t const num_threads = std::thread::hardware_concurrency();
+            threads.resize(num_threads);
+            for (uint32_t i = 0; i < num_threads; i++) {
+                threads.at(i) = std::thread(&ThreadPool::thread_loop, this);
+            }
+#endif
+        }
+        void enqueue(std::function<void()> const &job) {
+#if ENABLE_THREAD_POOL
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                jobs.push(job);
+            }
+            mutex_condition.notify_one();
+#else
+            job();
+#endif
+        }
+        void stop() {
+#if ENABLE_THREAD_POOL
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                should_terminate = true;
+            }
+            mutex_condition.notify_all();
+            for (std::thread &active_thread : threads) {
+                active_thread.join();
+            }
+            threads.clear();
+#endif
+        }
+        auto busy() -> bool {
+#if ENABLE_THREAD_POOL
+            bool pool_busy;
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                pool_busy = !jobs.empty();
+            }
+            return pool_busy;
+#else
+            return false;
+#endif
+        }
 
       private:
-        void thread_loop();
+        void thread_loop() {
+#if ENABLE_THREAD_POOL
+            while (true) {
+                std::function<void()> job;
+                {
+                    std::unique_lock<std::mutex> lock(queue_mutex);
+                    mutex_condition.wait(lock, [this] {
+                        return !jobs.empty() || should_terminate;
+                    });
+                    if (should_terminate) {
+                        return;
+                    }
+                    job = jobs.front();
+                    jobs.pop();
+                }
+                job();
+            }
+#endif
+        }
 #if ENABLE_THREAD_POOL
         bool should_terminate = false;
         std::mutex queue_mutex;
@@ -28,73 +87,4 @@ namespace gvox_detail::thread_pool {
         std::queue<std::function<void()>> jobs;
 #endif
     };
-
-    void ThreadPool::thread_loop() {
-#if ENABLE_THREAD_POOL
-        while (true) {
-            std::function<void()> job;
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                mutex_condition.wait(lock, [this] {
-                    return !jobs.empty() || should_terminate;
-                });
-                if (should_terminate) {
-                    return;
-                }
-                job = jobs.front();
-                jobs.pop();
-            }
-            job();
-        }
-#endif
-    }
-
-    void ThreadPool::start() {
-#if ENABLE_THREAD_POOL
-        uint32_t const num_threads = std::thread::hardware_concurrency();
-        threads.resize(num_threads);
-        for (uint32_t i = 0; i < num_threads; i++) {
-            threads.at(i) = std::thread(&ThreadPool::thread_loop, this);
-        }
-#endif
-    }
-
-    void ThreadPool::enqueue(std::function<void()> const &job) {
-#if ENABLE_THREAD_POOL
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            jobs.push(job);
-        }
-        mutex_condition.notify_one();
-#else
-        job();
-#endif
-    }
-
-    auto ThreadPool::busy() -> bool {
-#if ENABLE_THREAD_POOL
-        bool pool_busy;
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            pool_busy = !jobs.empty();
-        }
-        return pool_busy;
-#else
-        return false;
-#endif
-    }
-
-    void ThreadPool::stop() {
-#if ENABLE_THREAD_POOL
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            should_terminate = true;
-        }
-        mutex_condition.notify_all();
-        for (std::thread &active_thread : threads) {
-            active_thread.join();
-        }
-        threads.clear();
-#endif
-    }
 } // namespace gvox_detail::thread_pool

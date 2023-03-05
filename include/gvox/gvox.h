@@ -83,8 +83,13 @@ typedef struct {
     GvoxRegionRange range;
     uint32_t channels;
     uint32_t flags;
-    void *data;
+    void const *data;
 } GvoxRegion;
+
+typedef struct {
+    uint32_t data;
+    uint8_t present;
+} GvoxSample;
 
 typedef struct {
     GvoxBlitMode preferred_blit_mode;
@@ -114,7 +119,7 @@ typedef struct {
     // General
     GvoxParseAdapterDetails (*query_details)(void);
     GvoxRegionRange (*query_parsable_range)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx);
-    uint32_t (*sample_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
+    GvoxSample (*sample_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
     // Serialize Driven
     uint32_t (*query_region_flags)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
     GvoxRegion (*load_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags);
@@ -173,7 +178,7 @@ GVOX_EXPORT void gvox_blit_region_serialize_driven(
 GVOX_EXPORT uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 GVOX_EXPORT GvoxRegion gvox_load_region_range(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 GVOX_EXPORT void gvox_unload_region_range(GvoxBlitContext *blit_ctx, GvoxRegion *region, GvoxRegionRange const *range);
-GVOX_EXPORT uint32_t gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
+GVOX_EXPORT GvoxSample gvox_sample_region(GvoxBlitContext *blit_ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id);
 
 GVOX_EXPORT void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, char const *message);
 GVOX_EXPORT void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr);

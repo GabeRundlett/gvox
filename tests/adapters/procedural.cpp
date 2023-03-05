@@ -72,7 +72,7 @@ extern "C" auto procedural_load_region(GvoxBlitContext * /*unused*/, GvoxAdapter
 extern "C" void procedural_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
-extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     constexpr auto create_color = [](float rf, float gf, float bf, uint32_t const a) {
         uint32_t const r = static_cast<uint32_t>(std::max(std::min(rf, 1.0f), 0.0f) * 255.0f);
         uint32_t const g = static_cast<uint32_t>(std::max(std::min(gf, 1.0f), 0.0f) * 255.0f);
@@ -130,12 +130,12 @@ extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapt
         }
     }
     switch (channel_id) {
-    case GVOX_CHANNEL_ID_COLOR: return color;
-    case GVOX_CHANNEL_ID_NORMAL: return normal;
-    case GVOX_CHANNEL_ID_MATERIAL_ID: return id;
+    case GVOX_CHANNEL_ID_COLOR: return {color, 1u};
+    case GVOX_CHANNEL_ID_NORMAL: return {normal, 1u};
+    case GVOX_CHANNEL_ID_MATERIAL_ID: return {id, 1u};
     default:
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "Tried sampling something other than color or normal");
-        return 0;
+        return {0u, 0u};
     }
 }
 

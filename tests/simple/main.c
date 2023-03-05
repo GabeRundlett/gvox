@@ -12,6 +12,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
+
+void handle_gvox_error(GvoxContext *gvox_ctx) {
+    GvoxResult res = gvox_get_result(gvox_ctx);
+    assert(res == GVOX_RESULT_SUCCESS);
+}
 
 void test_raw_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
@@ -53,6 +59,7 @@ void test_raw_file_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     // Load gvox_raw file
     {
@@ -82,6 +89,7 @@ void test_raw_file_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     gvox_destroy_context(gvox_ctx);
 }
@@ -131,6 +139,7 @@ void test_palette_buffer_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     // Load gvox_palette file
     {
@@ -160,6 +169,7 @@ void test_palette_buffer_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     if (data) {
         free(data);
@@ -208,6 +218,7 @@ void test_palette_file_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     // Load gvox_palette file
     {
@@ -237,12 +248,14 @@ void test_palette_file_io(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
 
     gvox_destroy_context(gvox_ctx);
 }
 
 void test_magicavoxel(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
+
     {
         GvoxFileInputAdapterConfig i_config = {
             .filepath = "assets/test.vox",
@@ -272,6 +285,8 @@ void test_magicavoxel(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
+
     {
         GvoxFileInputAdapterConfig i_config = {
             .filepath = "assets/test.vox",
@@ -301,6 +316,8 @@ void test_magicavoxel(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
+
     gvox_destroy_context(gvox_ctx);
 }
 
@@ -313,6 +330,7 @@ void test_voxlap(void) {
     uint8_t *data = malloc(size + 1);
     fread(data, size, 1, f);
     fclose(f);
+
     {
         GvoxByteBufferInputAdapterConfig i_config = {
             .data = data,
@@ -346,6 +364,8 @@ void test_voxlap(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
+
     {
         GvoxByteBufferInputAdapterConfig i_config = {
             .data = data,
@@ -379,6 +399,8 @@ void test_voxlap(void) {
         gvox_destroy_adapter_context(p_ctx);
         gvox_destroy_adapter_context(s_ctx);
     }
+    handle_gvox_error(gvox_ctx);
+
     gvox_destroy_context(gvox_ctx);
 }
 

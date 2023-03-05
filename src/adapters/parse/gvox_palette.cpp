@@ -108,8 +108,16 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_parsable_range(GvoxBlitCon
     return user_state.range;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
+    if (offset->x < user_state.range.offset.x ||
+        offset->y < user_state.range.offset.y ||
+        offset->z < user_state.range.offset.z ||
+        offset->x >= user_state.range.offset.x + static_cast<int32_t>(user_state.range.extent.x) ||
+        offset->y >= user_state.range.offset.y + static_cast<int32_t>(user_state.range.extent.y) ||
+        offset->z >= user_state.range.offset.z + static_cast<int32_t>(user_state.range.extent.z)) {
+        return {0u, 0u};
+    }
     auto const xi = static_cast<uint32_t>(offset->x - user_state.range.offset.x) / REGION_SIZE;
     auto const yi = static_cast<uint32_t>(offset->y - user_state.range.offset.y) / REGION_SIZE;
     auto const zi = static_cast<uint32_t>(offset->z - user_state.range.offset.z) / REGION_SIZE;
@@ -120,13 +128,13 @@ extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * 
     auto r_ny = user_state.r_ny;
     auto &channel_header = user_state.region_headers[xi + yi * r_nx + zi * r_nx * r_ny].channels[user_state.channel_indices[channel_id]];
     if (channel_header.variant_n <= 1) {
-        return channel_header.blob_offset;
+        return {channel_header.blob_offset, 1u};
     } else {
         uint8_t *buffer_ptr = user_state.buffer.data() + channel_header.blob_offset;
         if (channel_header.variant_n > MAX_REGION_COMPRESSED_VARIANT_N) {
             auto const index = px + py * REGION_SIZE + pz * REGION_SIZE * REGION_SIZE;
             // return 0;
-            return *reinterpret_cast<uint32_t *>(buffer_ptr + index * sizeof(uint32_t));
+            return {*reinterpret_cast<uint32_t *>(buffer_ptr + index * sizeof(uint32_t)), 1u};
         } else {
             auto *palette_begin = reinterpret_cast<uint32_t *>(buffer_ptr);
             auto const bits_per_variant = ceil_log2(channel_header.variant_n);
@@ -145,7 +153,7 @@ extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * 
 #endif
             auto const palette_id = (input >> bit_offset) & mask;
             // return palette_id;
-            return palette_begin[palette_id];
+            return {palette_begin[palette_id], 1u};
         }
     }
 }
@@ -159,12 +167,12 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitConte
         return 0;
     }
 
-    auto ax = static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) / REGION_SIZE;
-    auto ay = static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) / REGION_SIZE;
-    auto az = static_cast<uint32_t>(range->offset.z - user_state.range.offset.z) / REGION_SIZE;
-    auto bx = (static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) + range->extent.x + (REGION_SIZE - 1)) / REGION_SIZE;
-    auto by = (static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) + range->extent.y + (REGION_SIZE - 1)) / REGION_SIZE;
-    auto bz = (static_cast<uint32_t>(range->offset.z - user_state.range.offset.z) + range->extent.z + (REGION_SIZE - 1)) / REGION_SIZE;
+    auto ax = static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) / static_cast<uint32_t>(REGION_SIZE);
+    auto ay = static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) / static_cast<uint32_t>(REGION_SIZE);
+    auto az = static_cast<uint32_t>(range->offset.z - user_state.range.offset.z) / static_cast<uint32_t>(REGION_SIZE);
+    auto bx = (static_cast<uint32_t>(range->offset.x - user_state.range.offset.x) + range->extent.x + static_cast<uint32_t>(REGION_SIZE - 1)) / static_cast<uint32_t>(REGION_SIZE);
+    auto by = (static_cast<uint32_t>(range->offset.y - user_state.range.offset.y) + range->extent.y + static_cast<uint32_t>(REGION_SIZE - 1)) / static_cast<uint32_t>(REGION_SIZE);
+    auto bz = (static_cast<uint32_t>(range->offset.z - user_state.range.offset.z) + range->extent.z + static_cast<uint32_t>(REGION_SIZE - 1)) / static_cast<uint32_t>(REGION_SIZE);
 
     uint32_t flags = 0;
 
