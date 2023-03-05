@@ -9,7 +9,7 @@ if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
-project(gvox VERSION 1.2.0)
+project(gvox VERSION 1.2.1)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")

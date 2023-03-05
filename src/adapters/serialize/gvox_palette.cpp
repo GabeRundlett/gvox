@@ -13,6 +13,7 @@
 #include <new>
 #include <unordered_set>
 #include <algorithm>
+#include <memory>
 #include <mutex>
 
 using namespace gvox_detail::thread_pool;
