@@ -162,7 +162,7 @@ extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * 
 extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> uint32_t {
     auto &user_state = *static_cast<GvoxPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
-    if ((channel_flags & user_state.channel_flags) != 0) {
+    if ((channel_flags & ~user_state.channel_flags) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
         return 0;
     }

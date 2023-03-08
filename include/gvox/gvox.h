@@ -8,6 +8,10 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#define GVOX_VERSION_MAJOR 1
+#define GVOX_VERSION_MINOR 2
+#define GVOX_VERSION_PATCH 3
+
 // Consumer API
 
 typedef enum {

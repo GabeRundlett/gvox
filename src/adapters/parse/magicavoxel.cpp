@@ -997,7 +997,6 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /
         break;
     case GVOX_CHANNEL_ID_EMISSIVITY:
         if (palette_id < 255) {
-            // std::bit_cast<uint32_t>(user_state.materials[palette_id].emit)
             auto const palette_val = user_state.palette[palette_id];
             auto is_emissive = (user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_EMIT_BIT) != 0;
             voxel_data = std::bit_cast<uint32_t>(palette_val) * static_cast<uint32_t>(is_emissive);

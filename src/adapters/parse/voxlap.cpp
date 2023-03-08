@@ -88,11 +88,8 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
         if (z >= user_state.config.size_z) {
             return;
         }
-        if (solid) {
-            auto index = x + (user_state.config.size_y - 1 - y) * user_state.config.size_x + (user_state.config.size_z - 1 - z) * user_state.config.size_x * user_state.config.size_y;
-            user_state.is_solid[index] = true;
-            user_state.colors[index] |= 0x01000000;
-        }
+        auto index = x + (user_state.config.size_y - 1 - y) * user_state.config.size_x + (user_state.config.size_z - 1 - z) * user_state.config.size_x * user_state.config.size_y;
+        user_state.is_solid[index] = solid;
     };
     auto setcol = [&user_state](uint32_t x, uint32_t y, uint32_t z, uint32_t color) {
         if (z >= user_state.config.size_z) {
@@ -149,7 +146,7 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
                 bottom_color_start = bottom_color_end - len_top;
                 for (z = bottom_color_start; z < bottom_color_end; ++z) {
                     if (user_state.config.make_solid == 0u) {
-                        setgeom(x, y, z, 1);
+                        setgeom(x, y, z, true);
                     }
                     auto col = uint32_t{};
                     gvox_input_read(blit_ctx, color_offset, sizeof(col), &col);
