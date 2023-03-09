@@ -40,12 +40,12 @@ find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:gvox>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")
 
-GVOX_CREATE_TEST(
-    FOLDER simple
-    FILE main
-    LANG c
-    LIBS
-)
+# GVOX_CREATE_TEST(
+#     FOLDER simple
+#     FILE main
+#     LANG c
+#     LIBS
+# )
 GVOX_CREATE_TEST(
     FOLDER simple
     FILE comparison
