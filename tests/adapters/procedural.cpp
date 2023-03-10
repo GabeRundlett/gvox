@@ -5,6 +5,8 @@
 #include <cmath>
 #include <array>
 
+#define SIMPLE_TERRAIN 1
+
 auto stable_rand(float x) -> float { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f); }
 auto stable_rand(float x, float y) -> float { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
 auto stable_rand(float x, float y, float z) -> float { return stable_rand(x + stable_rand(z), y + stable_rand(z)); }
@@ -15,8 +17,16 @@ auto stable_rand(int32_t xi, int32_t yi, int32_t zi) -> float {
     return stable_rand(x, y, z);
 }
 
+auto fract(float x) -> float {
+    return x - floor(x);
+}
+
 auto sample_terrain(float x, float y, float z) -> float {
+#if SIMPLE_TERRAIN
+    return fract((x + y + z) * 0.05f) - 0.5f;
+#else
     return -(x * x + y * y + z * z) + 0.25f;
+#endif
 }
 
 auto sample_terrain_i(int32_t xi, int32_t yi, int32_t zi) -> float {
@@ -42,7 +52,7 @@ extern "C" void procedural_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterCon
 // General
 extern "C" auto procedural_query_details() -> GvoxParseAdapterDetails {
     return {
-        .preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE,
+        .preferred_blit_mode = GVOX_BLIT_MODE_SERIALIZE_DRIVEN,
     };
 }
 
@@ -91,6 +101,10 @@ extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapt
     uint32_t id = 0;
     float const val = sample_terrain_i(offset->x, offset->y, offset->z);
     if (val >= 0.0f) {
+#if SIMPLE_TERRAIN
+        id = 1;
+        color = create_color(1.0f, 0.0f, 1.0f, 1u);
+#else
         {
             float const nx_val = sample_terrain_i(offset->x - 1, offset->y, offset->z);
             float const ny_val = sample_terrain_i(offset->x, offset->y - 1, offset->z);
@@ -128,6 +142,7 @@ extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapt
             }
             id = 3u;
         }
+#endif
     }
     switch (channel_id) {
     case GVOX_CHANNEL_ID_COLOR: return {color, 1u};

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <time.h>
 
 void handle_gvox_error(GvoxContext *gvox_ctx) {
     GvoxResult res = gvox_get_result(gvox_ctx);
@@ -100,7 +101,7 @@ void test_palette_buffer_io(void) {
     uint8_t *data = NULL;
     size_t size = 0;
 
-    // Create gvox_palette file
+    // Create gvox_palette buffer
     {
         GvoxParseAdapterInfo procedural_adapter_info = {
             .base_info = {
@@ -404,10 +405,72 @@ void test_voxlap(void) {
     gvox_destroy_context(gvox_ctx);
 }
 
+void test_speed(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+
+    uint8_t *data = NULL;
+    size_t size = 0;
+
+    // Create gvox_palette buffer
+    {
+        GvoxParseAdapterInfo procedural_adapter_info = {
+            .base_info = {
+                .name_str = "procedural",
+                .create = procedural_create,
+                .destroy = procedural_destroy,
+                .blit_begin = procedural_blit_begin,
+                .blit_end = procedural_blit_end,
+            },
+            .query_details = procedural_query_details,
+            .query_region_flags = procedural_query_region_flags,
+            .load_region = procedural_load_region,
+            .unload_region = procedural_unload_region,
+            .sample_region = procedural_sample_region,
+            .parse_region = procedural_parse_region,
+        };
+        GvoxByteBufferOutputAdapterConfig o_config = {
+            .out_byte_buffer_ptr = &data,
+            .out_size = &size,
+            .allocate = NULL,
+        };
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
+
+        GvoxRegionRange region_range = {
+            .offset = {0, 0, 0},
+            .extent = {1024, 1024, 1024},
+        };
+
+        clock_t t0 = clock();
+        gvox_blit_region(
+            NULL, o_ctx, p_ctx, s_ctx,
+            &region_range,
+            GVOX_CHANNEL_BIT_COLOR);
+        clock_t t1 = clock();
+
+        double total_time = ((double)(t1 - t0)) / CLOCKS_PER_SEC;
+
+        printf("Elapsed: %fs\n", total_time);
+
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+    handle_gvox_error(gvox_ctx);
+
+    if (data) {
+        free(data);
+    }
+
+    gvox_destroy_context(gvox_ctx);
+}
+
 int main(void) {
     test_raw_file_io();
     test_palette_buffer_io();
     test_palette_file_io();
     test_magicavoxel();
     test_voxlap();
+    // test_speed();
 }
