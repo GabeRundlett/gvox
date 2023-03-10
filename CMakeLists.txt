@@ -96,6 +96,9 @@ else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=0)
 endif()
 
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
+
 if(BUILD_SHARED_LIBS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         target_compile_definitions(${PROJECT_NAME}
