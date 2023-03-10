@@ -22,4 +22,20 @@ For now, you must have the following things installed to build the repository
  * Ninja build
  * vcpkg (plus the VCPKG_ROOT environment variable)
 
+Once you have these things installed, you should be able to build just by running these commands in the root directory of the repository
+
+### Windows
+
+```
+cmake --preset=cl-x86_64-windows-msvc
+cmake --build --preset=cl-x86_64-windows-msvc-debug
+```
+
+### Linux
+
+```
+cmake --preset=gcc-x86_64-linux-gnu
+cmake --build --preset=gcc-x86_64-linux-gnu-debug
+```
+
 The plan in the future is to have language bindings accessible to as many languages I can
