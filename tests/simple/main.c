@@ -451,7 +451,7 @@ void test_speed(void) {
 
         double total_time = ((double)(t1 - t0)) / CLOCKS_PER_SEC;
 
-        printf("Elapsed: %fs\n", total_time);
+        printf("Elapsed: %fs (%f voxels per second)\n", total_time, (double)(region_range.extent.x * region_range.extent.y * region_range.extent.z) / total_time);
 
         gvox_destroy_adapter_context(o_ctx);
         gvox_destroy_adapter_context(p_ctx);
