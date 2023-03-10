@@ -241,10 +241,13 @@ extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext *bl
 static void handle_single_palette(
     GvoxBlitContext *blit_ctx, GvoxPaletteSerializeUserState &user_state, PaletteRegion &palette_region,
     GvoxRegion *region_ptr, uint32_t channel_id, uint32_t ox, uint32_t oy, uint32_t oz) {
-    bool at_least_one_present = false;
+    if (!palette_region.data) {
+        palette_region.data = std::make_unique<decltype(PaletteRegion::data)::element_type>(decltype(PaletteRegion::data)::element_type{});
+    }
     for (uint32_t zi = 0; zi < REGION_SIZE; ++zi) {
         for (uint32_t yi = 0; yi < REGION_SIZE; ++yi) {
             for (uint32_t xi = 0; xi < REGION_SIZE; ++xi) {
+                auto palette_region_index = xi + yi * REGION_SIZE + zi * REGION_SIZE * REGION_SIZE;
                 auto const px = ox + xi;
                 auto const py = oy + yi;
                 auto const pz = oz + zi;
@@ -257,43 +260,18 @@ static void handle_single_palette(
                     auto sample = gvox_sample_region(blit_ctx, region_ptr, &pos, channel_id);
                     if (sample.is_present != 0u) {
                         palette_region.palette.insert(sample.data);
-                        at_least_one_present = true;
+                        auto const [prev_u32_voxel, prev_present] = (*palette_region.data)[palette_region_index];
+                        if (!prev_present) {
+                            (*palette_region.data)[palette_region_index] = {sample.data, sample.is_present};
+                            ++palette_region.accounted_for;
+                        }
                     }
                 }
             }
         }
     }
-    if (at_least_one_present) {
-        if (!palette_region.data) {
-            palette_region.data = std::make_unique<decltype(PaletteRegion::data)::element_type>(decltype(PaletteRegion::data)::element_type{});
-        }
-        for (uint32_t zi = 0; zi < REGION_SIZE; ++zi) {
-            for (uint32_t yi = 0; yi < REGION_SIZE; ++yi) {
-                for (uint32_t xi = 0; xi < REGION_SIZE; ++xi) {
-                    auto palette_region_index = xi + yi * REGION_SIZE + zi * REGION_SIZE * REGION_SIZE;
-                    auto const px = ox + xi;
-                    auto const py = oy + yi;
-                    auto const pz = oz + zi;
-                    auto u32_voxel = 0u;
-                    auto is_present = false;
-                    auto pos = GvoxOffset3D{
-                        .x = static_cast<int32_t>(px) + user_state.range.offset.x,
-                        .y = static_cast<int32_t>(py) + user_state.range.offset.y,
-                        .z = static_cast<int32_t>(pz) + user_state.range.offset.z,
-                    };
-                    if (px < user_state.range.extent.x && py < user_state.range.extent.y && pz < user_state.range.extent.z) {
-                        auto sample = gvox_sample_region(blit_ctx, region_ptr, &pos, channel_id);
-                        u32_voxel = sample.data;
-                        is_present = (sample.is_present != 0u);
-                    }
-                    auto const [prev_u32_voxel, prev_present] = (*palette_region.data)[palette_region_index];
-                    if (!prev_present && is_present) {
-                        (*palette_region.data)[palette_region_index] = {u32_voxel, is_present};
-                        ++palette_region.accounted_for;
-                    }
-                }
-            }
-        }
+    if (palette_region.accounted_for == 0) {
+        palette_region.data.reset();
     }
 }
 
