@@ -901,6 +901,18 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         } break;
         }
     }
+
+    if (temp_scene_info.node_infos.empty()) {
+        for (size_t model_i = 0; model_i < user_state.scene.models.size(); ++model_i) {
+            temp_scene_info.node_infos.push_back(magicavoxel::SceneShapeInfo{
+                .model_id = static_cast<uint32_t>(model_i),
+                .num_keyframes = 1,
+                .keyframe_offset = 0,
+                .loop = false,
+            });
+        }
+    }
+
     if (!temp_scene_info.node_infos.empty()) {
         user_state.scene.bvh_nodes.push_back({});
         auto &root_node = user_state.scene.bvh_nodes[0];
@@ -916,6 +928,8 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         };
         construct_scene(user_state.scene, temp_scene_info, 0, 0, {}, root_node.aabb_min, root_node.aabb_max);
         construct_scene_bvh(user_state.scene);
+    } else {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER, "Somehow there were no scene nodes parsed from this model. Please let us know in the gvox GitHub issues what to do to reproduce this bug");
     }
 }
 
