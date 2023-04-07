@@ -35,6 +35,12 @@ void handle_gvox_error(GvoxContext *gvox_ctx) {
     }
 }
 
+void test_misc(void) {
+    GvoxVersion version;
+    gvox_get_version(&version);
+    printf("%u.%u.%u\n", version.major, version.minor, version.patch);
+}
+
 void test_raw_file_io(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
 
@@ -482,6 +488,7 @@ void test_speed(void) {
 }
 
 int main(void) {
+    test_misc();
     test_raw_file_io();
     test_palette_buffer_io();
     test_palette_file_io();

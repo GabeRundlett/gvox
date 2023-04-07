@@ -54,6 +54,12 @@ struct _GvoxBlitContext {
 
 #include <adapters.hpp>
 
+void gvox_get_version(GvoxVersion *version) {
+    version->major = 1;
+    version->minor = 2;
+    version->patch = 5;
+}
+
 auto gvox_create_context(void) -> GvoxContext * {
     auto *ctx = new GvoxContext;
     for (auto const &info : input_adapter_infos) {
