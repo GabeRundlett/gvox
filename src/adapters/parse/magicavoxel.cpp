@@ -1,9 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/parse/magicavoxel.h>
 
-#include <cstdlib>
-#include <cstring>
-
 #include <bit>
 #include <array>
 #include <vector>

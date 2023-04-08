@@ -1,9 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/output/file.h>
 
-#include <cstdlib>
-#include <cstring>
-
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
