@@ -67,6 +67,12 @@ typedef struct _GvoxAdapterContext GvoxAdapterContext;
 typedef struct _GvoxBlitContext GvoxBlitContext;
 
 typedef struct {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+} GvoxVersion;
+
+typedef struct {
     int32_t x;
     int32_t y;
     int32_t z;
@@ -139,6 +145,8 @@ typedef struct {
     // Parse Driven
     void (*receive_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region);
 } GvoxSerializeAdapterInfo;
+
+GVOX_EXPORT void gvox_get_version(GvoxVersion *version);
 
 GVOX_EXPORT GvoxContext *gvox_create_context(void);
 GVOX_EXPORT void gvox_destroy_context(GvoxContext *ctx);

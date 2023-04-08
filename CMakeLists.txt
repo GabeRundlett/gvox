@@ -9,7 +9,7 @@ if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
-project(gvox VERSION 1.2.4)
+project(gvox VERSION 1.2.5)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -70,6 +70,9 @@ endif()
 
 if(GVOX_BUILD_FOR_WEB)
     set(GVOX_ENABLE_MULTITHREADED_ADAPTERS false)
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
 endif()
 
 if(GVOX_BUILD_FOR_RUST)
@@ -95,9 +98,6 @@ if(GVOX_ENABLE_MULTITHREADED_ADAPTERS)
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=0)
 endif()
-
-find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
 
 if(BUILD_SHARED_LIBS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
