@@ -3,6 +3,9 @@
   "version-semver": "1.2.3",
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
+  "dependencies": [
+    "pffft"
+  ],
   "features": {
     "file-io": {
       "description": "Enable file IO library features"

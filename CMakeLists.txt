@@ -47,6 +47,7 @@ set(GVOX_PARSE_ADAPTERS
     "gvox_palette"
     "voxlap"
     "magicavoxel"
+    "goxel"
 )
 set(GVOX_SERIALIZE_ADAPTERS
     "gvox_raw"

@@ -405,6 +405,75 @@ void test_voxlap(void) {
     gvox_destroy_context(gvox_ctx);
 }
 
+void test_goxel(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+
+    {
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "assets/test.gox",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 255,
+        };
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "goxel"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+        GvoxRegionRange region_range = {
+            .offset = {+0, +0, +0},
+            .extent = {+8, +8, +8},
+        };
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            &region_range,
+            GVOX_CHANNEL_BIT_COLOR |
+                GVOX_CHANNEL_BIT_MATERIAL_ID |
+                GVOX_CHANNEL_BIT_ROUGHNESS |
+                GVOX_CHANNEL_BIT_TRANSPARENCY |
+                GVOX_CHANNEL_BIT_EMISSIVITY);
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+    handle_gvox_error(gvox_ctx);
+
+    // {
+    //     GvoxFileInputAdapterConfig i_config = {
+    //         .filepath = "assets/test.vox",
+    //         .byte_offset = 0,
+    //     };
+    //     GvoxFileOutputAdapterConfig o_config = {
+    //         .filepath = "assets/test.gvox",
+    //     };
+    //     GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+    //     GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "file"), &o_config);
+    //     GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "magicavoxel"), NULL);
+    //     GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "gvox_palette"), NULL);
+    //     GvoxRegionRange region_range = {
+    //         .offset = {-4, -4, +0},
+    //         .extent = {+8, +8, +8},
+    //     };
+    //     gvox_blit_region(
+    //         i_ctx, o_ctx, p_ctx, s_ctx,
+    //         &region_range,
+    //         GVOX_CHANNEL_BIT_COLOR |
+    //             GVOX_CHANNEL_BIT_MATERIAL_ID |
+    //             GVOX_CHANNEL_BIT_ROUGHNESS |
+    //             GVOX_CHANNEL_BIT_TRANSPARENCY |
+    //             GVOX_CHANNEL_BIT_EMISSIVITY);
+    //     gvox_destroy_adapter_context(i_ctx);
+    //     gvox_destroy_adapter_context(o_ctx);
+    //     gvox_destroy_adapter_context(p_ctx);
+    //     gvox_destroy_adapter_context(s_ctx);
+    // }
+    // handle_gvox_error(gvox_ctx);
+
+    gvox_destroy_context(gvox_ctx);
+}
+
+
 void test_speed(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
 
@@ -467,10 +536,11 @@ void test_speed(void) {
 }
 
 int main(void) {
-    test_raw_file_io();
-    test_palette_buffer_io();
-    test_palette_file_io();
-    test_magicavoxel();
-    test_voxlap();
+    // test_raw_file_io();
+    // test_palette_buffer_io();
+    // test_palette_file_io();
+    // test_magicavoxel();
+    // test_voxlap();
+    test_goxel();
     // test_speed();
 }
