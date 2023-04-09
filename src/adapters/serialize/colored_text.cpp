@@ -1,6 +1,8 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/serialize/colored_text.h>
 
+#include <cstdlib>
+
 #include <bit>
 #include <vector>
 #include <array>

@@ -1,6 +1,9 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/parse/voxlap.h>
 
+#include <cstdlib>
+#include <cstdint>
+
 #include <bit>
 #include <vector>
 #include <array>

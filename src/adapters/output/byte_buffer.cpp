@@ -1,6 +1,9 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/output/byte_buffer.h>
 
+#include <cstdlib>
+#include <cstdint>
+
 #include <algorithm>
 #include <vector>
 #include <new>

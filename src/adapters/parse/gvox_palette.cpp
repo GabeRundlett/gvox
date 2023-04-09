@@ -3,6 +3,9 @@
 
 #include "../shared/gvox_palette.hpp"
 
+#include <cstdlib>
+#include <cstdint>
+
 #include <bit>
 #include <vector>
 #include <new>

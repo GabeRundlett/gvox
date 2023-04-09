@@ -4,6 +4,9 @@
 #include "../shared/gvox_palette.hpp"
 #include "../shared/thread_pool.hpp"
 
+#include <cstdlib>
+#include <cstdint>
+
 #include <bit>
 #include <array>
 #include <vector>

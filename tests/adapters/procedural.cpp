@@ -1,6 +1,7 @@
 #include <gvox/gvox.h>
 #include <adapters/procedural.h>
 
+#include <cstdlib>
 #include <cmath>
 #include <array>
 
