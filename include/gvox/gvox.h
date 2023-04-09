@@ -8,9 +8,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#define GVOX_VERSION_MAJOR 1
-#define GVOX_VERSION_MINOR 2
-#define GVOX_VERSION_PATCH 3
+#if !defined(GVOX_EXPORT)
+#define GVOX_EXPORT
+#endif
 
 // Consumer API
 
@@ -28,12 +28,6 @@ typedef enum {
     GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT = -8,
     GVOX_RESULT_ERROR_SERIALIZE_ADAPTER_UNREPRESENTABLE_DATA = -9,
 } GvoxResult;
-
-typedef enum {
-    GVOX_BLIT_MODE_DONT_CARE,
-    GVOX_BLIT_MODE_PARSE_DRIVEN,
-    GVOX_BLIT_MODE_SERIALIZE_DRIVEN,
-} GvoxBlitMode;
 
 #define GVOX_CHANNEL_ID_COLOR 0
 #define GVOX_CHANNEL_ID_NORMAL 1
@@ -64,7 +58,6 @@ typedef enum {
 typedef struct _GvoxContext GvoxContext;
 typedef struct _GvoxAdapter GvoxAdapter;
 typedef struct _GvoxAdapterContext GvoxAdapterContext;
-typedef struct _GvoxBlitContext GvoxBlitContext;
 
 typedef struct {
     uint32_t major;
@@ -88,6 +81,48 @@ typedef struct {
     GvoxOffset3D offset;
     GvoxExtent3D extent;
 } GvoxRegionRange;
+
+GVOX_EXPORT void gvox_get_version(GvoxVersion *version);
+
+GVOX_EXPORT GvoxContext *gvox_create_context(void);
+GVOX_EXPORT void gvox_destroy_context(GvoxContext *ctx);
+
+GVOX_EXPORT GvoxResult gvox_get_result(GvoxContext *ctx);
+GVOX_EXPORT void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *str_size);
+GVOX_EXPORT void gvox_pop_result(GvoxContext *ctx);
+
+GVOX_EXPORT GvoxAdapter *gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name);
+GVOX_EXPORT GvoxAdapter *gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name);
+GVOX_EXPORT GvoxAdapter *gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name);
+GVOX_EXPORT GvoxAdapter *gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name);
+
+GVOX_EXPORT GvoxAdapterContext *gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void const *config);
+GVOX_EXPORT void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
+
+GVOX_EXPORT void gvox_blit_region(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range, uint32_t channel_flags);
+
+GVOX_EXPORT void gvox_blit_region_parse_driven(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range, uint32_t channel_flags);
+
+GVOX_EXPORT void gvox_blit_region_serialize_driven(
+    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
+    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
+    GvoxRegionRange const *requested_range, uint32_t channel_flags);
+
+// Adapter API
+
+typedef enum {
+    GVOX_BLIT_MODE_DONT_CARE,
+    GVOX_BLIT_MODE_PARSE_DRIVEN,
+    GVOX_BLIT_MODE_SERIALIZE_DRIVEN,
+} GvoxBlitMode;
+
+typedef struct _GvoxBlitContext GvoxBlitContext;
 
 typedef struct {
     GvoxRegionRange range;
@@ -146,46 +181,10 @@ typedef struct {
     void (*receive_region)(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region);
 } GvoxSerializeAdapterInfo;
 
-GVOX_EXPORT void gvox_get_version(GvoxVersion *version);
-
-GVOX_EXPORT GvoxContext *gvox_create_context(void);
-GVOX_EXPORT void gvox_destroy_context(GvoxContext *ctx);
-
-GVOX_EXPORT GvoxResult gvox_get_result(GvoxContext *ctx);
-GVOX_EXPORT void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *str_size);
-GVOX_EXPORT void gvox_pop_result(GvoxContext *ctx);
-
 GVOX_EXPORT GvoxAdapter *gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info);
-GVOX_EXPORT GvoxAdapter *gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name);
-
 GVOX_EXPORT GvoxAdapter *gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info);
-GVOX_EXPORT GvoxAdapter *gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name);
-
 GVOX_EXPORT GvoxAdapter *gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info);
-GVOX_EXPORT GvoxAdapter *gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name);
-
 GVOX_EXPORT GvoxAdapter *gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info);
-GVOX_EXPORT GvoxAdapter *gvox_get_serialize_adapter(GvoxContext *ctx, char const *adapter_name);
-
-GVOX_EXPORT GvoxAdapterContext *gvox_create_adapter_context(GvoxContext *gvox_ctx, GvoxAdapter *adapter, void const *config);
-GVOX_EXPORT void gvox_destroy_adapter_context(GvoxAdapterContext *ctx);
-
-GVOX_EXPORT void gvox_blit_region(
-    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
-    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
-    GvoxRegionRange const *requested_range, uint32_t channel_flags);
-
-GVOX_EXPORT void gvox_blit_region_parse_driven(
-    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
-    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
-    GvoxRegionRange const *requested_range, uint32_t channel_flags);
-
-GVOX_EXPORT void gvox_blit_region_serialize_driven(
-    GvoxAdapterContext *input_ctx, GvoxAdapterContext *output_ctx,
-    GvoxAdapterContext *parse_ctx, GvoxAdapterContext *serialize_ctx,
-    GvoxRegionRange const *requested_range, uint32_t channel_flags);
-
-// Adapter API
 
 GVOX_EXPORT uint32_t gvox_query_region_flags(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);
 GVOX_EXPORT GvoxRegion gvox_load_region_range(GvoxBlitContext *blit_ctx, GvoxRegionRange const *range, uint32_t channel_flags);

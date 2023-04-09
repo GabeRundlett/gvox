@@ -55,9 +55,9 @@ struct _GvoxBlitContext {
 #include <adapters.hpp>
 
 void gvox_get_version(GvoxVersion *version) {
-    version->major = 1;
-    version->minor = 2;
-    version->patch = 5;
+    version->major = GVOX_VERSION_MAJOR;
+    version->minor = GVOX_VERSION_MINOR;
+    version->patch = GVOX_VERSION_PATCH;
 }
 
 auto gvox_create_context(void) -> GvoxContext * {
