@@ -319,9 +319,8 @@ namespace magicavoxel {
     void string_t_dict_entry(char const *str, GvoxOffset3D &offset) {
 #if USE_WASM_FIX
         auto s = std::string{str};
-        size_t pos = 0;
-        size_t count = 0;
-        while ((pos = s.find(' ')) != std::string::npos) {
+        for (size_t count = 0; count < 3; ++count) {
+            auto pos = s.find(' ');
             auto token = s.substr(0, pos);
             switch (count) {
             case 0: offset.x = atoi(token.c_str()); break;
@@ -329,7 +328,6 @@ namespace magicavoxel {
             case 2: offset.z = atoi(token.c_str()); break;
             }
             s.erase(0, pos + 1);
-            ++count;
         }
 #else
         auto ss = std::stringstream{};
@@ -341,9 +339,8 @@ namespace magicavoxel {
     void string_color_dict_entry(char const *str, uint32_t &r, uint32_t &g, uint32_t &b) {
 #if USE_WASM_FIX
         auto s = std::string{str};
-        size_t pos = 0;
-        size_t count = 0;
-        while ((pos = s.find(' ')) != std::string::npos) {
+        for (size_t count = 0; count < 3; ++count) {
+            auto pos = s.find(' ');
             auto token = s.substr(0, pos);
             switch (count) {
             case 0: r = atoi(token.c_str()); break;
@@ -351,7 +348,6 @@ namespace magicavoxel {
             case 2: b = atoi(token.c_str()); break;
             }
             s.erase(0, pos + 1);
-            ++count;
         }
 #else
         auto ss = std::stringstream{};
