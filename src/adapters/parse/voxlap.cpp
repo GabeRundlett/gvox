@@ -2,7 +2,7 @@
 #include <gvox/adapters/parse/voxlap.h>
 
 #include <cstdlib>
-#include <cstring>
+#include <cstdint>
 
 #include <bit>
 #include <vector>

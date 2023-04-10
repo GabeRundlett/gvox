@@ -17,7 +17,28 @@
 
 void handle_gvox_error(GvoxContext *gvox_ctx) {
     GvoxResult res = gvox_get_result(gvox_ctx);
-    assert(res == GVOX_RESULT_SUCCESS);
+    int error_count = 0;
+    while (res != GVOX_RESULT_SUCCESS) {
+        size_t size;
+        gvox_get_result_message(gvox_ctx, NULL, &size);
+        char *str = malloc(size + 1);
+        gvox_get_result_message(gvox_ctx, str, NULL);
+        str[size] = '\0';
+        printf("ERROR: %s\n", str);
+        gvox_pop_result(gvox_ctx);
+        free(str);
+        res = gvox_get_result(gvox_ctx);
+        ++error_count;
+    }
+    if (error_count != 0) {
+        exit(-error_count);
+    }
+}
+
+void test_misc(void) {
+    GvoxVersion version;
+    gvox_get_version(&version);
+    printf("%u.%u.%u\n", version.major, version.minor, version.patch);
 }
 
 void test_raw_file_io(void) {
@@ -536,11 +557,12 @@ void test_speed(void) {
 }
 
 int main(void) {
+    // test_misc();
     // test_raw_file_io();
     // test_palette_buffer_io();
     // test_palette_file_io();
     // test_magicavoxel();
     // test_voxlap();
-    test_goxel();
     // test_speed();
+    test_goxel();
 }

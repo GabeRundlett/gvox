@@ -2,7 +2,7 @@
 #include <gvox/adapters/parse/gvox_raw.h>
 
 #include <cstdlib>
-#include <cstring>
+#include <cstdint>
 
 #include <bit>
 #include <array>

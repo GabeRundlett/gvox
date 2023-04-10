@@ -35,3 +35,10 @@ GVOX_CREATE_TEST(
     LANG c
     LIBS procedural_parse_adapter
 )
+
+GVOX_CREATE_TEST(
+    FOLDER simple
+    FILE main2
+    LANG c
+    LIBS
+)

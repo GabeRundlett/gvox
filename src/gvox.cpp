@@ -6,6 +6,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <queue>
 
 #include <mutex>
 
@@ -33,7 +34,7 @@ struct _GvoxContext {
     std::unordered_map<std::string, GvoxOutputAdapter *> output_adapter_table{};
     std::unordered_map<std::string, GvoxParseAdapter *> parse_adapter_table{};
     std::unordered_map<std::string, GvoxSerializeAdapter *> serialize_adapter_table{};
-    std::vector<std::pair<std::string, GvoxResult>> errors{};
+    std::queue<std::pair<std::string, GvoxResult>> errors{};
 #if GVOX_ENABLE_THREADSAFETY
     std::mutex mtx{};
 #endif
@@ -52,6 +53,12 @@ struct _GvoxBlitContext {
 };
 
 #include <adapters.hpp>
+
+void gvox_get_version(GvoxVersion *version) {
+    version->major = GVOX_VERSION_MAJOR;
+    version->minor = GVOX_VERSION_MINOR;
+    version->patch = GVOX_VERSION_PATCH;
+}
 
 auto gvox_create_context(void) -> GvoxContext * {
     auto *ctx = new GvoxContext;
@@ -115,13 +122,13 @@ void gvox_get_result_message(GvoxContext *ctx, char *const str_buffer, size_t *s
     }
 }
 void gvox_pop_result(GvoxContext *ctx) {
-    ctx->errors.pop_back();
+    ctx->errors.pop();
 }
 
 auto gvox_register_input_adapter(GvoxContext *ctx, GvoxInputAdapterInfo const *adapter_info) -> GvoxAdapter * {
     auto adapter_iter = ctx->input_adapter_table.find(adapter_info->base_info.name_str);
     if (adapter_iter != ctx->input_adapter_table.end()) {
-        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter with an adapter already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        ctx->errors.emplace("[GVOX CONTEXT ERROR]: Tried registering an adapter with an adapter already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
         return nullptr;
     }
     auto *result = new GvoxInputAdapter{
@@ -143,7 +150,7 @@ auto gvox_get_input_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 auto gvox_register_output_adapter(GvoxContext *ctx, GvoxOutputAdapterInfo const *adapter_info) -> GvoxAdapter * {
     auto adapter_iter = ctx->output_adapter_table.find(adapter_info->base_info.name_str);
     if (adapter_iter != ctx->output_adapter_table.end()) {
-        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        ctx->errors.emplace("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
         return nullptr;
     }
     auto *result = new GvoxOutputAdapter{
@@ -165,7 +172,7 @@ auto gvox_get_output_adapter(GvoxContext *ctx, char const *adapter_name) -> Gvox
 auto gvox_register_parse_adapter(GvoxContext *ctx, GvoxParseAdapterInfo const *adapter_info) -> GvoxAdapter * {
     auto adapter_iter = ctx->parse_adapter_table.find(adapter_info->base_info.name_str);
     if (adapter_iter != ctx->parse_adapter_table.end()) {
-        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        ctx->errors.emplace("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
         return nullptr;
     }
     auto *result = new GvoxParseAdapter{
@@ -187,7 +194,7 @@ auto gvox_get_parse_adapter(GvoxContext *ctx, char const *adapter_name) -> GvoxA
 auto gvox_register_serialize_adapter(GvoxContext *ctx, GvoxSerializeAdapterInfo const *adapter_info) -> GvoxAdapter * {
     auto adapter_iter = ctx->serialize_adapter_table.find(adapter_info->base_info.name_str);
     if (adapter_iter != ctx->serialize_adapter_table.end()) {
-        ctx->errors.emplace_back("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
+        ctx->errors.emplace("[GVOX CONTEXT ERROR]: Tried registering an adapter while an adapter is already registered with the same name", GVOX_RESULT_ERROR_UNKNOWN);
         return nullptr;
     }
     auto *result = new GvoxSerializeAdapter{
@@ -257,9 +264,21 @@ static void gvox_blit_region_impl(
         .channel_flags = channel_flags,
     };
 
+    auto gvox_ctx = parse_ctx->gvox_context_ptr;
+
+#define CHECK_RESULT_OR_EARLY_OUT                           \
+    if (gvox_get_result(gvox_ctx) != GVOX_RESULT_SUCCESS) { \
+        return;                                             \
+    }
+
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.i_ctx, nullptr, 0);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.o_ctx, nullptr, 0);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.p_ctx, nullptr, 0);
+    CHECK_RESULT_OR_EARLY_OUT;
 
     GvoxRegionRange actual_range;
     if (requested_range != nullptr) {
@@ -267,8 +286,11 @@ static void gvox_blit_region_impl(
     } else {
         actual_range = reinterpret_cast<GvoxParseAdapter *>(parse_ctx->adapter)->info.query_parsable_range(&blit_ctx, parse_ctx);
     }
+    CHECK_RESULT_OR_EARLY_OUT;
 
     gvox_adapter_blit_begin(&blit_ctx, blit_ctx.s_ctx, &actual_range, channel_flags);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     switch (blit_mode) {
     default:
     case GVOX_BLIT_MODE_PARSE_DRIVEN:
@@ -278,9 +300,17 @@ static void gvox_blit_region_impl(
         reinterpret_cast<GvoxSerializeAdapter *>(serialize_ctx->adapter)->info.serialize_region(&blit_ctx, serialize_ctx, &actual_range, channel_flags);
         break;
     }
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.s_ctx);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.p_ctx);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.o_ctx);
+    CHECK_RESULT_OR_EARLY_OUT;
+
     gvox_adapter_blit_end(&blit_ctx, blit_ctx.i_ctx);
 }
 
@@ -355,9 +385,9 @@ void gvox_adapter_push_error(GvoxAdapterContext *ctx, GvoxResult result_code, ch
 #if GVOX_ENABLE_THREADSAFETY
     auto lock = std::lock_guard{ctx->gvox_context_ptr->mtx};
 #endif
-    ctx->gvox_context_ptr->errors.emplace_back("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
+    ctx->gvox_context_ptr->errors.emplace("[GVOX ADAPTER ERROR]: " + std::string(message), result_code);
 #if !GVOX_BUILD_FOR_RUST && !GVOX_BUILD_FOR_ODIN
-    assert(0 && message);
+    // assert(0 && message);
 #endif
 }
 void gvox_adapter_set_user_pointer(GvoxAdapterContext *ctx, void *ptr) {

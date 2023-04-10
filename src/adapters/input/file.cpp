@@ -2,7 +2,7 @@
 #include <gvox/adapters/input/file.h>
 
 #include <cstdlib>
-#include <cstring>
+#include <cstdint>
 
 #include <filesystem>
 #include <fstream>

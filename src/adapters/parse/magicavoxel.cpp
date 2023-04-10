@@ -1,8 +1,14 @@
 #include <gvox/gvox.h>
 #include <gvox/adapters/parse/magicavoxel.h>
 
+#define USE_WASM_FIX 1
+
+#if USE_WASM_FIX
 #include <cstdlib>
 #include <cstring>
+#else
+#include <sstream>
+#endif
 
 #include <bit>
 #include <array>
@@ -12,7 +18,6 @@
 #include <new>
 #include <string>
 #include <memory>
-#include <sstream>
 #include <limits>
 #include <numeric>
 
@@ -298,6 +303,62 @@ namespace magicavoxel {
 
         std::vector<BvhNode> bvh_nodes;
     };
+
+    void string_r_dict_entry(char const *str, int8_t &rotation) {
+#if USE_WASM_FIX
+        rotation = static_cast<int8_t>(atoi(str));
+#else
+        auto ss = std::stringstream{};
+        ss.str(str);
+        int32_t temp_int = 0;
+        ss >> temp_int;
+        rotation = static_cast<int8_t>(temp_int);
+#endif
+    }
+
+    void string_t_dict_entry(char const *str, GvoxOffset3D &offset) {
+#if USE_WASM_FIX
+        auto s = std::string{str};
+        size_t pos = 0;
+        size_t count = 0;
+        while ((pos = s.find(' ')) != std::string::npos) {
+            auto token = s.substr(0, pos);
+            switch (count) {
+            case 0: offset.x = atoi(token.c_str()); break;
+            case 1: offset.y = atoi(token.c_str()); break;
+            case 2: offset.z = atoi(token.c_str()); break;
+            }
+            s.erase(0, pos + 1);
+            ++count;
+        }
+#else
+        auto ss = std::stringstream{};
+        ss.str(str);
+        ss >> offset.x >> offset.y >> offset.z;
+#endif
+    }
+
+    void string_color_dict_entry(char const *str, uint32_t &r, uint32_t &g, uint32_t &b) {
+#if USE_WASM_FIX
+        auto s = std::string{str};
+        size_t pos = 0;
+        size_t count = 0;
+        while ((pos = s.find(' ')) != std::string::npos) {
+            auto token = s.substr(0, pos);
+            switch (count) {
+            case 0: r = atoi(token.c_str()); break;
+            case 1: g = atoi(token.c_str()); break;
+            case 2: b = atoi(token.c_str()); break;
+            }
+            s.erase(0, pos + 1);
+            ++count;
+        }
+#else
+        auto ss = std::stringstream{};
+        ss.str(str);
+        ss >> r >> g >> b;
+#endif
+    }
 } // namespace magicavoxel
 
 struct MagicavoxelParseUserState {
@@ -704,17 +765,11 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 auto &trn = user_state.transform_keyframes[result_transform.keyframe_offset + i].transform;
                 const auto *r_str = temp_dict.get<char const *>("_r", nullptr);
                 if (r_str != nullptr) {
-                    auto ss = std::stringstream{};
-                    ss.str(r_str);
-                    int32_t temp_int = 0;
-                    ss >> temp_int;
-                    trn.rotation = static_cast<int8_t>(temp_int);
+                    magicavoxel::string_r_dict_entry(r_str, trn.rotation);
                 }
                 const auto *t_str = temp_dict.get<char const *>("_t", nullptr);
                 if (t_str != nullptr) {
-                    auto ss = std::stringstream{};
-                    ss.str(t_str);
-                    ss >> trn.offset.x >> trn.offset.y >> trn.offset.z;
+                    magicavoxel::string_t_dict_entry(t_str, trn.offset);
                 }
                 user_state.transform_keyframes[result_transform.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
             }
@@ -797,9 +852,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 uint32_t r = 0;
                 uint32_t g = 0;
                 uint32_t b = 0;
-                auto ss = std::stringstream{};
-                ss.str(color_string);
-                ss >> r >> g >> b;
+                magicavoxel::string_color_dict_entry(color_string, r, g, b);
                 result_layer.color.r = static_cast<uint8_t>(r);
                 result_layer.color.g = static_cast<uint8_t>(g);
                 result_layer.color.b = static_cast<uint8_t>(b);
@@ -901,6 +954,18 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         } break;
         }
     }
+
+    if (temp_scene_info.node_infos.empty()) {
+        for (size_t model_i = 0; model_i < user_state.scene.models.size(); ++model_i) {
+            temp_scene_info.node_infos.push_back(magicavoxel::SceneShapeInfo{
+                .model_id = static_cast<uint32_t>(model_i),
+                .num_keyframes = 1,
+                .keyframe_offset = 0,
+                .loop = false,
+            });
+        }
+    }
+
     if (!temp_scene_info.node_infos.empty()) {
         user_state.scene.bvh_nodes.push_back({});
         auto &root_node = user_state.scene.bvh_nodes[0];
@@ -916,6 +981,8 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
         };
         construct_scene(user_state.scene, temp_scene_info, 0, 0, {}, root_node.aabb_min, root_node.aabb_max);
         construct_scene_bvh(user_state.scene);
+    } else {
+        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER, "Somehow there were no scene nodes parsed from this model. Please let us know in the gvox GitHub issues what to do to reproduce this bug");
     }
 }
 

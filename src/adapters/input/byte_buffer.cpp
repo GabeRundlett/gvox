@@ -2,7 +2,7 @@
 #include <gvox/adapters/input/byte_buffer.h>
 
 #include <cstdlib>
-#include <cstring>
+#include <cstdint>
 
 #include <vector>
 #include <new>
