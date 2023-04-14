@@ -4,8 +4,6 @@ file(WRITE ${CMAKE_BINARY_DIR}/config.cmake.in [=[
 @PACKAGE_INIT@
 include(${CMAKE_CURRENT_LIST_DIR}/gvox-targets.cmake)
 check_required_components(gvox)
-
-set(GVOX_FORMATS @GVOX_FORMATS@)
 ]=])
 
 configure_package_config_file(${CMAKE_BINARY_DIR}/config.cmake.in

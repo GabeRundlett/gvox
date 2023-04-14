@@ -9,7 +9,7 @@ if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
-project(gvox VERSION 1.2.6)
+project(gvox VERSION 2.0.0)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -36,32 +36,38 @@ if(GVOX_ENABLE_STATIC_ANALYSIS)
     endif()
 endif()
 
-set(GVOX_INPUT_ADAPTERS
-    "byte_buffer"
-)
-set(GVOX_OUTPUT_ADAPTERS
-    "byte_buffer"
-)
-set(GVOX_PARSE_ADAPTERS
-    "gvox_raw"
-    "gvox_palette"
-    "voxlap"
-    "magicavoxel"
-    "goxel"
-)
-set(GVOX_SERIALIZE_ADAPTERS
-    "gvox_raw"
-    "gvox_palette"
-    "colored_text"
-)
-
 if(GVOX_BUILD_FOR_JAVA)
     set(BUILD_SHARED_LIBS ON)
 endif()
 
 add_library(${PROJECT_NAME}
     "src/gvox.cpp"
+    "src/deps.cpp"
+    "src/io_adapters/byte_buffer.cpp"
+    "src/containers/image.cpp"
+    "src/containers/colored_text.cpp"
 )
+
+set(GVOX_IO_ADAPTERS
+    "file"
+    "byte_buffer"
+)
+
+set(GVOX_CONTAINERS
+    "image"
+    "colored_text"
+)
+
+# find_package(freeimage CONFIG REQUIRED)
+# target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
+
+find_package(Eigen3 CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Eigen3::Eigen)
+
+find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
+target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
+
+include("cmake/gvox_standard_functions.cmake")
 
 if(GVOX_ENABLE_THREADSAFETY)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=1)
@@ -126,8 +132,7 @@ endif()
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    list(APPEND GVOX_INPUT_ADAPTERS "file")
-    list(APPEND GVOX_OUTPUT_ADAPTERS "file" "stdout")
+    # list(APPEND GVOX_IO_ADAPTERS "file" "console")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()
@@ -142,8 +147,6 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 set_project_warnings(${PROJECT_NAME})
-
-include("cmake/adapters.cmake")
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS

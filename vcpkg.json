@@ -1,10 +1,11 @@
 {
   "name": "gvox",
-  "version-semver": "1.2.6",
+  "version-semver": "2.0.0",
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
-    "pffft"
+    "stb",
+    "eigen3"
   ],
   "features": {
     "file-io": {
