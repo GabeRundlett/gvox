@@ -43,19 +43,33 @@ endif()
 add_library(${PROJECT_NAME}
     "src/gvox.cpp"
     "src/deps.cpp"
-    "src/io_adapters/byte_buffer.cpp"
-    "src/containers/image.cpp"
-    "src/containers/colored_text.cpp"
 )
 
-set(GVOX_IO_ADAPTERS
+set(GVOX_INPUT_STREAMS
     "file"
     "byte_buffer"
 )
 
-set(GVOX_CONTAINERS
+set(GVOX_OUTPUT_STREAMS
+    "stdout"
+)
+
+set(GVOX_PARSERS
     "image"
+)
+
+set(GVOX_SERIALIZERS
     "colored_text"
+)
+
+set(GVOX_PARSE_ADAPTERS
+)
+
+set(GVOX_SERIALIZE_ADAPTERS
+)
+
+set(GVOX_CONTAINERS
+    "raw"
 )
 
 # find_package(freeimage CONFIG REQUIRED)
@@ -132,7 +146,7 @@ endif()
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    # list(APPEND GVOX_IO_ADAPTERS "file" "console")
+    # list(APPEND GVOX_INPUT_STREAMS "file" "console")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()
