@@ -39,4 +39,27 @@ cmake --preset=gcc-x86_64-linux-gnu
 cmake --build --preset=gcc-x86_64-linux-gnu-debug
 ```
 
-The plan in the future is to have language bindings accessible to as many languages I can
+### WASM
+Building for WASM is a little more involved. There are two methods, the Wasi SDK or Emscripten.
+
+#### Wasi SDK
+Install the Wasi SDK from [here](https://github.com/WebAssembly/wasi-sdk/releases). For Windows, that means downloading the MinGW build of it, and adding the environment variable `WASI_SDK_PATH` to be the extracted folder containing `bin/` `lib/` and `share/`.
+
+TODO: when the library has any dependencies, it must be the case that a Wasi community triplet is added to vcpkg
+
+Once that's done and your environment is successfully refreshed in your terminal - you can run CMake normally:
+```
+cmake --preset=wasi-wasm32-unknown-unknown
+cmake --build --preset=wasi-wasm32-unknown-unknown-debug
+```
+
+#### Emscripten
+Install emscripten by following [the instructions on their website](https://emscripten.org/docs/getting_started/downloads.html). (On Windows, you may need to add the `EMSDK` environment variable manually, because I don't know a better way).
+
+Again, once your environment is successfully refreshed, you can just run CMake normally:
+```
+cmake --preset=emscripten-wasm32-unknown-unknown
+cmake --build --preset=emscripten-wasm32-unknown-unknown-debug
+```
+
+The plan in the future is to have language bindings accessible to as many languages I can.
