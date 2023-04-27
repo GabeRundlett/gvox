@@ -47,11 +47,21 @@ set(GVOX_PARSE_ADAPTERS
     "gvox_palette"
     "voxlap"
     "magicavoxel"
+
+    "run_length_encoding"
+    "octree"
+    "global_palette"
+    "brickmap"
 )
 set(GVOX_SERIALIZE_ADAPTERS
     "gvox_raw"
     "gvox_palette"
     "colored_text"
+
+    "run_length_encoding"
+    "octree"
+    "global_palette"
+    "brickmap"
 )
 
 if(GVOX_BUILD_FOR_JAVA)

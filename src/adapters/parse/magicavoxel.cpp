@@ -343,9 +343,9 @@ namespace magicavoxel {
             auto pos = s.find(' ');
             auto token = s.substr(0, pos);
             switch (count) {
-            case 0: r = atoi(token.c_str()); break;
-            case 1: g = atoi(token.c_str()); break;
-            case 2: b = atoi(token.c_str()); break;
+            case 0: r = static_cast<uint32_t>(atoi(token.c_str())); break;
+            case 1: g = static_cast<uint32_t>(atoi(token.c_str())); break;
+            case 2: b = static_cast<uint32_t>(atoi(token.c_str())); break;
             }
             s.erase(0, pos + 1);
         }

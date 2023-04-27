@@ -5,7 +5,7 @@
 #include <cmath>
 #include <array>
 
-#define SIMPLE_TERRAIN 1
+#define SIMPLE_TERRAIN 0
 
 auto stable_rand(float x) -> float { return fmod(sin(x * (91.3458f)) * 47453.5453f, 1.0f); }
 auto stable_rand(float x, float y) -> float { return fmod(sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f); }
@@ -122,8 +122,8 @@ extern "C" auto procedural_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapt
         }
         int si = 0;
         for (si = 0; si < 16; ++si) {
-            float const sval = sample_terrain_i(offset->x, offset->y, offset->z + si);
-            if (sval < -0.0f) {
+            float const s_val = sample_terrain_i(offset->x, offset->y, offset->z + si);
+            if (s_val < -0.0f) {
                 break;
             }
         }
