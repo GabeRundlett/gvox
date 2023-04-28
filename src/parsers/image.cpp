@@ -1,7 +1,7 @@
 #include <gvox/gvox.h>
 #include <gvox/parsers/image.h>
 
-#include <stb_image.h>
+#include <FreeImage.h>
 
 #include <iostream>
 #include <iomanip>
@@ -9,7 +9,7 @@
 #include <span>
 
 struct Pixel {
-    uint8_t r, g, b, a;
+    uint8_t b, g, r, a;
 };
 
 struct GvoxImageParser {
@@ -60,34 +60,41 @@ auto GvoxImageParser::blit_emit_regions_in_range() -> GvoxResult {
 }
 
 auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
-    stbi_io_callbacks callbacks;
-    callbacks.read = [](void *user, char *data, int size) -> int {
-        auto *input_stream = static_cast<GvoxInputStream>(user);
-        gvox_input_read(input_stream, reinterpret_cast<uint8_t *>(data), static_cast<size_t>(size));
-        return size;
+    auto io = FreeImageIO{
+        .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
+            gvox_input_read(static_cast<GvoxInputStream>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
+            return size;
+        },
+        .write_proc = [](void *, unsigned, unsigned, fi_handle) -> unsigned {
+            return 0;
+        },
+        .seek_proc = [](fi_handle handle, long offset, int origin) -> int {
+            return gvox_input_seek(static_cast<GvoxInputStream>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
+        },
+        .tell_proc = [](fi_handle handle) -> long {
+            return gvox_input_tell(static_cast<GvoxInputStream>(handle));
+        },
     };
-    callbacks.skip = [](void *user, int n) {
-        auto *input_stream = static_cast<GvoxInputStream>(user);
-        gvox_input_seek(input_stream, n, GVOX_SEEK_ORIGIN_CUR);
-    };
-    callbacks.eof = [](void *) -> int {
-        // No need to do anything
-        return 0;
-    };
-    int read_size_x = 0;
-    int read_size_y = 0;
-    int read_comp = 0;
-    auto *data = stbi_load_from_callbacks(&callbacks, input_stream, &read_size_x, &read_size_y, &read_comp, 4);
-    if (data == nullptr) {
-        // Failed to load the texture
+
+    FREE_IMAGE_FORMAT fi_format = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_stream), 0);
+    if (fi_format == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
-
-    size_x = static_cast<uint32_t>(read_size_x);
-    size_y = static_cast<uint32_t>(read_size_y);
+    FIBITMAP *fi_bitmap = FreeImage_LoadFromHandle(fi_format, &io, static_cast<fi_handle>(input_stream));
+    if (fi_bitmap == nullptr) {
+        // Failed to load the image
+        return GVOX_ERROR_UNKNOWN;
+    }
+    size_x = FreeImage_GetWidth(fi_bitmap);
+    size_y = FreeImage_GetHeight(fi_bitmap);
+    auto data = FreeImage_GetBits(fi_bitmap);
+    if (data == nullptr) {
+        // Failed to load the image
+        return GVOX_ERROR_UNKNOWN;
+    }
     pixels = std::vector(reinterpret_cast<Pixel *>(data), reinterpret_cast<Pixel *>(data) + static_cast<size_t>(size_x * size_y));
 
-    stbi_image_free(data);
+    FreeImage_Unload(fi_bitmap);
     return GVOX_SUCCESS;
 }
 

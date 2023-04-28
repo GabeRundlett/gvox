@@ -55,8 +55,8 @@ typedef enum GvoxStructType {
 
 typedef enum GvoxSeekOrigin {
     GVOX_SEEK_ORIGIN_BEG,
-    GVOX_SEEK_ORIGIN_END,
     GVOX_SEEK_ORIGIN_CUR,
+    GVOX_SEEK_ORIGIN_END,
 } GvoxSeekOrigin;
 
 typedef union GvoxTranslation {
@@ -180,6 +180,7 @@ typedef struct GvoxInputStreamDescription {
     GvoxResult (*create)(void **, GvoxInputStreamCreateCbArgs const *);
     GvoxResult (*read)(void *, uint8_t *, size_t);
     GvoxResult (*seek)(void *, long, GvoxSeekOrigin);
+    long (*tell)(void *);
     void (*destroy)(void *);
 } GvoxInputStreamDescription;
 
@@ -187,6 +188,7 @@ typedef struct GvoxOutputStreamDescription {
     GvoxResult (*create)(void **, GvoxOutputStreamCreateCbArgs const *);
     GvoxResult (*write)(void *, uint8_t *, size_t);
     GvoxResult (*seek)(void *, long, GvoxSeekOrigin);
+    long (*tell)(void *);
     void (*destroy)(void *);
 } GvoxOutputStreamDescription;
 
@@ -314,18 +316,11 @@ GvoxResult GVOX_EXPORT gvox_blit(GvoxBlitInfo const *info);
 
 GvoxResult GVOX_EXPORT gvox_input_read(GvoxInputStream handle, uint8_t *data, size_t size);
 GvoxResult GVOX_EXPORT gvox_input_seek(GvoxInputStream handle, long offset, GvoxSeekOrigin origin);
+long GVOX_EXPORT gvox_input_tell(GvoxInputStream handle);
 
 GvoxResult GVOX_EXPORT gvox_output_write(GvoxOutputStream handle, uint8_t *data, size_t size);
 GvoxResult GVOX_EXPORT gvox_output_seek(GvoxOutputStream handle, long offset, GvoxSeekOrigin origin);
-
-// Utilities
-
-GvoxTransform GVOX_EXPORT gvox_identity_transform(uint32_t dimension);
-GvoxTransform GVOX_EXPORT gvox_inverse_transform(GvoxTransform const *transform);
-GvoxTranslation GVOX_EXPORT gvox_apply_transform(GvoxTransform const *transform, GvoxTranslation point);
-void GVOX_EXPORT gvox_translate(GvoxTransform *transform, GvoxTranslation trn);
-void GVOX_EXPORT gvox_rotate(GvoxTransform *transform, GvoxRotation rot);
-void GVOX_EXPORT gvox_scale(GvoxTransform *transform, GvoxScale scl);
+long GVOX_EXPORT gvox_output_tell(GvoxOutputStream handle);
 
 #undef GVOX_DEFINE_HANDLE
 

@@ -40,6 +40,11 @@ auto gvox_output_stream_stdout_seek(void * /*unused*/, long /*unused*/, GvoxSeek
     return GVOX_ERROR_UNKNOWN;
 }
 
+auto gvox_output_stream_stdout_tell(void *self) -> long {
+    assert(false && "Why are you trying to seek in stdout?!");
+    return GVOX_ERROR_UNKNOWN;
+}
+
 void gvox_output_stream_stdout_destroy(void *self) {
     std::cout << std::flush;
     delete static_cast<GvoxStdoutOutputStream *>(self);

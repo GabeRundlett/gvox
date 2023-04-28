@@ -12,6 +12,7 @@ struct GvoxByteBufferOutputStream {
 
     auto write(uint8_t *data, size_t size) -> GvoxResult;
     auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto tell() -> long;
 };
 
 GvoxByteBufferOutputStream::GvoxByteBufferOutputStream(GvoxByteBufferOutputStreamConfig const &config) {
@@ -40,6 +41,10 @@ auto GvoxByteBufferOutputStream::seek(long offset, GvoxSeekOrigin origin) -> Gvo
     return GVOX_SUCCESS;
 }
 
+auto GvoxByteBufferOutputStream::tell() -> long {
+    return current_read_head;
+}
+
 GvoxResult gvox_output_stream_byte_buffer_create(void **self, GvoxOutputStreamCreateCbArgs const *args) {
     GvoxByteBufferOutputStreamConfig config;
     if (args->config) {
@@ -57,6 +62,10 @@ GvoxResult gvox_output_stream_byte_buffer_write(void *self, uint8_t *data, size_
 
 GvoxResult gvox_output_stream_byte_buffer_seek(void *self, long offset, GvoxSeekOrigin origin) {
     return static_cast<GvoxByteBufferOutputStream *>(self)->seek(offset, origin);
+}
+
+auto gvox_output_stream_byte_stream_tell(void *self) -> long {
+    return static_cast<GvoxByteBufferOutputStream *>(self)->tell();
 }
 
 void gvox_output_stream_byte_buffer_destroy(void *self) {

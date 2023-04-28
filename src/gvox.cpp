@@ -1,8 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox_standard_functions.hpp>
 
-#include "types.hpp"
-
 #include <vector>
 
 #define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
@@ -121,19 +119,19 @@ auto gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *h
 
 #undef HANDLE_CREATE
 
-#define HANDLE_DESTROY(handle) \
-    if (handle != nullptr)     \
-    delete handle
+namespace {
+    inline void destroy_handle(auto *handle) {
+        delete handle;
+    }
+} // namespace
 
-void gvox_destroy_input_stream(GvoxInputStream handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_output_stream(GvoxOutputStream handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_input_adapter(GvoxInputAdapter handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_output_adapter(GvoxOutputAdapter handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_parser(GvoxParser handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_serializer(GvoxSerializer handle) { HANDLE_DESTROY(handle); }
-void gvox_destroy_container(GvoxContainer handle) { HANDLE_DESTROY(handle); }
-
-#undef HANDLE_DESTROY
+void gvox_destroy_input_stream(GvoxInputStream handle) { destroy_handle(handle); }
+void gvox_destroy_output_stream(GvoxOutputStream handle) { destroy_handle(handle); }
+void gvox_destroy_input_adapter(GvoxInputAdapter handle) { destroy_handle(handle); }
+void gvox_destroy_output_adapter(GvoxOutputAdapter handle) { destroy_handle(handle); }
+void gvox_destroy_parser(GvoxParser handle) { destroy_handle(handle); }
+void gvox_destroy_serializer(GvoxSerializer handle) { destroy_handle(handle); }
+void gvox_destroy_container(GvoxContainer handle) { destroy_handle(handle); }
 
 #define HANDLE_GET_DESC(type, Type, TYPE)                                                                                                                       \
     auto name_str = std::string_view{name};                                                                                                                     \
@@ -173,6 +171,9 @@ auto gvox_input_read(GvoxInputStream handle, uint8_t *data, size_t size) -> Gvox
 auto gvox_input_seek(GvoxInputStream handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
     return handle->desc.seek(handle->self, offset, origin);
 }
+auto gvox_input_tell(GvoxInputStream handle) -> long {
+    return handle->desc.tell(handle->self);
+}
 
 auto gvox_output_write(GvoxOutputStream handle, uint8_t *data, size_t size) -> GvoxResult {
     return handle->desc.write(handle->self, data, size);
@@ -180,217 +181,6 @@ auto gvox_output_write(GvoxOutputStream handle, uint8_t *data, size_t size) -> G
 auto gvox_output_seek(GvoxOutputStream handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
     return handle->desc.seek(handle->self, offset, origin);
 }
-
-// Utilities
-
-using namespace gvox::types;
-
-auto gvox_identity_transform(uint32_t dimension) -> GvoxTransform {
-    auto result = GvoxTransform{.dimension_n = dimension};
-    switch (dimension) {
-    case 2: {
-        auto &mat = *reinterpret_cast<f32mat2x3 *>(&result.data);
-        mat = f32mat2x3{
-            {1.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f},
-        };
-    } break;
-    case 3: {
-        auto &mat = *reinterpret_cast<f32mat3x4 *>(&result.data);
-        mat = f32mat3x4{
-            {1.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 1.0f, 0.0f},
-        };
-    } break;
-    case 4: {
-        auto &mat = *reinterpret_cast<f32mat4x5 *>(&result.data);
-        mat = f32mat4x5{
-            {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-        };
-    } break;
-    }
-    return result;
-}
-auto gvox_inverse_transform(GvoxTransform const *transform) -> GvoxTransform {
-    auto result = GvoxTransform{.dimension_n = transform->dimension_n};
-    switch (transform->dimension_n) {
-    case 2: {
-        const auto &mat = *reinterpret_cast<f32mat2x3 const *>(transform->data);
-        auto &ret = *reinterpret_cast<f32mat2x3 *>(&result.data);
-        auto m = gvox::extend<float, 3, 3>(mat);
-        m(2, 2) = 1;
-        ret = gvox::truncate<float, 2, 3>(f32mat3x3(m.inverse()));
-    } break;
-    case 3: {
-        const auto &mat = *reinterpret_cast<f32mat3x4 const *>(transform->data);
-        auto &ret = *reinterpret_cast<f32mat3x4 *>(&result.data);
-        auto m = gvox::extend<float, 4, 4>(mat);
-        m(3, 3) = 1;
-        ret = gvox::truncate<float, 3, 4>(f32mat4x4(m.inverse()));
-    } break;
-    case 4: {
-        const auto &mat = *reinterpret_cast<f32mat4x5 const *>(transform->data);
-        auto &ret = *reinterpret_cast<f32mat4x5 *>(&result.data);
-        auto m = gvox::extend<float, 5, 5>(mat);
-        m(4, 4) = 1;
-        ret = gvox::truncate<float, 4, 5>(f32mat5x5(m.inverse()));
-    } break;
-    }
-    return result;
-}
-auto gvox_apply_transform(GvoxTransform const *transform, GvoxTranslation point) -> GvoxTranslation {
-    GvoxTranslation result = point;
-    switch (transform->dimension_n) {
-    case 2: {
-        auto &vec = *reinterpret_cast<f32vec2 *>(&result);
-        const auto &mat = *reinterpret_cast<f32mat2x3 const *>(transform->data);
-        auto m = gvox::extend<float, 3, 3>(mat);
-        m(2, 2) = 1;
-        auto v = m *f32vec3{vec.x(), vec.y(), 1.0f};
-        vec = f32vec2{v.x(), v.y()};
-    } break;
-    case 3: {
-        auto &vec = *reinterpret_cast<f32vec3 *>(&result);
-        const auto &mat = *reinterpret_cast<f32mat3x4 const *>(transform->data);
-        auto m = gvox::extend<float, 4, 4>(mat);
-        m(3, 3) = 1;
-        auto v = m *f32vec4{vec.x(), vec.y(), vec.z(), 1.0f};
-        vec = f32vec3{v.x(), v.y(), v.z()};
-    } break;
-    case 4: {
-        auto &vec = *reinterpret_cast<f32vec4 *>(&result);
-        const auto &mat = *reinterpret_cast<f32mat4x5 const *>(transform->data);
-        auto m = gvox::extend<float, 5, 5>(mat);
-        m(4, 4) = 1;
-        auto v = m *f32vec5{vec.x(), vec.y(), vec.z(), vec.w(), 1.0f};
-        vec = f32vec4{v.x(), v.y(), v.z(), v.w()};
-    } break;
-    }
-    return result;
-}
-void gvox_translate(GvoxTransform *transform, GvoxTranslation t) {
-    switch (transform->dimension_n) {
-    case 2: {
-        auto &mat = *reinterpret_cast<f32mat2x3 *>(transform->data);
-        auto m = gvox::extend<float, 3, 3>(mat);
-        m(2, 2) = 1;
-        auto translation = f32mat3x3{
-            {1.0f, 0.0f, t.data[0]},
-            {0.0f, 1.0f, t.data[1]},
-            {0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 2, 3>(f32mat3x3(m * translation));
-    } break;
-    case 3: {
-        auto &mat = *reinterpret_cast<f32mat3x4 *>(transform->data);
-        auto m = gvox::extend<float, 4, 4>(mat);
-        m(3, 3) = 1;
-        auto translation = f32mat4x4{
-            {1.0f, 0.0f, 0.0f, t.data[0]},
-            {0.0f, 1.0f, 0.0f, t.data[1]},
-            {0.0f, 0.0f, 1.0f, t.data[2]},
-            {0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 3, 4>(f32mat4x4(m * translation));
-    } break;
-    case 4: {
-        auto &mat = *reinterpret_cast<f32mat4x5 *>(transform->data);
-        auto m = gvox::extend<float, 5, 5>(mat);
-        m(4, 4) = 1;
-        auto translation = f32mat5x5{
-            {1.0f, 0.0f, 0.0f, 0.0f, t.data[0]},
-            {0.0f, 1.0f, 0.0f, 0.0f, t.data[1]},
-            {0.0f, 0.0f, 1.0f, 0.0f, t.data[2]},
-            {0.0f, 0.0f, 0.0f, 1.0f, t.data[3]},
-            {0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 4, 5>(f32mat5x5(m * translation));
-    } break;
-    }
-}
-void gvox_rotate(GvoxTransform *transform, GvoxRotation t) {
-    switch (transform->dimension_n) {
-    case 2: {
-        auto &mat = *reinterpret_cast<f32mat2x3 *>(transform->data);
-        auto m = gvox::extend<float, 3, 3>(mat);
-        m(2, 2) = 1;
-        auto cosx = std::cos(t.data[0]);
-        auto sinx = std::sin(t.data[0]);
-        auto translation = f32mat3x3{
-            {cosx, -sinx, 0.0f},
-            {sinx, cosx, 0.0f},
-            {0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 2, 3>(f32mat3x3(m * translation));
-    } break;
-    case 3: {
-        auto &mat = *reinterpret_cast<f32mat3x4 *>(transform->data);
-        auto m = gvox::extend<float, 4, 4>(mat);
-        m(3, 3) = 1;
-        auto translation = f32mat4x4{
-            {1.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 1.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 3, 4>(f32mat4x4(m * translation));
-    } break;
-    case 4: {
-        auto &mat = *reinterpret_cast<f32mat4x5 *>(transform->data);
-        auto m = gvox::extend<float, 5, 5>(mat);
-        m(4, 4) = 1;
-        auto translation = f32mat5x5{
-            {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 4, 5>(f32mat5x5(m * translation));
-    } break;
-    }
-}
-void gvox_scale(GvoxTransform *transform, GvoxScale t) {
-    switch (transform->dimension_n) {
-    case 2: {
-        auto &mat = *reinterpret_cast<f32mat2x3 *>(transform->data);
-        auto m = gvox::extend<float, 3, 3>(mat);
-        m(2, 2) = 1;
-        auto translation = f32mat3x3{
-            {t.data[0], 0.0f, 0.0f},
-            {0.0f, t.data[1], 0.0f},
-            {0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 2, 3>(f32mat3x3(m * translation));
-    } break;
-    case 3: {
-        auto &mat = *reinterpret_cast<f32mat3x4 *>(transform->data);
-        auto m = gvox::extend<float, 4, 4>(mat);
-        m(3, 3) = 1;
-        auto translation = f32mat4x4{
-            {t.data[0], 0.0f, 0.0f, 0.0f},
-            {0.0f, t.data[1], 0.0f, 0.0f},
-            {0.0f, 0.0f, t.data[2], 0.0f},
-            {0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 3, 4>(f32mat4x4(m * translation));
-    } break;
-    case 4: {
-        auto &mat = *reinterpret_cast<f32mat4x5 *>(transform->data);
-        auto m = gvox::extend<float, 5, 5>(mat);
-        m(4, 4) = 1;
-        auto translation = f32mat5x5{
-            {t.data[0], 0.0f, 0.0f, 0.0f, 0.0f},
-            {0.0f, t.data[1], 0.0f, 0.0f, 0.0f},
-            {0.0f, 0.0f, t.data[2], 0.0f, 0.0f},
-            {0.0f, 0.0f, 0.0f, t.data[3], 0.0f},
-            {0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-        };
-        mat = gvox::truncate<float, 4, 5>(f32mat5x5(m * translation));
-    } break;
-    }
+auto gvox_output_seek(GvoxOutputStream handle) -> long {
+    return handle->desc.tell(handle->self);
 }

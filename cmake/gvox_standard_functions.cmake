@@ -21,6 +21,7 @@ foreach(NAME ${GVOX_INPUT_STREAMS})
     auto gvox_input_stream_${NAME}_create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult;
     auto gvox_input_stream_${NAME}_read(void *self, uint8_t *data, size_t size) -> GvoxResult;
     auto gvox_input_stream_${NAME}_seek(void *self, long offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto gvox_input_stream_${NAME}_tell(void *self) -> long;
     void gvox_input_stream_${NAME}_destroy(void *self);
     ")
     set(INPUT_STREAM_INFOS_CONTENT "${INPUT_STREAM_INFOS_CONTENT}
@@ -30,6 +31,7 @@ foreach(NAME ${GVOX_INPUT_STREAMS})
             .create  = gvox_input_stream_${NAME}_create,
             .read    = gvox_input_stream_${NAME}_read,
             .seek    = gvox_input_stream_${NAME}_seek,
+            .tell    = gvox_input_stream_${NAME}_tell,
             .destroy = gvox_input_stream_${NAME}_destroy,
         },
     },")
@@ -41,6 +43,7 @@ foreach(NAME ${GVOX_OUTPUT_STREAMS})
     auto gvox_output_stream_${NAME}_create(void **self, GvoxOutputStreamCreateCbArgs const *) -> GvoxResult;
     auto gvox_output_stream_${NAME}_write(void *self, uint8_t *data, size_t size) -> GvoxResult;
     auto gvox_output_stream_${NAME}_seek(void *self, long offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto gvox_output_stream_${NAME}_tell(void *self) -> long;
     void gvox_output_stream_${NAME}_destroy(void *self);
     ")
     set(OUTPUT_STREAM_INFOS_CONTENT "${OUTPUT_STREAM_INFOS_CONTENT}
@@ -50,6 +53,7 @@ foreach(NAME ${GVOX_OUTPUT_STREAMS})
             .create  = gvox_output_stream_${NAME}_create,
             .write   = gvox_output_stream_${NAME}_write,
             .seek    = gvox_output_stream_${NAME}_seek,
+            .tell    = gvox_output_stream_${NAME}_tell,
             .destroy = gvox_output_stream_${NAME}_destroy,
         },
     },")

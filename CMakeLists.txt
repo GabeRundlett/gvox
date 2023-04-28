@@ -42,7 +42,6 @@ endif()
 
 add_library(${PROJECT_NAME}
     "src/gvox.cpp"
-    "src/deps.cpp"
 )
 
 set(GVOX_INPUT_STREAMS
@@ -74,14 +73,8 @@ set(GVOX_CONTAINERS
     "raw"
 )
 
-# find_package(freeimage CONFIG REQUIRED)
-# target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
-
-find_package(Eigen3 CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Eigen3::Eigen)
-
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
-target_include_directories(${PROJECT_NAME} PRIVATE ${STB_INCLUDE_DIRS})
+find_package(freeimage CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
 
 include("cmake/gvox_standard_functions.cmake")
 

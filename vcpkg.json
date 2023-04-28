@@ -4,8 +4,7 @@
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
-    "stb",
-    "eigen3"
+    "freeimage"
   ],
   "features": {
     "file-io": {
