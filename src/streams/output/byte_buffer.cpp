@@ -40,10 +40,10 @@ auto GvoxByteBufferOutputStream::seek(long offset, GvoxSeekOrigin origin) -> Gvo
     return GVOX_SUCCESS;
 }
 
-GvoxResult gvox_output_stream_byte_buffer_create(void **self, void const *config_ptr) {
+GvoxResult gvox_output_stream_byte_buffer_create(void **self, GvoxOutputStreamCreateCbArgs const *args) {
     GvoxByteBufferOutputStreamConfig config;
-    if (config_ptr) {
-        config = *static_cast<GvoxByteBufferOutputStreamConfig const *>(config_ptr);
+    if (args->config) {
+        config = *static_cast<GvoxByteBufferOutputStreamConfig const *>(args->config);
     } else {
         config = {};
     }

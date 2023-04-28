@@ -6,24 +6,24 @@
 #include <cassert>
 
 struct GvoxStdoutOutputStream {
-    GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const &config);
+    explicit GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const &config);
 
-    auto write(uint8_t *data, size_t size) -> GvoxResult;
+    static auto write(uint8_t *data, size_t size) -> GvoxResult;
 };
 
-GvoxStdoutOutputStream::GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const &) {
+GvoxStdoutOutputStream::GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const & /*unused*/) {
 }
 
 auto GvoxStdoutOutputStream::write(uint8_t *data, size_t size) -> GvoxResult {
-    auto chars = reinterpret_cast<char *>(data);
+    auto *chars = reinterpret_cast<char *>(data);
     std::cout << std::string_view{chars, chars + size};
     return GVOX_SUCCESS;
 }
 
-GvoxResult gvox_output_stream_stdout_create(void **self, void const *config_ptr) {
+auto gvox_output_stream_stdout_create(void **self, GvoxOutputStreamCreateCbArgs const *args) -> GvoxResult {
     GvoxStdoutOutputStreamConfig config;
-    if (config_ptr) {
-        config = *static_cast<GvoxStdoutOutputStreamConfig const *>(config_ptr);
+    if (args->config != nullptr) {
+        config = *static_cast<GvoxStdoutOutputStreamConfig const *>(args->config);
     } else {
         config = {};
     }
@@ -31,12 +31,12 @@ GvoxResult gvox_output_stream_stdout_create(void **self, void const *config_ptr)
     return GVOX_SUCCESS;
 }
 
-GvoxResult gvox_output_stream_stdout_write(void *self, uint8_t *data, size_t size) {
+auto gvox_output_stream_stdout_write(void *self, uint8_t *data, size_t size) -> GvoxResult {
     return static_cast<GvoxStdoutOutputStream *>(self)->write(data, size);
 }
 
-GvoxResult gvox_output_stream_stdout_seek(void *, long, GvoxSeekOrigin) {
-    assert(false && "Bruh");
+auto gvox_output_stream_stdout_seek(void * /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
+    assert(false && "Why are you trying to seek in stdout?!");
     return GVOX_ERROR_UNKNOWN;
 }
 

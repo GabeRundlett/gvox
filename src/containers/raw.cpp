@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 #include <new>
+#include <map>
 
 static constexpr auto CHUNK_SIZE = size_t{64};
 static constexpr auto VOXELS_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -17,13 +18,13 @@ struct Chunk {
 
 struct GvoxRawContainer {
     // GvoxRegionRange range{};
-    // std::map<std::array<int32_t, 3>, Chunk> chunks{};
+    std::map<std::array<int32_t, 3>, Chunk> chunks{};
 };
 
-auto gvox_container_raw_create(void **self, void const *config_ptr) -> GvoxResult {
+auto gvox_container_raw_create(void **self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
     GvoxRawContainerConfig config;
-    if (config_ptr) {
-        config = *static_cast<GvoxRawContainerConfig const *>(config_ptr);
+    if (args->config != nullptr) {
+        config = *static_cast<GvoxRawContainerConfig const *>(args->config);
     } else {
         config = {};
     }

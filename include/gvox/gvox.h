@@ -12,15 +12,15 @@ extern "C" {
 #define GVOX_EXPORT
 #endif
 
-#define GVOX_DEFINE_HANDLE(NAME) typedef struct Gvox##NAME##_ImplT *Gvox##NAME
+#define GVOX_DEFINE_HANDLE(NAME) typedef struct NAME##_ImplT *NAME
 
-GVOX_DEFINE_HANDLE(InputStream);
-GVOX_DEFINE_HANDLE(OutputStream);
-GVOX_DEFINE_HANDLE(ParseAdapter);
-GVOX_DEFINE_HANDLE(SerializeAdapter);
-GVOX_DEFINE_HANDLE(Parser);
-GVOX_DEFINE_HANDLE(Serializer);
-GVOX_DEFINE_HANDLE(Container);
+GVOX_DEFINE_HANDLE(GvoxInputStream);
+GVOX_DEFINE_HANDLE(GvoxOutputStream);
+GVOX_DEFINE_HANDLE(GvoxInputAdapter);
+GVOX_DEFINE_HANDLE(GvoxOutputAdapter);
+GVOX_DEFINE_HANDLE(GvoxParser);
+GVOX_DEFINE_HANDLE(GvoxSerializer);
+GVOX_DEFINE_HANDLE(GvoxContainer);
 
 // Consumer API
 
@@ -29,8 +29,8 @@ typedef enum GvoxResult {
     GVOX_ERROR_UNKNOWN = -1,
     GVOX_ERROR_UNKNOWN_STANDARD_INPUT_STREAM = -2,
     GVOX_ERROR_UNKNOWN_STANDARD_OUTPUT_STREAM = -3,
-    GVOX_ERROR_UNKNOWN_STANDARD_PARSE_ADAPTER = -4,
-    GVOX_ERROR_UNKNOWN_STANDARD_SERIALIZE_ADAPTER = -5,
+    GVOX_ERROR_UNKNOWN_STANDARD_INPUT_ADAPTER = -4,
+    GVOX_ERROR_UNKNOWN_STANDARD_OUTPUT_ADAPTER = -5,
     GVOX_ERROR_UNKNOWN_STANDARD_PARSER = -6,
     GVOX_ERROR_UNKNOWN_STANDARD_SERIALIZER = -7,
     GVOX_ERROR_UNKNOWN_STANDARD_CONTAINER = -8,
@@ -44,14 +44,13 @@ typedef enum GvoxStructType {
     GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_INFO,
     GVOX_STRUCT_TYPE_PARSER_CREATE_INFO,
     GVOX_STRUCT_TYPE_SERIALIZER_CREATE_INFO,
-    GVOX_STRUCT_TYPE_PARSE_ADAPTER_CREATE_INFO,
-    GVOX_STRUCT_TYPE_SERIALIZE_ADAPTER_CREATE_INFO,
+    GVOX_STRUCT_TYPE_INPUT_ADAPTER_CREATE_INFO,
+    GVOX_STRUCT_TYPE_OUTPUT_ADAPTER_CREATE_INFO,
     GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
 
     GVOX_STRUCT_TYPE_PARSE_INFO,
     GVOX_STRUCT_TYPE_BLIT_INFO,
     GVOX_STRUCT_TYPE_SERIALIZE_INFO,
-    GVOX_STRUCT_TYPE_PARSE_CB_INFO,
 } GvoxStructType;
 
 typedef enum GvoxSeekOrigin {
@@ -86,12 +85,49 @@ typedef struct GvoxTransform {
     float data[25];
 } GvoxTransform;
 
-typedef struct GvoxParseCbInfo {
-    GvoxStructType type;
+typedef struct GvoxInputStreamCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    void const *config;
+} GvoxInputStreamCreateCbArgs;
+
+typedef struct GvoxOutputStreamCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    void const *config;
+} GvoxOutputStreamCreateCbArgs;
+
+typedef struct GvoxInputAdapterCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    void const *config;
+} GvoxInputAdapterCreateCbArgs;
+
+typedef struct GvoxOutputAdapterCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    void const *config;
+} GvoxOutputAdapterCreateCbArgs;
+
+typedef struct GvoxParserCreateCbArgs {
+    GvoxStructType struct_type; // implied?
     void const *next;
     GvoxInputStream input_stream;
-    GvoxTransform transform;
-} GvoxParseCbInfo;
+    void const *config;
+} GvoxParserCreateCbArgs;
+
+typedef struct GvoxSerializerCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    GvoxOutputStream output_stream;
+    void const *config;
+} GvoxSerializerCreateCbArgs;
+
+typedef struct GvoxContainerCreateCbArgs {
+    GvoxStructType struct_type; // implied?
+    void const *next;
+    void const *config;
+} GvoxContainerCreateCbArgs;
 
 #if 0
 typedef enum GvoxStorageFormat {
@@ -141,118 +177,106 @@ typedef struct GvoxExtent {
 // Adapter Descriptions
 
 typedef struct GvoxInputStreamDescription {
-    GvoxResult (*create)(void **, void const *);
+    GvoxResult (*create)(void **, GvoxInputStreamCreateCbArgs const *);
     GvoxResult (*read)(void *, uint8_t *, size_t);
     GvoxResult (*seek)(void *, long, GvoxSeekOrigin);
     void (*destroy)(void *);
 } GvoxInputStreamDescription;
 
 typedef struct GvoxOutputStreamDescription {
-    GvoxResult (*create)(void **, void const *);
+    GvoxResult (*create)(void **, GvoxOutputStreamCreateCbArgs const *);
     GvoxResult (*write)(void *, uint8_t *, size_t);
     GvoxResult (*seek)(void *, long, GvoxSeekOrigin);
     void (*destroy)(void *);
 } GvoxOutputStreamDescription;
 
-typedef struct GvoxParseAdapterDescription {
-    GvoxResult (*create)(void **, void const *);
+typedef struct GvoxInputAdapterDescription {
+    GvoxResult (*create)(void **, GvoxInputAdapterCreateCbArgs const *);
     void (*destroy)(void *);
-} GvoxParseAdapterDescription;
+} GvoxInputAdapterDescription;
 
-typedef struct GvoxSerializeAdapterDescription {
-    GvoxResult (*create)(void **, void const *);
+typedef struct GvoxOutputAdapterDescription {
+    GvoxResult (*create)(void **, GvoxOutputAdapterCreateCbArgs const *);
     void (*destroy)(void *);
-} GvoxSerializeAdapterDescription;
+} GvoxOutputAdapterDescription;
 
 typedef struct GvoxParserDescription {
-    GvoxResult (*create)(void **, void const *);
+    GvoxResult (*create)(void **, GvoxParserCreateCbArgs const *);
     void (*destroy)(void *);
 } GvoxParserDescription;
 
 typedef struct GvoxSerializerDescription {
-    GvoxResult (*create)(void **, void const *);
+    GvoxResult (*create)(void **, GvoxSerializerCreateCbArgs const *);
     void (*destroy)(void *);
 } GvoxSerializerDescription;
 
 typedef struct GvoxContainerDescription {
-    GvoxResult (*create)(void **, void const *);
-    GvoxResult (*parse)(void *, GvoxParseCbInfo const *);
-    GvoxResult (*serialize)(void *);
+    GvoxResult (*create)(void **, GvoxContainerCreateCbArgs const *);
     void (*destroy)(void *);
 } GvoxContainerDescription;
 
 // Adapter Create Infos
 
 typedef struct GvoxInputStreamCreateInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
+    void const *adapter_chain;
     GvoxInputStreamDescription description;
-    void const *config;
+    GvoxInputStreamCreateCbArgs cb_args;
 } GvoxInputStreamCreateInfo;
 
 typedef struct GvoxOutputStreamCreateInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
+    void const *adapter_chain;
     GvoxOutputStreamDescription description;
-    void const *config;
+    GvoxOutputStreamCreateCbArgs cb_args;
 } GvoxOutputStreamCreateInfo;
 
-typedef struct GvoxParseAdapterCreateInfo {
-    GvoxStructType type;
+typedef struct GvoxInputAdapterCreateInfo {
+    GvoxStructType struct_type;
     void const *next;
-    GvoxParseAdapterDescription description;
-    void const *config;
-} GvoxParseAdapterCreateInfo;
+    GvoxInputAdapterDescription description;
+    GvoxInputAdapterCreateCbArgs cb_args;
+} GvoxInputAdapterCreateInfo;
 
-typedef struct GvoxSerializeAdapterCreateInfo {
-    GvoxStructType type;
+typedef struct GvoxOutputAdapterCreateInfo {
+    GvoxStructType struct_type;
     void const *next;
-    GvoxSerializeAdapterDescription description;
-    void const *config;
-} GvoxSerializeAdapterCreateInfo;
+    GvoxOutputAdapterDescription description;
+    GvoxOutputAdapterCreateCbArgs cb_args;
+} GvoxOutputAdapterCreateInfo;
 
 typedef struct GvoxParserCreateInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
-    GvoxInputStream input_stream;
-    void const *adapter_chain;
     GvoxParserDescription description;
-    void const *config;
+    GvoxParserCreateCbArgs cb_args;
 } GvoxParserCreateInfo;
 
 typedef struct GvoxSerializerCreateInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
-    GvoxInputStream input_stream;
-    void const *adapter_chain;
     GvoxSerializerDescription description;
-    void const *config;
+    GvoxSerializerCreateCbArgs cb_args;
 } GvoxSerializerCreateInfo;
 
 typedef struct GvoxContainerCreateInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
     GvoxContainerDescription description;
-    void const *config;
+    GvoxContainerCreateCbArgs cb_args;
 } GvoxContainerCreateInfo;
 
-typedef struct GvoxParseInfo {
-    GvoxStructType type;
-    void const *next;
-    GvoxInputStream src;
-    GvoxContainer dst;
-    GvoxTransform transform;
-} GvoxParseInfo;
-
 typedef struct GvoxBlitInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
     GvoxParser src;
     GvoxSerializer dst;
 } GvoxBlitInfo;
 
 typedef struct GvoxSerializeInfo {
-    GvoxStructType type;
+    GvoxStructType struct_type;
     void const *next;
     GvoxContainer src;
     GvoxInputStream dst;
@@ -262,31 +286,29 @@ typedef struct GvoxSerializeInfo {
 
 GvoxResult GVOX_EXPORT gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle);
 GvoxResult GVOX_EXPORT gvox_create_output_stream(GvoxOutputStreamCreateInfo const *info, GvoxOutputStream *handle);
-GvoxResult GVOX_EXPORT gvox_create_parse_adapter(GvoxParseAdapterCreateInfo const *info, GvoxParseAdapter *handle);
-GvoxResult GVOX_EXPORT gvox_create_serialize_adapter(GvoxSerializeAdapterCreateInfo const *info, GvoxSerializeAdapter *handle);
+GvoxResult GVOX_EXPORT gvox_create_input_adapter(GvoxInputAdapterCreateInfo const *info, GvoxInputAdapter *handle);
+GvoxResult GVOX_EXPORT gvox_create_output_adapter(GvoxOutputAdapterCreateInfo const *info, GvoxOutputAdapter *handle);
 GvoxResult GVOX_EXPORT gvox_create_parser(GvoxParserCreateInfo const *info, GvoxParser *handle);
 GvoxResult GVOX_EXPORT gvox_create_serializer(GvoxSerializerCreateInfo const *info, GvoxSerializer *handle);
 GvoxResult GVOX_EXPORT gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *handle);
 
 void GVOX_EXPORT gvox_destroy_input_stream(GvoxInputStream handle);
 void GVOX_EXPORT gvox_destroy_output_stream(GvoxOutputStream handle);
-void GVOX_EXPORT gvox_destroy_parse_adapter(GvoxParseAdapter handle);
-void GVOX_EXPORT gvox_destroy_serialize_adapter(GvoxSerializeAdapter handle);
+void GVOX_EXPORT gvox_destroy_input_adapter(GvoxInputAdapter handle);
+void GVOX_EXPORT gvox_destroy_output_adapter(GvoxOutputAdapter handle);
 void GVOX_EXPORT gvox_destroy_parser(GvoxParser handle);
 void GVOX_EXPORT gvox_destroy_serializer(GvoxSerializer handle);
 void GVOX_EXPORT gvox_destroy_container(GvoxContainer handle);
 
 GvoxResult GVOX_EXPORT gvox_get_standard_input_stream_description(char const *name, GvoxInputStreamDescription *desc);
 GvoxResult GVOX_EXPORT gvox_get_standard_output_stream_description(char const *name, GvoxOutputStreamDescription *desc);
-GvoxResult GVOX_EXPORT gvox_get_standard_parse_adapter_description(char const *name, GvoxParseAdapterDescription *desc);
-GvoxResult GVOX_EXPORT gvox_get_standard_serialize_adapter_description(char const *name, GvoxSerializeAdapterDescription *desc);
+GvoxResult GVOX_EXPORT gvox_get_standard_input_adapter_description(char const *name, GvoxInputAdapterDescription *desc);
+GvoxResult GVOX_EXPORT gvox_get_standard_output_adapter_description(char const *name, GvoxOutputAdapterDescription *desc);
 GvoxResult GVOX_EXPORT gvox_get_standard_parser_description(char const *name, GvoxParserDescription *desc);
 GvoxResult GVOX_EXPORT gvox_get_standard_serializer_description(char const *name, GvoxSerializerDescription *desc);
 GvoxResult GVOX_EXPORT gvox_get_standard_container_description(char const *name, GvoxContainerDescription *desc);
 
-GvoxResult GVOX_EXPORT gvox_parse(GvoxParseInfo const *info);
 GvoxResult GVOX_EXPORT gvox_blit(GvoxBlitInfo const *info);
-GvoxResult GVOX_EXPORT gvox_serialize(GvoxSerializeInfo const *info);
 
 // Adapter API
 

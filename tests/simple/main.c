@@ -17,9 +17,9 @@ void test_simple(void) {
         GvoxFileInputStreamConfig config = {0};
         config.filepath = "assets/grass.png";
         GvoxInputStreamCreateInfo input_ci = {0};
-        input_ci.type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
+        input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
         input_ci.next = NULL;
-        input_ci.config = &config;
+        input_ci.cb_args.config = &config;
         check_result(
             gvox_get_standard_input_stream_description("file", &input_ci.description),
             "Failed to find standard input stream 'file' description\n");
@@ -31,10 +31,10 @@ void test_simple(void) {
     GvoxParser grass_image_parser;
     {
         GvoxParserCreateInfo parser_ci = {0};
-        parser_ci.type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
         parser_ci.next = NULL;
-        parser_ci.config = NULL;
-        parser_ci.input_stream = grass_file_input;
+        parser_ci.cb_args.config = NULL;
+        parser_ci.cb_args.input_stream = grass_file_input;
         check_result(
             gvox_get_standard_parser_description("image", &parser_ci.description),
             "Failed to find standard parser 'image' description\n");
@@ -46,9 +46,9 @@ void test_simple(void) {
     GvoxSerializer grass_colored_text_serializer;
     {
         GvoxSerializerCreateInfo serializer_ci = {0};
-        serializer_ci.type = GVOX_STRUCT_TYPE_SERIALIZER_CREATE_INFO;
+        serializer_ci.struct_type = GVOX_STRUCT_TYPE_SERIALIZER_CREATE_INFO;
         serializer_ci.next = NULL;
-        serializer_ci.config = NULL;
+        serializer_ci.cb_args.config = NULL;
         check_result(
             gvox_get_standard_serializer_description("colored_text", &serializer_ci.description),
             "Failed to find standard serializer 'colored_text' description\n");
@@ -60,9 +60,9 @@ void test_simple(void) {
     GvoxOutputStream grass_stdout_output;
     {
         GvoxOutputStreamCreateInfo output_ci = {0};
-        output_ci.type = GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_INFO;
+        output_ci.struct_type = GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_INFO;
         output_ci.next = NULL;
-        output_ci.config = NULL;
+        output_ci.cb_args.config = NULL;
         check_result(
             gvox_get_standard_output_stream_description("stdout", &output_ci.description),
             "Failed to find standard output stream 'stdout' description\n");
@@ -73,7 +73,7 @@ void test_simple(void) {
 
     {
         GvoxBlitInfo blit_info = {0};
-        blit_info.type = GVOX_STRUCT_TYPE_BLIT_INFO;
+        blit_info.struct_type = GVOX_STRUCT_TYPE_BLIT_INFO;
         blit_info.next = NULL;
         blit_info.src = grass_image_parser;
         blit_info.dst = grass_colored_text_serializer;

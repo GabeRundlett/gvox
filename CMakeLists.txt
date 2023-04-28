@@ -51,6 +51,8 @@ set(GVOX_INPUT_STREAMS
 )
 
 set(GVOX_OUTPUT_STREAMS
+    # "file"
+    # "byte_buffer"
     "stdout"
 )
 
@@ -62,10 +64,10 @@ set(GVOX_SERIALIZERS
     "colored_text"
 )
 
-set(GVOX_PARSE_ADAPTERS
+set(GVOX_INPUT_ADAPTERS
 )
 
-set(GVOX_SERIALIZE_ADAPTERS
+set(GVOX_OUTPUT_ADAPTERS
 )
 
 set(GVOX_CONTAINERS
