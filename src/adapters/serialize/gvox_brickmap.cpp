@@ -1,12 +1,13 @@
 #include <gvox/gvox.h>
-// #include <gvox/adapters/serialize/brickmap.h>
+// #include <gvox/adapters/serialize/gvox_brickmap.h>
 
 #include <cstdlib>
 
 #include <bit>
 #include <vector>
+#include <memory>
 
-#include "../shared/brickmap.hpp"
+#include "../shared/gvox_brickmap.hpp"
 #include "../shared/thread_pool.hpp"
 
 struct TempBrickInfo {
@@ -28,19 +29,19 @@ struct BrickmapUserState {
 };
 
 // Base
-extern "C" void gvox_serialize_adapter_brickmap_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(BrickmapUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) BrickmapUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_brickmap_destroy(GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~BrickmapUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_brickmap_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.offset = 0;
     user_state.range = *range;
@@ -66,7 +67,7 @@ extern "C" void gvox_serialize_adapter_brickmap_blit_begin(GvoxBlitContext *blit
     user_state.temp_brick_infos = std::make_unique<std::vector<TempBrickInfo>>(user_state.channels.size() * user_state.bricks_extent.x * user_state.bricks_extent.y * user_state.bricks_extent.z);
 }
 
-extern "C" void gvox_serialize_adapter_brickmap_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     std::vector<Brick> bricks_heap{};
     std::vector<BrickmapHeader> brick_headers{};
@@ -152,7 +153,7 @@ static void handle_region(BrickmapUserState &user_state, GvoxRegionRange const *
 }
 
 // Serialize Driven
-extern "C" void gvox_serialize_adapter_brickmap_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, range,
@@ -172,7 +173,7 @@ extern "C" void gvox_serialize_adapter_brickmap_serialize_region(GvoxBlitContext
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_brickmap_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+extern "C" void gvox_serialize_adapter_gvox_brickmap_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, &region->range,

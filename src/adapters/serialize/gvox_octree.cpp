@@ -1,6 +1,6 @@
 #include <gvox/gvox.h>
-// #include <gvox/adapters/serialize/octree.h>
-#include "../shared/octree.hpp"
+// #include <gvox/adapters/serialize/gvox_octree.h>
+#include "../shared/gvox_octree.hpp"
 
 #include <bit>
 #include <variant>
@@ -15,19 +15,19 @@ struct OctreeUserState {
 using OctreeTempNode = std::variant<OctreeNode::Parent, OctreeNode::Leaf>;
 
 // Base
-extern "C" void gvox_serialize_adapter_octree_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+extern "C" void gvox_serialize_adapter_gvox_octree_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(OctreeUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) OctreeUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_octree_destroy(GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_octree_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<OctreeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~OctreeUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_octree_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_octree_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     if (std::popcount(range->extent.x) != 1 ||
         std::popcount(range->extent.y) != 1 ||
         std::popcount(range->extent.z) != 1 ||
@@ -69,9 +69,9 @@ void do_output(OctreeUserState &user_state, uint32_t my_output_index, std::vecto
     auto level_i = max_depth - 1 - depth;
     auto node_size = 2u << level_i;
     auto grid_size = user_state.range.extent.x / node_size;
-    auto const &my_octree = levels[level_i][x + y * grid_size + z * grid_size * grid_size];
-    if (std::holds_alternative<OctreeNode::Parent>(my_octree)) {
-        auto const &my_node = std::get<OctreeNode::Parent>(my_octree);
+    auto const &my_gvox_octree = levels[level_i][x + y * grid_size + z * grid_size * grid_size];
+    if (std::holds_alternative<OctreeNode::Parent>(my_gvox_octree)) {
+        auto const &my_node = std::get<OctreeNode::Parent>(my_gvox_octree);
         auto children_index = static_cast<uint32_t>(output.size());
         output[my_output_index] = OctreeNode{.parent = my_node};
         output[my_output_index].parent.child_pointer = children_index;
@@ -87,11 +87,11 @@ void do_output(OctreeUserState &user_state, uint32_t my_output_index, std::vecto
             }
         }
     } else {
-        output[my_output_index] = OctreeNode{.leaf = std::get<OctreeNode::Leaf>(my_octree)};
+        output[my_output_index] = OctreeNode{.leaf = std::get<OctreeNode::Leaf>(my_gvox_octree)};
     }
 }
 
-extern "C" void gvox_serialize_adapter_octree_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_octree_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<OctreeUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     auto levels = std::vector<std::vector<OctreeTempNode>>{};
@@ -204,7 +204,7 @@ static void handle_region(OctreeUserState &user_state, GvoxRegionRange const *ra
 }
 
 // Serialize Driven
-extern "C" void gvox_serialize_adapter_octree_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
+extern "C" void gvox_serialize_adapter_gvox_octree_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
     auto &user_state = *static_cast<OctreeUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, range,
@@ -224,7 +224,7 @@ extern "C" void gvox_serialize_adapter_octree_serialize_region(GvoxBlitContext *
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_octree_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+extern "C" void gvox_serialize_adapter_gvox_octree_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
     auto &user_state = *static_cast<OctreeUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, &region->range,

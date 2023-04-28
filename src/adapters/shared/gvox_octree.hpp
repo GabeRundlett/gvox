@@ -8,13 +8,13 @@ union OctreeNode {
         uint32_t child_pointer : 24;
         uint32_t leaf_mask : 8;
 
-        bool operator==(Parent const &other) const = default;
+        auto operator==(Parent const &other) const -> bool = default;
     } parent;
 
     struct Leaf {
         uint32_t color;
 
-        bool operator==(Leaf const &other) const = default;
+        auto operator==(Leaf const &other) const -> bool = default;
     } leaf;
 };
 

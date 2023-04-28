@@ -9,7 +9,7 @@ if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
-project(gvox VERSION 1.2.7)
+project(gvox VERSION 1.2.8)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -45,23 +45,21 @@ set(GVOX_OUTPUT_ADAPTERS
 set(GVOX_PARSE_ADAPTERS
     "gvox_raw"
     "gvox_palette"
+    "gvox_run_length_encoding"
+    "gvox_octree"
+    "gvox_global_palette"
+    "gvox_brickmap"
     "voxlap"
     "magicavoxel"
-
-    "run_length_encoding"
-    "octree"
-    "global_palette"
-    "brickmap"
 )
 set(GVOX_SERIALIZE_ADAPTERS
     "gvox_raw"
     "gvox_palette"
+    "gvox_run_length_encoding"
+    "gvox_octree"
+    "gvox_global_palette"
+    "gvox_brickmap"
     "colored_text"
-
-    "run_length_encoding"
-    "octree"
-    "global_palette"
-    "brickmap"
 )
 
 if(GVOX_BUILD_FOR_JAVA)

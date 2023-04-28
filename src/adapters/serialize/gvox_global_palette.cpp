@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-// #include <gvox/adapters/serialize/global_palette.h>
+// #include <gvox/adapters/serialize/gvox_global_palette.h>
 
 #include <cstdlib>
 
@@ -24,19 +24,19 @@ struct GlobalPaletteUserState {
 };
 
 // Base
-extern "C" void gvox_serialize_adapter_global_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GlobalPaletteUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GlobalPaletteUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_global_palette_destroy(GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GlobalPaletteUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_global_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.offset = 0;
     user_state.range = *range;
@@ -62,7 +62,7 @@ extern "C" void gvox_serialize_adapter_global_palette_blit_begin(GvoxBlitContext
     user_state.voxels.resize(user_state.channels.size() * range->extent.x * range->extent.y * range->extent.z);
 }
 
-extern "C" void gvox_serialize_adapter_global_palette_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     auto sorted_unique_values_lists = std::vector<std::vector<uint32_t>>{};
@@ -141,7 +141,7 @@ static void handle_region(GlobalPaletteUserState &user_state, GvoxRegionRange co
 }
 
 // Serialize Driven
-extern "C" void gvox_serialize_adapter_global_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, range,
@@ -162,7 +162,7 @@ extern "C" void gvox_serialize_adapter_global_palette_serialize_region(GvoxBlitC
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_global_palette_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+extern "C" void gvox_serialize_adapter_gvox_global_palette_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, &region->range,

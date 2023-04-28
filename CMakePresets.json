@@ -24,6 +24,16 @@
             }
         },
         {
+            "name": "clangd-support",
+            "binaryDir": "${sourceDir}/build",
+            "inherits": [
+                "defaults"
+            ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
+        },
+        {
             "name": "defaults-windows",
             "hidden": true,
             "inherits": [

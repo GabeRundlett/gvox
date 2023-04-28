@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-// #include <gvox/adapters/parse/global_palette.h>
+// #include <gvox/adapters/parse/gvox_global_palette.h>
 
 #include <cstdlib>
 #include <cstdint>
@@ -25,19 +25,19 @@ struct GlobalPaletteParseUserState {
 };
 
 // Base
-extern "C" void gvox_parse_adapter_global_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GlobalPaletteParseUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GlobalPaletteParseUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_parse_adapter_global_palette_destroy(GvoxAdapterContext *ctx) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~GlobalPaletteParseUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_parse_adapter_global_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
     uint32_t magic = 0;
@@ -82,22 +82,22 @@ extern "C" void gvox_parse_adapter_global_palette_blit_begin(GvoxBlitContext *bl
     }
 }
 
-extern "C" void gvox_parse_adapter_global_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
 }
 
 // General
-extern "C" auto gvox_parse_adapter_global_palette_query_details() -> GvoxParseAdapterDetails {
+extern "C" auto gvox_parse_adapter_gvox_global_palette_query_details() -> GvoxParseAdapterDetails {
     return {
         .preferred_blit_mode = GVOX_BLIT_MODE_DONT_CARE,
     };
 }
 
-extern "C" auto gvox_parse_adapter_global_palette_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
+extern "C" auto gvox_parse_adapter_gvox_global_palette_query_parsable_range(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx) -> GvoxRegionRange {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     return user_state.range;
 }
 
-extern "C" auto gvox_parse_adapter_global_palette_sample_region(GvoxBlitContext * /*blit_ctx*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
+extern "C" auto gvox_parse_adapter_gvox_global_palette_sample_region(GvoxBlitContext * /*blit_ctx*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     uint32_t voxel_channel_index = 0;
@@ -125,11 +125,11 @@ extern "C" auto gvox_parse_adapter_global_palette_sample_region(GvoxBlitContext 
 }
 
 // Serialize Driven
-extern "C" auto gvox_parse_adapter_global_palette_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
+extern "C" auto gvox_parse_adapter_gvox_global_palette_query_region_flags(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) -> uint32_t {
     return 0;
 }
 
-extern "C" auto gvox_parse_adapter_global_palette_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
+extern "C" auto gvox_parse_adapter_gvox_global_palette_load_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) -> GvoxRegion {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     if ((channel_flags & ~user_state.channel_flags) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
@@ -143,11 +143,11 @@ extern "C" auto gvox_parse_adapter_global_palette_load_region(GvoxBlitContext * 
     return region;
 }
 
-extern "C" void gvox_parse_adapter_global_palette_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_unload_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion * /*unused*/) {
 }
 
 // Parse Driven
-extern "C" void gvox_parse_adapter_global_palette_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_parse_adapter_gvox_global_palette_parse_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     if ((channel_flags & ~user_state.channel_flags) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");

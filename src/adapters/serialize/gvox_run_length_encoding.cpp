@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-// #include <gvox/adapters/serialize/run_length_encoding.h>
+// #include <gvox/adapters/serialize/gvox_run_length_encoding.h>
 
 #include <cstdlib>
 
@@ -15,19 +15,19 @@ struct RunLengthEncodingUserState {
 };
 
 // Base
-extern "C" void gvox_serialize_adapter_run_length_encoding_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(RunLengthEncodingUserState));
     [[maybe_unused]] auto &user_state = *(new (user_state_ptr) RunLengthEncodingUserState());
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
-extern "C" void gvox_serialize_adapter_run_length_encoding_destroy(GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_destroy(GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<RunLengthEncodingUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.~RunLengthEncodingUserState();
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_run_length_encoding_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
     auto &user_state = *static_cast<RunLengthEncodingUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.offset = 0;
     user_state.range = *range;
@@ -49,7 +49,7 @@ extern "C" void gvox_serialize_adapter_run_length_encoding_blit_begin(GvoxBlitCo
     user_state.voxels.resize(user_state.channels.size() * range->extent.x * range->extent.y * range->extent.z);
 }
 
-extern "C" void gvox_serialize_adapter_run_length_encoding_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
     auto &user_state = *static_cast<RunLengthEncodingUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto output = std::vector<uint32_t>{};
     output.resize(user_state.range.extent.x * user_state.range.extent.y);
@@ -120,7 +120,7 @@ static void handle_region(RunLengthEncodingUserState &user_state, GvoxRegionRang
 }
 
 // Serialize Driven
-extern "C" void gvox_serialize_adapter_run_length_encoding_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {
     auto &user_state = *static_cast<RunLengthEncodingUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, range,
@@ -140,7 +140,7 @@ extern "C" void gvox_serialize_adapter_run_length_encoding_serialize_region(Gvox
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_run_length_encoding_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
     auto &user_state = *static_cast<RunLengthEncodingUserState *>(gvox_adapter_get_user_pointer(ctx));
     handle_region(
         user_state, &region->range,

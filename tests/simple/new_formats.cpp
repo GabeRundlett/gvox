@@ -102,17 +102,17 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
     gvox_destroy_context(gvox_ctx);
 }
 
-int main(void) {
+auto main() -> int {
     printf("palette\n");
     test_adapter("tests/simple/test_gvox_palette.gvox", "gvox_palette");
     printf("raw\n");
     test_adapter("tests/simple/test_gvox_raw.gvr", "gvox_raw");
     printf("run length\n");
-    test_adapter("tests/simple/test_run_length_encoding.rle", "run_length_encoding");
+    test_adapter("tests/simple/test_run_length_encoding.rle", "gvox_run_length_encoding");
     printf("octree\n");
-    test_adapter("tests/simple/test_octree.oct", "octree");
+    test_adapter("tests/simple/test_octree.oct", "gvox_octree");
     printf("global palette\n");
-    test_adapter("tests/simple/test_global_palette.glp", "global_palette");
+    test_adapter("tests/simple/test_global_palette.glp", "gvox_global_palette");
     printf("brickmap\n");
-    test_adapter("tests/simple/test_brickmap.brk", "brickmap");
+    test_adapter("tests/simple/test_brickmap.brk", "gvox_brickmap");
 }
