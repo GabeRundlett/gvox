@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-#include <gvox/streams/input/file.h>
+#include <gvox/adapters/input/file.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,22 +11,56 @@ void check_result(GvoxResult result, char const *failure_message) {
     }
 }
 
+GvoxInputAdapter grass_file_adapter(void) {
+    GvoxInputAdapter result;
+
+    GvoxFileInputAdapterConfig config = {0};
+    config.filepath = "assets/grass.png";
+    GvoxInputAdapterCreateInfo input_ci = {0};
+    input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_ADAPTER_CREATE_INFO;
+    input_ci.next = NULL;
+    input_ci.cb_args.config = &config;
+    check_result(
+        gvox_get_standard_input_adapter_description("file", &input_ci.description),
+        "Failed to find standard input adapter 'file' description\n");
+
+    check_result(
+        gvox_create_input_adapter(&input_ci, &result),
+        "Failed to create grass 'file' input adapter\n");
+    return result;
+}
+
+GvoxInputAdapter grass_zip_adapter(void) {
+    GvoxInputAdapter result;
+
+    GvoxFileInputAdapterConfig config = {0};
+    config.filepath = "assets/grass.png.gz";
+    GvoxInputAdapterCreateInfo file_input_ci = {0};
+    file_input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_ADAPTER_CREATE_INFO;
+    file_input_ci.next = NULL;
+    file_input_ci.cb_args.config = &config;
+    file_input_ci.adapter_chain = NULL;
+    check_result(
+        gvox_get_standard_input_adapter_description("file", &file_input_ci.description),
+        "Failed to find standard input adapter 'file' description\n");
+
+    GvoxInputAdapterCreateInfo zip_input_ci = {0};
+    zip_input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_ADAPTER_CREATE_INFO;
+    zip_input_ci.next = NULL;
+    zip_input_ci.cb_args.config = NULL;
+    zip_input_ci.adapter_chain = &file_input_ci;
+    check_result(
+        gvox_get_standard_input_adapter_description("gzip", &zip_input_ci.description),
+        "Failed to find standard input adapter 'gzip' description\n");
+
+    check_result(
+        gvox_create_input_adapter(&zip_input_ci, &result),
+        "Failed to create grass input adapter\n");
+    return result;
+}
+
 void test_simple(void) {
-    GvoxInputStream grass_file_input;
-    {
-        GvoxFileInputStreamConfig config = {0};
-        config.filepath = "assets/grass.png";
-        GvoxInputStreamCreateInfo input_ci = {0};
-        input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
-        input_ci.next = NULL;
-        input_ci.cb_args.config = &config;
-        check_result(
-            gvox_get_standard_input_stream_description("file", &input_ci.description),
-            "Failed to find standard input stream 'file' description\n");
-        check_result(
-            gvox_create_input_stream(&input_ci, &grass_file_input),
-            "Failed to create grass 'file' input stream\n");
-    }
+    GvoxInputAdapter grass_file_input = grass_zip_adapter();
 
     GvoxParser grass_image_parser;
     {
@@ -34,7 +68,7 @@ void test_simple(void) {
         parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
         parser_ci.next = NULL;
         parser_ci.cb_args.config = NULL;
-        parser_ci.cb_args.input_stream = grass_file_input;
+        parser_ci.cb_args.input_adapter = grass_file_input;
         check_result(
             gvox_get_standard_parser_description("image", &parser_ci.description),
             "Failed to find standard parser 'image' description\n");
@@ -57,18 +91,18 @@ void test_simple(void) {
             "Failed to create 'colored_text' parser\n");
     }
 
-    GvoxOutputStream grass_stdout_output;
+    GvoxOutputAdapter grass_stdout_output;
     {
-        GvoxOutputStreamCreateInfo output_ci = {0};
-        output_ci.struct_type = GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_INFO;
+        GvoxOutputAdapterCreateInfo output_ci = {0};
+        output_ci.struct_type = GVOX_STRUCT_TYPE_OUTPUT_ADAPTER_CREATE_INFO;
         output_ci.next = NULL;
         output_ci.cb_args.config = NULL;
         check_result(
-            gvox_get_standard_output_stream_description("stdout", &output_ci.description),
-            "Failed to find standard output stream 'stdout' description\n");
+            gvox_get_standard_output_adapter_description("stdout", &output_ci.description),
+            "Failed to find standard output adapter 'stdout' description\n");
         check_result(
-            gvox_create_output_stream(&output_ci, &grass_stdout_output),
-            "Failed to create grass 'stdout' output stream\n");
+            gvox_create_output_adapter(&output_ci, &grass_stdout_output),
+            "Failed to create grass 'stdout' output adapter\n");
     }
 
     {
@@ -77,15 +111,16 @@ void test_simple(void) {
         blit_info.next = NULL;
         blit_info.src = grass_image_parser;
         blit_info.dst = grass_colored_text_serializer;
+        // blit_info.initial_metadata = NULL;
         check_result(
             gvox_blit(&blit_info),
             "Failed to blit\n");
     }
 
-    gvox_destroy_output_stream(grass_stdout_output);
+    gvox_destroy_output_adapter(grass_stdout_output);
     gvox_destroy_serializer(grass_colored_text_serializer);
     gvox_destroy_parser(grass_image_parser);
-    gvox_destroy_input_stream(grass_file_input);
+    gvox_destroy_input_adapter(grass_file_input);
 }
 
 int main(void) {

@@ -28,7 +28,9 @@ struct GvoxColoredTextSerializer {
     static auto blit_begin() -> GvoxResult;
     static auto blit_end() -> GvoxResult;
     static auto blit_range() -> GvoxResult;
-    static auto blit_receive_region() -> GvoxResult;
+
+    static auto request_regions() -> GvoxResult;
+    static auto receive_region() -> GvoxResult;
 };
 
 auto GvoxColoredTextSerializer::blit_begin() -> GvoxResult {
@@ -39,13 +41,11 @@ auto GvoxColoredTextSerializer::blit_end() -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-// Serialize Driven
-auto GvoxColoredTextSerializer::blit_range() -> GvoxResult {
+auto GvoxColoredTextSerializer::request_regions() -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-// Parse Driven
-auto GvoxColoredTextSerializer::blit_receive_region() -> GvoxResult {
+auto GvoxColoredTextSerializer::receive_region() -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
@@ -62,5 +62,5 @@ auto gvox_serializer_colored_text_create(void **self, GvoxSerializerCreateCbArgs
 void gvox_serializer_colored_text_destroy(void *self) { delete static_cast<GvoxColoredTextSerializer *>(self); }
 auto gvox_serializer_colored_text_blit_begin(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_begin(); }
 auto gvox_serializer_colored_text_blit_end(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_end(); }
-auto gvox_serializer_colored_text_blit_range(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_range(); }
-auto gvox_serializer_colored_text_blit_receive_region(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_receive_region(); }
+auto gvox_serializer_colored_text_request_regions(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->request_regions(); }
+auto gvox_serializer_colored_text_receive_region(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->receive_region(); }

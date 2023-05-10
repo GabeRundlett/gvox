@@ -1,5 +1,5 @@
 
-include("$ENV{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake")
+include("$ENV{EMSDK}/upadapter/emscripten/cmake/Modules/Platform/Emscripten.cmake")
 
 unset(CMAKE_C_FLAGS CACHE)
 set(CMAKE_C_FLAGS "-emit-llvm" CACHE STRING "" FORCE)

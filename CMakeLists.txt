@@ -44,12 +44,19 @@ add_library(${PROJECT_NAME}
     "src/gvox.cpp"
 )
 
-set(GVOX_INPUT_STREAMS
+find_package(ZLIB REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+
+find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
+
+set(GVOX_INPUT_ADAPTERS
     "file"
     "byte_buffer"
+    "gzip"
 )
 
-set(GVOX_OUTPUT_STREAMS
+set(GVOX_OUTPUT_ADAPTERS
     # "file"
     # "byte_buffer"
     "stdout"
@@ -61,12 +68,6 @@ set(GVOX_PARSERS
 
 set(GVOX_SERIALIZERS
     "colored_text"
-)
-
-set(GVOX_INPUT_ADAPTERS
-)
-
-set(GVOX_OUTPUT_ADAPTERS
 )
 
 set(GVOX_CONTAINERS
@@ -141,7 +142,7 @@ endif()
 
 if(GVOX_ENABLE_FILE_IO)
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    # list(APPEND GVOX_INPUT_STREAMS "file" "console")
+    # list(APPEND GVOX_INPUT_ADAPTERS "file" "console")
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
 endif()

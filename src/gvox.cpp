@@ -5,13 +5,14 @@
 
 #define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
 
-#define IMPL_STRUCT_DEFAULTS(Name)                                                     \
+#define IMPL_STRUCT_DEFAULTS(Name, destructor_extra)                                   \
     void *self{};                                                                      \
     Gvox##Name##Description desc{};                                                    \
     ~IMPL_STRUCT_NAME(Name)() {                                                        \
         if (self != nullptr) {                                                         \
             desc.destroy(self);                                                        \
         }                                                                              \
+        destructor_extra;                                                              \
     }                                                                                  \
     IMPL_STRUCT_NAME(Name)                                                             \
     () = default;                                                                      \
@@ -20,29 +21,24 @@
     IMPL_STRUCT_NAME(Name)                                                             \
     (IMPL_STRUCT_NAME(Name) &&) = default;                                             \
     auto operator=(IMPL_STRUCT_NAME(Name) const &)->IMPL_STRUCT_NAME(Name) & = delete; \
-    auto operator=(IMPL_STRUCT_NAME(Name) &&)->IMPL_STRUCT_NAME(Name) & = default;
+    auto operator=(IMPL_STRUCT_NAME(Name) &&)->IMPL_STRUCT_NAME(Name) & = default
 
-struct IMPL_STRUCT_NAME(InputStream) {
-    IMPL_STRUCT_DEFAULTS(InputStream)
-};
-struct IMPL_STRUCT_NAME(OutputStream) {
-    IMPL_STRUCT_DEFAULTS(OutputStream)
-};
 struct IMPL_STRUCT_NAME(InputAdapter) {
-    IMPL_STRUCT_DEFAULTS(InputAdapter)
+    GvoxInputAdapter next{};
+    IMPL_STRUCT_DEFAULTS(InputAdapter, { delete next; });
 };
 struct IMPL_STRUCT_NAME(OutputAdapter) {
-    IMPL_STRUCT_DEFAULTS(OutputAdapter)
+    GvoxOutputAdapter next{};
+    IMPL_STRUCT_DEFAULTS(OutputAdapter, { delete next; });
 };
 struct IMPL_STRUCT_NAME(Parser) {
-    IMPL_STRUCT_DEFAULTS(Parser)
-    std::vector<GvoxInputAdapter> input_adapters{};
+    IMPL_STRUCT_DEFAULTS(Parser, {});
 };
 struct IMPL_STRUCT_NAME(Serializer) {
-    IMPL_STRUCT_DEFAULTS(Serializer)
+    IMPL_STRUCT_DEFAULTS(Serializer, {});
 };
 struct IMPL_STRUCT_NAME(Container) {
-    IMPL_STRUCT_DEFAULTS(Container)
+    IMPL_STRUCT_DEFAULTS(Container, {});
 };
 
 struct GvoxChainStruct {
@@ -70,35 +66,14 @@ struct GvoxChainStruct {
         }                                                                              \
     }
 
-auto gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle) -> GvoxResult {
-    HANDLE_CREATE(InputStream, INPUT_STREAM)
-
-    // if (!info->adapter_chain) {
-    //     return GVOX_ERROR_BAD_ADAPTER_CHAIN;
-    // }
-    // auto adapter_chain = static_cast<GvoxChainStruct const *>(info->adapter_chain);
-    // while (adapter_chain != nullptr) {
-    //     switch (adapter_chain->struct_type) {
-    //     case GVOX_STRUCT_TYPE_INPUT_ADAPTER_CREATE_INFO: {
-    //         // auto new_input_adapter = IMPL_STRUCT_NAME(InputAdapter){};
-    //         // auto result = gvox_create_input_adapter(reinterpret_cast<GvoxInputAdapterCreateInfo *>(adapter_chain), new_input_adapter);
-    //         // (*adapter)->input_adapters.push_back(new_input_adapter);
-    //     } break;
-    //     default:
-    //         delete adapter_chain;
-    //         return GVOX_ERROR_BAD_ADAPTER_CHAIN;
-    //     }
-    // }
-
-    return GVOX_SUCCESS;
-}
-auto gvox_create_output_stream(GvoxOutputStreamCreateInfo const *info, GvoxOutputStream *handle) -> GvoxResult {
-    HANDLE_CREATE(OutputStream, OUTPUT_STREAM)
-    return GVOX_SUCCESS;
-}
 auto gvox_create_input_adapter(GvoxInputAdapterCreateInfo const *info, GvoxInputAdapter *handle) -> GvoxResult {
     HANDLE_CREATE(InputAdapter, INPUT_ADAPTER)
-    return GVOX_SUCCESS;
+
+    if (!info->adapter_chain) {
+        return GVOX_SUCCESS;
+    }
+
+    return gvox_create_input_adapter(info->adapter_chain, &((*handle)->next));
 }
 auto gvox_create_output_adapter(GvoxOutputAdapterCreateInfo const *info, GvoxOutputAdapter *handle) -> GvoxResult {
     HANDLE_CREATE(OutputAdapter, OUTPUT_ADAPTER)
@@ -120,13 +95,9 @@ auto gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *h
 #undef HANDLE_CREATE
 
 namespace {
-    inline void destroy_handle(auto *handle) {
-        delete handle;
-    }
+    inline void destroy_handle(auto *handle) { delete handle; }
 } // namespace
 
-void gvox_destroy_input_stream(GvoxInputStream handle) { destroy_handle(handle); }
-void gvox_destroy_output_stream(GvoxOutputStream handle) { destroy_handle(handle); }
 void gvox_destroy_input_adapter(GvoxInputAdapter handle) { destroy_handle(handle); }
 void gvox_destroy_output_adapter(GvoxOutputAdapter handle) { destroy_handle(handle); }
 void gvox_destroy_parser(GvoxParser handle) { destroy_handle(handle); }
@@ -142,8 +113,6 @@ void gvox_destroy_container(GvoxContainer handle) { destroy_handle(handle); }
     *desc = iter->second;                                                                                                                                       \
     return GVOX_SUCCESS
 
-auto gvox_get_standard_input_stream_description(char const *name, GvoxInputStreamDescription *desc) -> GvoxResult { HANDLE_GET_DESC(input_stream, InputStream, INPUT_STREAM); }
-auto gvox_get_standard_output_stream_description(char const *name, GvoxOutputStreamDescription *desc) -> GvoxResult { HANDLE_GET_DESC(output_stream, OutputStream, OUTPUT_STREAM); }
 auto gvox_get_standard_input_adapter_description(char const *name, GvoxInputAdapterDescription *desc) -> GvoxResult { HANDLE_GET_DESC(input_adapter, InputAdapter, INPUT_ADAPTER); }
 auto gvox_get_standard_output_adapter_description(char const *name, GvoxOutputAdapterDescription *desc) -> GvoxResult { HANDLE_GET_DESC(output_adapter, OutputAdapter, OUTPUT_ADAPTER); }
 auto gvox_get_standard_parser_description(char const *name, GvoxParserDescription *desc) -> GvoxResult { HANDLE_GET_DESC(parser, Parser, PARSER); }
@@ -165,22 +134,10 @@ auto gvox_blit(GvoxBlitInfo const *info) -> GvoxResult {
 
 // Adapter API
 
-auto gvox_input_read(GvoxInputStream handle, uint8_t *data, size_t size) -> GvoxResult {
-    return handle->desc.read(handle->self, data, size);
-}
-auto gvox_input_seek(GvoxInputStream handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-    return handle->desc.seek(handle->self, offset, origin);
-}
-auto gvox_input_tell(GvoxInputStream handle) -> long {
-    return handle->desc.tell(handle->self);
-}
+auto gvox_input_read(GvoxInputAdapter handle, uint8_t *data, size_t size) -> GvoxResult { return handle->desc.read(handle->self, handle->next, data, size); }
+auto gvox_input_seek(GvoxInputAdapter handle, long offset, GvoxSeekOrigin origin) -> GvoxResult { return handle->desc.seek(handle->self, handle->next, offset, origin); }
+auto gvox_input_tell(GvoxInputAdapter handle) -> long { return handle->desc.tell(handle->self, handle->next); }
 
-auto gvox_output_write(GvoxOutputStream handle, uint8_t *data, size_t size) -> GvoxResult {
-    return handle->desc.write(handle->self, data, size);
-}
-auto gvox_output_seek(GvoxOutputStream handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-    return handle->desc.seek(handle->self, offset, origin);
-}
-auto gvox_output_seek(GvoxOutputStream handle) -> long {
-    return handle->desc.tell(handle->self);
-}
+auto gvox_output_write(GvoxOutputAdapter handle, uint8_t *data, size_t size) -> GvoxResult { return handle->desc.write(handle->self, handle->next, data, size); }
+auto gvox_output_seek(GvoxOutputAdapter handle, long offset, GvoxSeekOrigin origin) -> GvoxResult { return handle->desc.seek(handle->self, handle->next, offset, origin); }
+auto gvox_output_seek(GvoxOutputAdapter handle) -> long { return handle->desc.tell(handle->self, handle->next); }
