@@ -62,6 +62,7 @@ foreach(NAME ${GVOX_PARSERS})
     set(HEADER_CONTENT "${HEADER_CONTENT}
     auto gvox_parser_${NAME}_create(void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult;
     void gvox_parser_${NAME}_destroy(void *self);
+    auto gvox_parser_${NAME}_create_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult;
     ")
     set(PARSER_INFOS_CONTENT "${PARSER_INFOS_CONTENT}
     StdParserInfo{
@@ -69,6 +70,7 @@ foreach(NAME ${GVOX_PARSERS})
         {
             .create  = gvox_parser_${NAME}_create,
             .destroy = gvox_parser_${NAME}_destroy,
+            .create_from_input = gvox_parser_${NAME}_create_from_input,
         },
     },")
 endforeach()

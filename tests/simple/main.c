@@ -63,19 +63,9 @@ void test_simple(void) {
     GvoxInputAdapter grass_file_input = grass_zip_adapter();
 
     GvoxParser grass_image_parser;
-    {
-        GvoxParserCreateInfo parser_ci = {0};
-        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
-        parser_ci.next = NULL;
-        parser_ci.cb_args.config = NULL;
-        parser_ci.cb_args.input_adapter = grass_file_input;
-        check_result(
-            gvox_get_standard_parser_description("image", &parser_ci.description),
-            "Failed to find standard parser 'image' description\n");
-        check_result(
-            gvox_create_parser(&parser_ci, &grass_image_parser),
-            "Failed to create 'image' parser\n");
-    }
+    check_result(
+        gvox_create_parser_from_input(grass_file_input, &grass_image_parser),
+        "Failed to find a suitable parser for the input stream\n");
 
     GvoxSerializer grass_colored_text_serializer;
     {
@@ -112,6 +102,7 @@ void test_simple(void) {
         blit_info.src = grass_image_parser;
         blit_info.dst = grass_colored_text_serializer;
         // blit_info.initial_metadata = NULL;
+
         check_result(
             gvox_blit(&blit_info),
             "Failed to blit\n");

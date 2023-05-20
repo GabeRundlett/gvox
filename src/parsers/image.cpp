@@ -59,24 +59,30 @@ auto GvoxImageParser::blit_emit_regions_in_range() -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-auto GvoxImageParser::load(GvoxInputAdapter input_adapter) -> GvoxResult {
-    auto io = FreeImageIO{
-        .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
-            gvox_input_read(static_cast<GvoxInputAdapter>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
-            return size;
-        },
-        .write_proc = [](void *, unsigned, unsigned, fi_handle) -> unsigned {
-            return 0;
-        },
-        .seek_proc = [](fi_handle handle, long offset, int origin) -> int {
-            return gvox_input_seek(static_cast<GvoxInputAdapter>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
-        },
-        .tell_proc = [](fi_handle handle) -> long {
-            return gvox_input_tell(static_cast<GvoxInputAdapter>(handle));
-        },
-    };
+namespace {
+    inline auto create_io_and_get_format(GvoxInputAdapter input_adapter) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
+        auto io = FreeImageIO{
+            .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
+                gvox_input_read(static_cast<GvoxInputAdapter>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
+                return size;
+            },
+            .write_proc = [](void *, unsigned, unsigned, fi_handle) -> unsigned {
+                return 0;
+            },
+            .seek_proc = [](fi_handle handle, long offset, int origin) -> int {
+                return gvox_input_seek(static_cast<GvoxInputAdapter>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
+            },
+            .tell_proc = [](fi_handle handle) -> long {
+                return gvox_input_tell(static_cast<GvoxInputAdapter>(handle));
+            },
+        };
+        auto fi_format = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_adapter), 0);
+        return {io, fi_format};
+    }
+} // namespace
 
-    FREE_IMAGE_FORMAT fi_format = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_adapter), 0);
+auto GvoxImageParser::load(GvoxInputAdapter input_adapter) -> GvoxResult {
+    auto [io, fi_format] = create_io_and_get_format(input_adapter);
     if (fi_format == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
@@ -138,3 +144,25 @@ auto gvox_parser_image_blit_query_region_flags(void *self) -> GvoxResult { retur
 auto gvox_parser_image_blit_load_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_load_region(); }
 auto gvox_parser_image_blit_unload_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_unload_region(); }
 auto gvox_parser_image_blit_emit_regions_in_range(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_emit_regions_in_range(); }
+
+auto gvox_parser_image_create_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult {
+    auto [io, fi_format] = create_io_and_get_format(input_adapter);
+    if (fi_format == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+        return GVOX_ERROR_UNKNOWN;
+    }
+
+    auto parser_ci = GvoxParserCreateInfo{};
+    parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+    parser_ci.next = NULL;
+    parser_ci.cb_args.config = NULL;
+    parser_ci.cb_args.input_adapter = input_adapter;
+
+    auto result = GVOX_SUCCESS;
+
+    result = gvox_get_standard_parser_description("image", &parser_ci.description);
+    if (result != GVOX_SUCCESS) { // Failed to find standard parser 'image' description
+        return result;
+    }
+
+    return gvox_create_parser(&parser_ci, user_parser);
+}

@@ -121,6 +121,22 @@ auto gvox_get_standard_container_description(char const *name, GvoxContainerDesc
 
 #undef HANDLE_GET_DESC
 
+auto gvox_create_parser_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult {
+    auto initial_input_pos = gvox_input_tell(input_adapter);
+    for (auto const &[parser_name, parser_desc] : standard_parsers) {
+        if (parser_desc.create_from_input != nullptr) {
+            auto creation_result = parser_desc.create_from_input(input_adapter, user_parser);
+            // we should reset the input adapter to where it was before the
+            // checking took place.
+            gvox_input_seek(input_adapter, initial_input_pos, GVOX_SEEK_ORIGIN_BEG);
+            if (creation_result == GVOX_SUCCESS) {
+                return GVOX_SUCCESS;
+            }
+        }
+    }
+    return GVOX_ERROR_UNKNOWN_STANDARD_PARSER;
+}
+
 auto gvox_blit(GvoxBlitInfo const *info) -> GvoxResult {
     if (info == nullptr) {
         return GVOX_ERROR_INVALID_ARGUMENT;

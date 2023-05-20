@@ -109,6 +109,7 @@ typedef struct GvoxOutputAdapterDescription {
 typedef struct GvoxParserDescription {
     GvoxResult (*create)(void **, GvoxParserCreateCbArgs const *);
     void (*destroy)(void *);
+    GvoxResult (*create_from_input)(GvoxInputAdapter, GvoxParser *);
 } GvoxParserDescription;
 
 typedef struct GvoxSerializerDescription {
@@ -198,6 +199,7 @@ GvoxResult GVOX_EXPORT gvox_get_standard_parser_description(char const *name, Gv
 GvoxResult GVOX_EXPORT gvox_get_standard_serializer_description(char const *name, GvoxSerializerDescription *desc);
 GvoxResult GVOX_EXPORT gvox_get_standard_container_description(char const *name, GvoxContainerDescription *desc);
 
+GvoxResult GVOX_EXPORT gvox_create_parser_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser);
 GvoxResult GVOX_EXPORT gvox_blit(GvoxBlitInfo const *info);
 
 // Adapter API
