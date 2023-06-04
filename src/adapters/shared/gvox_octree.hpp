@@ -2,6 +2,7 @@
 
 #include "math_helpers.hpp"
 #include <vector>
+#include <algorithm>
 
 union OctreeNode {
     struct Parent {
