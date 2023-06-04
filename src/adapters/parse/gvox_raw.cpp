@@ -14,6 +14,9 @@ struct GvoxRawParseUserState {
     uint32_t channel_flags{};
     uint32_t channel_n{};
     size_t offset{};
+
+    // pre-load?
+    std::vector<uint32_t> voxels{};
 };
 
 // Base
@@ -48,6 +51,9 @@ extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx
     user_state.offset += sizeof(uint32_t);
 
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
+
+    user_state.voxels.resize(user_state.range.extent.x * user_state.range.extent.y * user_state.range.extent.z * user_state.channel_n);
+    gvox_input_read(blit_ctx, user_state.offset, user_state.voxels.size() * sizeof(user_state.voxels[0]), user_state.voxels.data());
 }
 
 extern "C" void gvox_parse_adapter_gvox_raw_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
@@ -67,7 +73,6 @@ extern "C" auto gvox_parse_adapter_gvox_raw_query_parsable_range(GvoxBlitContext
 
 extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
-    auto base_offset = user_state.offset;
     uint32_t voxel_data = 0;
     uint32_t voxel_channel_index = 0;
     for (uint32_t channel_index = 0; channel_index < channel_id; ++channel_index) {
@@ -75,8 +80,11 @@ extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *blit_
             ++voxel_channel_index;
         }
     }
-    auto read_offset = base_offset + sizeof(uint32_t) * (voxel_channel_index + user_state.channel_n * (static_cast<size_t>(offset->x - user_state.range.offset.x) + static_cast<size_t>(offset->y - user_state.range.offset.y) * user_state.range.extent.x + static_cast<size_t>(offset->z - user_state.range.offset.z) * user_state.range.extent.x * user_state.range.extent.y));
-    gvox_input_read(blit_ctx, read_offset, sizeof(voxel_data), &voxel_data);
+    auto voxel_index = voxel_channel_index + user_state.channel_n * (static_cast<size_t>(offset->x - user_state.range.offset.x) + static_cast<size_t>(offset->y - user_state.range.offset.y) * user_state.range.extent.x + static_cast<size_t>(offset->z - user_state.range.offset.z) * user_state.range.extent.x * user_state.range.extent.y);
+    // auto base_offset = user_state.offset;
+    // auto read_offset = base_offset + sizeof(uint32_t) * voxel_index;
+    // gvox_input_read(blit_ctx, read_offset, sizeof(voxel_data), &voxel_data);
+    voxel_data = user_state.voxels[voxel_index];
     return {voxel_data, 1u};
 }
 

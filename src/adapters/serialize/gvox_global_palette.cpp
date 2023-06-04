@@ -40,8 +40,8 @@ extern "C" void gvox_serialize_adapter_gvox_global_palette_blit_begin(GvoxBlitCo
     auto &user_state = *static_cast<GlobalPaletteUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.offset = 0;
     user_state.range = *range;
-    auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'l', 'p', '\0'});
-    gvox_output_write(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
+    auto magic = std::bit_cast<uint64_t>(std::array<char, 8>{'g', 'v', 'g', 'l', 'b', 'p', 'a', 'l'});
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(magic), &magic);
     user_state.offset += sizeof(magic);
     gvox_output_write(blit_ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);

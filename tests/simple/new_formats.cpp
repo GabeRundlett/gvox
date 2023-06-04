@@ -8,6 +8,7 @@
 #include <gvox/adapters/parse/voxlap.h>
 #include <gvox/adapters/serialize/gvox_raw.h>
 #include <gvox/adapters/serialize/colored_text.h>
+#include <gvox/adapters/serialize/random_sample.h>
 #include <adapters/procedural.h>
 
 #include <stdio.h>
@@ -51,19 +52,23 @@ auto const procedural_adapter_info = GvoxParseAdapterInfo{
 };
 
 #define PARSE_MAGICAVOXEL 0
+#define MAGICAVOXEL_FILE_NAME "mansion"
+#define TEST_SERIALIZATION 1
+#define TEST_RANDOM_ACCESS_SPEED 1
 
 void test_adapter(char const *const output_filepath, char const *const adapter_name) {
     auto *gvox_ctx = gvox_create_context();
 #if PARSE_MAGICAVOXEL
-    auto region_range = GvoxRegionRange{.offset = {0, 0, 0}, .extent = {256, 256, 256}};
+    GvoxRegionRange *region_range_ptr = nullptr;
 #else
     auto region_range = GvoxRegionRange{.offset = {-4, -4, -4}, .extent = {8, 8, 8}};
-#endif
     auto *region_range_ptr = &region_range;
+#endif
 
+#if TEST_SERIALIZATION
     // Create file
     {
-        auto i_config = GvoxFileInputAdapterConfig{.filepath = "tests/simple/test.vox", .byte_offset = 0};
+        auto i_config = GvoxFileInputAdapterConfig{.filepath = "tests/simple/" MAGICAVOXEL_FILE_NAME ".vox", .byte_offset = 0};
         auto o_config = GvoxFileOutputAdapterConfig{.filepath = output_filepath};
         auto *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
 #if PARSE_MAGICAVOXEL
@@ -80,6 +85,7 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
         gvox_destroy_adapter_context(s_ctx);
     }
     handle_gvox_error(gvox_ctx);
+#endif
 
 #if !PARSE_MAGICAVOXEL
     // Load file
@@ -99,20 +105,43 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
     handle_gvox_error(gvox_ctx);
 #endif
 
+#if TEST_RANDOM_ACCESS_SPEED
+    // Load file
+    {
+        uint8_t *output_bytes = nullptr;
+        size_t output_size = 0;
+        auto i_config = GvoxFileInputAdapterConfig{.filepath = output_filepath, .byte_offset = 0};
+        auto o_config = GvoxByteBufferOutputAdapterConfig{.out_size = &output_size, .out_byte_buffer_ptr = &output_bytes};
+        auto s_config = GvoxRandomSampleSerializeAdapterConfig{.sample_count = 10000000};
+        auto *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        auto *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
+        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, adapter_name), NULL);
+        auto *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "random_sample"), &s_config);
+        gvox_blit_region_serialize_driven(i_ctx, o_ctx, p_ctx, s_ctx, region_range_ptr, GVOX_CHANNEL_BIT_COLOR);
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+        auto duration = *reinterpret_cast<float *>(output_bytes);
+        printf("%fs\n", duration);
+        free(output_bytes);
+    }
+    handle_gvox_error(gvox_ctx);
+#endif
+
     gvox_destroy_context(gvox_ctx);
 }
 
 auto main() -> int {
-    printf("palette\n");
-    test_adapter("tests/simple/test_gvox_palette.gvox", "gvox_palette");
     printf("raw\n");
-    test_adapter("tests/simple/test_gvox_raw.gvr", "gvox_raw");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_gvox_raw.gvr", "gvox_raw");
+    printf("palette\n");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_gvox_palette.gvox", "gvox_palette");
     printf("run length\n");
-    test_adapter("tests/simple/test_run_length_encoding.rle", "gvox_run_length_encoding");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_run_length_encoding.rle", "gvox_run_length_encoding");
     printf("octree\n");
-    test_adapter("tests/simple/test_octree.oct", "gvox_octree");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_octree.oct", "gvox_octree");
     printf("global palette\n");
-    test_adapter("tests/simple/test_global_palette.glp", "gvox_global_palette");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_global_palette.glp", "gvox_global_palette");
     printf("brickmap\n");
-    test_adapter("tests/simple/test_brickmap.brk", "gvox_brickmap");
+    test_adapter("tests/simple/outputs/" MAGICAVOXEL_FILE_NAME "_brickmap.brk", "gvox_brickmap");
 }

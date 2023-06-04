@@ -28,15 +28,6 @@ extern "C" void gvox_serialize_adapter_gvox_octree_destroy(GvoxAdapterContext *c
 }
 
 extern "C" void gvox_serialize_adapter_gvox_octree_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    if (std::popcount(range->extent.x) != 1 ||
-        std::popcount(range->extent.y) != 1 ||
-        std::popcount(range->extent.z) != 1 ||
-        range->extent.x != range->extent.y ||
-        range->extent.x != range->extent.z) {
-        gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "In order to serialize as an OctreeNode, you must have a volume with equal power of 2 side lengths");
-        return;
-    }
-
     if ((channel_flags & ~static_cast<uint32_t>(GVOX_CHANNEL_BIT_COLOR)) != 0u) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "The current OctreeNode impl can't support anything other than color");
         return;
@@ -45,13 +36,13 @@ extern "C" void gvox_serialize_adapter_gvox_octree_blit_begin(GvoxBlitContext *b
     auto &user_state = *static_cast<OctreeUserState *>(gvox_adapter_get_user_pointer(ctx));
     user_state.offset = 0;
     user_state.range = *range;
-    auto magic = std::bit_cast<uint32_t>(std::array<char, 4>{'o', 'c', 't', '\0'});
-    gvox_output_write(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
+    auto magic = std::bit_cast<uint64_t>(std::array<char, 8>{'g', 'v', 'o', 'c', 't', 'r', 'e', 'e'});
+    gvox_output_write(blit_ctx, user_state.offset, sizeof(magic), &magic);
     user_state.offset += sizeof(magic);
     gvox_output_write(blit_ctx, user_state.offset, sizeof(*range), range);
     user_state.offset += sizeof(*range);
 
-    user_state.max_depth = ceil_log2(range->extent.x);
+    user_state.max_depth = ceil_log2(std::max({range->extent.x, range->extent.y, range->extent.z}));
 
     user_state.voxels.resize(range->extent.x * range->extent.y * range->extent.z);
 }
@@ -59,16 +50,22 @@ extern "C" void gvox_serialize_adapter_gvox_octree_blit_begin(GvoxBlitContext *b
 void do_output(OctreeUserState &user_state, uint32_t my_output_index, std::vector<OctreeNode> &output, std::vector<std::vector<OctreeTempNode>> const &levels, uint32_t depth, uint32_t max_depth, uint32_t x, uint32_t y, uint32_t z) {
     if (depth == max_depth) {
         auto sample_child = [&user_state](uint32_t x, uint32_t y, uint32_t z) {
-            auto grid_size = user_state.range.extent.x;
-            auto index = x + y * grid_size + z * grid_size * grid_size;
-            return user_state.voxels[index];
+            if (x < user_state.range.extent.x &&
+                y < user_state.range.extent.y &&
+                z < user_state.range.extent.z) {
+                auto grid_size_x = user_state.range.extent.x;
+                auto grid_size_y = user_state.range.extent.y;
+                auto index = x + y * grid_size_x + z * grid_size_x * grid_size_y;
+                return user_state.voxels[index];
+            } else {
+                return 0u;
+            }
         };
         output[my_output_index] = OctreeNode{.leaf = {.color = sample_child(x, y, z)}};
         return;
     }
     auto level_i = max_depth - 1 - depth;
-    auto node_size = 2u << level_i;
-    auto grid_size = user_state.range.extent.x / node_size;
+    auto grid_size = 1u << depth;
     auto const &my_gvox_octree = levels[level_i][x + y * grid_size + z * grid_size * grid_size];
     if (std::holds_alternative<OctreeNode::Parent>(my_gvox_octree)) {
         auto const &my_node = std::get<OctreeNode::Parent>(my_gvox_octree);
@@ -98,17 +95,23 @@ extern "C" void gvox_serialize_adapter_gvox_octree_blit_end(GvoxBlitContext *bli
     levels.resize(user_state.max_depth);
 
     for (uint32_t level_i = 0; level_i < user_state.max_depth; ++level_i) {
-        auto node_size = 2u << level_i;
-        auto grid_size = user_state.range.extent.x / node_size;
+        auto depth = user_state.max_depth - 1 - level_i;
+        auto grid_size = 1u << depth;
         levels[level_i].resize(grid_size * grid_size * grid_size);
         for (uint32_t zi = 0; zi < grid_size; ++zi) {
             for (uint32_t yi = 0; yi < grid_size; ++yi) {
                 for (uint32_t xi = 0; xi < grid_size; ++xi) {
                     if (level_i == 0) {
                         std::array<uint32_t, 8> children{};
-                        auto sample_child = [&user_state, grid_size](uint32_t x, uint32_t y, uint32_t z) {
-                            auto index = x + y * grid_size * 2 + z * grid_size * 2 * grid_size * 2;
-                            return user_state.voxels[index];
+                        auto sample_child = [&user_state](uint32_t x, uint32_t y, uint32_t z) {
+                            if (x < user_state.range.extent.x &&
+                                y < user_state.range.extent.y &&
+                                z < user_state.range.extent.z) {
+                                auto index = x + y * user_state.range.extent.x + z * user_state.range.extent.x * user_state.range.extent.y;
+                                return user_state.voxels[index];
+                            } else {
+                                return 0u;
+                            }
                         };
                         for (uint32_t child_i = 0; child_i < 8; ++child_i) {
                             children[child_i] = sample_child(xi * 2 + (child_i & 1), yi * 2 + ((child_i / 2) & 1), zi * 2 + ((child_i / 4) & 1));

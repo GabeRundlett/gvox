@@ -19,6 +19,8 @@ struct RunLengthEncodingParseUserState {
     std::vector<std::vector<uint32_t>> columns{};
 };
 
+#define CACHE_COLUMNS 0
+
 // Base
 extern "C" void gvox_parse_adapter_gvox_run_length_encoding_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(RunLengthEncodingParseUserState));
@@ -56,6 +58,29 @@ extern "C" void gvox_parse_adapter_gvox_run_length_encoding_blit_begin(GvoxBlitC
     user_state.columns.resize(user_state.range.extent.x * user_state.range.extent.y);
     gvox_input_read(blit_ctx, user_state.offset, user_state.column_pointers.size() * sizeof(user_state.column_pointers[0]), user_state.column_pointers.data());
     // user_state.offset += user_state.column_pointers.size() * sizeof(user_state.column_pointers[0]);
+#if !CACHE_COLUMNS
+    for (uint32_t yi = 0; yi < user_state.range.extent.y; ++yi) {
+        for (uint32_t xi = 0; xi < user_state.range.extent.x; ++xi) {
+            auto &column = user_state.columns[xi + yi * user_state.range.extent.x];
+            auto column_ptr = user_state.column_pointers[xi + yi * user_state.range.extent.x];
+            uint32_t zi = 0;
+            uint32_t read_offset = column_ptr * sizeof(uint32_t) + static_cast<uint32_t>(user_state.offset);
+            while (zi < user_state.range.extent.z) {
+                for (uint32_t ci = 0; ci < user_state.channel_n; ++ci) {
+                    column.push_back(0);
+                    auto &voxel_data = column.back();
+                    gvox_input_read(blit_ctx, read_offset + ci, sizeof(voxel_data), &voxel_data);
+                }
+                read_offset += user_state.channel_n * sizeof(uint32_t);
+                uint32_t run_length = 0;
+                gvox_input_read(blit_ctx, read_offset, sizeof(run_length), &run_length);
+                read_offset += 1 * sizeof(uint32_t);
+                column.push_back(run_length);
+                zi += run_length;
+            }
+        }
+    }
+#endif
 }
 
 extern "C" void gvox_parse_adapter_gvox_run_length_encoding_blit_end(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/) {
@@ -79,6 +104,14 @@ extern "C" auto gvox_parse_adapter_gvox_run_length_encoding_sample_region(GvoxBl
     auto y_pos = static_cast<size_t>(offset->y - user_state.range.offset.y);
     auto z_pos = static_cast<size_t>(offset->z - user_state.range.offset.z);
     auto &column = user_state.columns[x_pos + y_pos * user_state.range.extent.x];
+    uint32_t voxel_data = 0;
+    uint32_t voxel_channel_index = 0;
+    for (uint32_t channel_index = 0; channel_index < channel_id; ++channel_index) {
+        if (((user_state.channel_flags >> channel_index) & 0x1) != 0) {
+            ++voxel_channel_index;
+        }
+    }
+#if CACHE_COLUMNS
     if (column.size() == 0) {
         // load column
         auto column_ptr = user_state.column_pointers[x_pos + y_pos * user_state.range.extent.x];
@@ -103,14 +136,19 @@ extern "C" auto gvox_parse_adapter_gvox_run_length_encoding_sample_region(GvoxBl
             zi += run_length;
         }
     }
-    uint32_t voxel_data = 0;
-    uint32_t voxel_channel_index = 0;
-    for (uint32_t channel_index = 0; channel_index < channel_id; ++channel_index) {
-        if (((user_state.channel_flags >> channel_index) & 0x1) != 0) {
-            ++voxel_channel_index;
-        }
-    }
     voxel_data = column[z_pos * user_state.channel_n + voxel_channel_index];
+#else
+    uint32_t curr_z = 0;
+    for (uint32_t i = 0; i < column.size(); i += user_state.channel_n + 1) {
+        auto run_length = column[i + user_state.channel_n];
+        auto next_z = curr_z + run_length;
+        if (z_pos < next_z) {
+            voxel_data = column[i + voxel_channel_index];
+            break;
+        }
+        curr_z = next_z;
+    }
+#endif
     return {voxel_data, 1u};
 }
 

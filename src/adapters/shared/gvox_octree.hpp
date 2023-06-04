@@ -23,7 +23,7 @@ struct Octree {
     std::vector<OctreeNode> nodes{};
 
     uint32_t sample(OctreeNode::Parent const &self, uint32_t x, uint32_t y, uint32_t z, uint32_t depth = 0) const {
-        auto child_size = range.extent.x / (2u << depth);
+        auto child_size = (1u << ceil_log2(std::max({range.extent.x, range.extent.y, range.extent.z}))) / (2u << depth);
         if (child_size == 0) {
             return 0;
         }

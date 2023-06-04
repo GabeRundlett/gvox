@@ -10,10 +10,6 @@
 #include <vector>
 #include <new>
 
-struct LoadedRegionHeader {
-    std::vector<ChannelHeader> channels;
-};
-
 struct GvoxPaletteParseUserState {
     GvoxRegionRange range{};
     uint32_t blob_size{};
@@ -25,7 +21,7 @@ struct GvoxPaletteParseUserState {
     uint32_t r_ny{};
     uint32_t r_nz{};
 
-    std::vector<LoadedRegionHeader> region_headers{};
+    std::vector<ChannelHeader> region_headers{};
     std::vector<uint8_t> buffer{};
 
     std::array<uint32_t, 32> channel_indices{};
@@ -80,13 +76,10 @@ extern "C" void gvox_parse_adapter_gvox_palette_blit_begin(GvoxBlitContext *blit
     user_state.r_ny = (user_state.range.extent.y + REGION_SIZE - 1) / REGION_SIZE;
     user_state.r_nz = (user_state.range.extent.z + REGION_SIZE - 1) / REGION_SIZE;
 
-    user_state.region_headers.resize(user_state.r_nx * user_state.r_ny * user_state.r_nz);
+    user_state.region_headers.resize(user_state.r_nx * user_state.r_ny * user_state.r_nz * user_state.channel_n);
     for (auto &region_header : user_state.region_headers) {
-        region_header.channels.resize(user_state.channel_n);
-        for (auto &channel_header : region_header.channels) {
-            gvox_input_read(blit_ctx, user_state.offset, sizeof(ChannelHeader), &channel_header);
-            user_state.offset += sizeof(ChannelHeader);
-        }
+        gvox_input_read(blit_ctx, user_state.offset, sizeof(ChannelHeader), &region_header);
+        user_state.offset += sizeof(ChannelHeader);
     }
 
     user_state.buffer.resize(user_state.blob_size);
@@ -126,7 +119,7 @@ extern "C" auto gvox_parse_adapter_gvox_palette_sample_region(GvoxBlitContext * 
     auto const pz = static_cast<uint32_t>(offset->z - user_state.range.offset.z) - zi * REGION_SIZE;
     auto r_nx = user_state.r_nx;
     auto r_ny = user_state.r_ny;
-    auto &channel_header = user_state.region_headers[xi + yi * r_nx + zi * r_nx * r_ny].channels[user_state.channel_indices[channel_id]];
+    auto &channel_header = user_state.region_headers[user_state.channel_indices[channel_id] + (xi + yi * r_nx + zi * r_nx * r_ny) * user_state.channel_n];
     if (channel_header.variant_n <= 1) {
         return {channel_header.blob_offset, 1u};
     } else {
@@ -178,13 +171,14 @@ extern "C" auto gvox_parse_adapter_gvox_palette_query_region_flags(GvoxBlitConte
 
     for (uint32_t channel_id = 0; channel_id < 32; ++channel_id) {
         if (((1u << channel_id) & channel_flags) != 0) {
-            auto &a_channel_header = user_state.region_headers[ax + ay * user_state.r_nx + az * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
+            auto channel_index = user_state.channel_indices[channel_id];
+            auto &a_channel_header = user_state.region_headers[channel_index + (ax + ay * user_state.r_nx + az * user_state.r_nx * user_state.r_ny) * user_state.channel_n];
             if (a_channel_header.variant_n == 1) {
                 flags |= GVOX_REGION_FLAG_UNIFORM;
                 for (uint32_t zi = az; zi < bz; ++zi) {
                     for (uint32_t yi = ay; yi < by; ++yi) {
                         for (uint32_t xi = ax; xi < bx; ++xi) {
-                            auto &b_channel_header = user_state.region_headers[xi + yi * user_state.r_nx + zi * user_state.r_nx * user_state.r_ny].channels[user_state.channel_indices[channel_id]];
+                            auto &b_channel_header = user_state.region_headers[channel_index + (xi + yi * user_state.r_nx + zi * user_state.r_nx * user_state.r_ny) + user_state.channel_n];
                             if (b_channel_header.variant_n != 1 || b_channel_header.blob_offset != a_channel_header.blob_offset) {
                                 flags = 0;
                                 break;

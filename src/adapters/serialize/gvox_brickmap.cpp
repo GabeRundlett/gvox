@@ -91,7 +91,13 @@ extern "C" void gvox_serialize_adapter_gvox_brickmap_blit_end(GvoxBlitContext *b
                                 auto gyi = yi + byi * 8;
                                 auto gzi = zi + bzi * 8;
                                 auto in_index = gxi + gyi * user_state.range.extent.x + gzi * user_state.range.extent.x * user_state.range.extent.y;
-                                out_voxel = user_state.voxels[in_index * user_state.channels.size() + ci];
+                                if (gxi < user_state.range.extent.x &&
+                                    gyi < user_state.range.extent.y &&
+                                    gzi < user_state.range.extent.z) {
+                                    out_voxel = user_state.voxels[in_index * user_state.channels.size() + ci];
+                                } else {
+                                    out_voxel = 0u;
+                                }
                                 if (in_index == 0) {
                                     first_voxel = out_voxel;
                                 }

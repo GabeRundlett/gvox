@@ -40,11 +40,11 @@ extern "C" void gvox_parse_adapter_gvox_global_palette_destroy(GvoxAdapterContex
 extern "C" void gvox_parse_adapter_gvox_global_palette_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
     auto &user_state = *static_cast<GlobalPaletteParseUserState *>(gvox_adapter_get_user_pointer(ctx));
 
-    uint32_t magic = 0;
-    gvox_input_read(blit_ctx, user_state.offset, sizeof(uint32_t), &magic);
-    user_state.offset += sizeof(uint32_t);
+    uint64_t magic = 0;
+    gvox_input_read(blit_ctx, user_state.offset, sizeof(magic), &magic);
+    user_state.offset += sizeof(magic);
 
-    if (magic != std::bit_cast<uint32_t>(std::array<char, 4>{'g', 'l', 'p', '\0'})) {
+    if (magic != std::bit_cast<uint64_t>(std::array<char, 8>{'g', 'v', 'g', 'l', 'b', 'p', 'a', 'l'})) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "parsing a global palette must begin with a valid magic number");
         return;
     }

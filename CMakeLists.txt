@@ -60,6 +60,7 @@ set(GVOX_SERIALIZE_ADAPTERS
     "gvox_global_palette"
     "gvox_brickmap"
     "colored_text"
+    "random_sample"
 )
 
 if(GVOX_BUILD_FOR_JAVA)
