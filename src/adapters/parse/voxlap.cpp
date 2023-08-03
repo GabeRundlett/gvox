@@ -136,11 +136,11 @@ extern "C" void gvox_parse_adapter_voxlap_blit_begin(GvoxBlitContext *blit_ctx, 
                 len_bottom = top_color_end - top_color_start + 1;
                 if (number_4byte_chunks == 0) {
                     // infer ACTUAL number of 4-byte chunks from the length of the color data
-                    user_state.offset += 4 * (len_bottom + 1);
+                    user_state.offset += 4 * static_cast<size_t>(len_bottom + 1);
                     break;
                 }
                 len_top = (number_4byte_chunks - 1) - len_bottom;
-                user_state.offset += v[0] * 4;
+                user_state.offset += static_cast<size_t>(v[0]) * 4;
                 gvox_input_read(blit_ctx, user_state.offset, sizeof(v), &v);
                 bottom_color_end = v[3]; // aka air start
                 bottom_color_start = bottom_color_end - len_top;

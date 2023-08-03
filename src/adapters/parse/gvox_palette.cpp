@@ -30,7 +30,7 @@ struct GvoxPaletteParseUserState {
 // Base
 extern "C" void gvox_parse_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteParseUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteParseUserState());
+    new (user_state_ptr) GvoxPaletteParseUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -76,7 +76,7 @@ extern "C" void gvox_parse_adapter_gvox_palette_blit_begin(GvoxBlitContext *blit
     user_state.r_ny = (user_state.range.extent.y + REGION_SIZE - 1) / REGION_SIZE;
     user_state.r_nz = (user_state.range.extent.z + REGION_SIZE - 1) / REGION_SIZE;
 
-    user_state.region_headers.resize(user_state.r_nx * user_state.r_ny * user_state.r_nz * user_state.channel_n);
+    user_state.region_headers.resize(static_cast<size_t>(user_state.r_nx) * user_state.r_ny * user_state.r_nz * user_state.channel_n);
     for (auto &region_header : user_state.region_headers) {
         gvox_input_read(blit_ctx, user_state.offset, sizeof(ChannelHeader), &region_header);
         user_state.offset += sizeof(ChannelHeader);

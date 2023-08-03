@@ -58,7 +58,7 @@ static void write_data(uint8_t *&buffer_ptr, T const &data) {
 // Base
 extern "C" void gvox_serialize_adapter_gvox_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxPaletteSerializeUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxPaletteSerializeUserState());
+    new (user_state_ptr) GvoxPaletteSerializeUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 

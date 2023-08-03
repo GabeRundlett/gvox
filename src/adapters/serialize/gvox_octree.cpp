@@ -17,7 +17,7 @@ using OctreeTempNode = std::variant<OctreeNode::Parent, OctreeNode::Leaf>;
 // Base
 extern "C" void gvox_serialize_adapter_gvox_octree_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(OctreeUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) OctreeUserState());
+    new (user_state_ptr) OctreeUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -179,32 +179,34 @@ extern "C" void gvox_serialize_adapter_gvox_octree_blit_end(GvoxBlitContext *bli
     gvox_output_write(blit_ctx, user_state.offset, output.size() * sizeof(output[0]), output.data());
 }
 
-static void handle_region(OctreeUserState &user_state, GvoxRegionRange const *range, auto user_func) {
-    for (uint32_t zi = 0; zi < range->extent.z; ++zi) {
-        for (uint32_t yi = 0; yi < range->extent.y; ++yi) {
-            for (uint32_t xi = 0; xi < range->extent.x; ++xi) {
-                auto const pos = GvoxOffset3D{
-                    static_cast<int32_t>(xi) + range->offset.x,
-                    static_cast<int32_t>(yi) + range->offset.y,
-                    static_cast<int32_t>(zi) + range->offset.z,
-                };
-                if (pos.x < user_state.range.offset.x ||
-                    pos.y < user_state.range.offset.y ||
-                    pos.z < user_state.range.offset.z ||
-                    pos.x >= user_state.range.offset.x + static_cast<int32_t>(user_state.range.extent.x) ||
-                    pos.y >= user_state.range.offset.y + static_cast<int32_t>(user_state.range.extent.y) ||
-                    pos.z >= user_state.range.offset.z + static_cast<int32_t>(user_state.range.extent.z)) {
-                    continue;
+namespace {
+    void handle_region(OctreeUserState &user_state, GvoxRegionRange const *range, auto user_func) {
+        for (uint32_t zi = 0; zi < range->extent.z; ++zi) {
+            for (uint32_t yi = 0; yi < range->extent.y; ++yi) {
+                for (uint32_t xi = 0; xi < range->extent.x; ++xi) {
+                    auto const pos = GvoxOffset3D{
+                        static_cast<int32_t>(xi) + range->offset.x,
+                        static_cast<int32_t>(yi) + range->offset.y,
+                        static_cast<int32_t>(zi) + range->offset.z,
+                    };
+                    if (pos.x < user_state.range.offset.x ||
+                        pos.y < user_state.range.offset.y ||
+                        pos.z < user_state.range.offset.z ||
+                        pos.x >= user_state.range.offset.x + static_cast<int32_t>(user_state.range.extent.x) ||
+                        pos.y >= user_state.range.offset.y + static_cast<int32_t>(user_state.range.extent.y) ||
+                        pos.z >= user_state.range.offset.z + static_cast<int32_t>(user_state.range.extent.z)) {
+                        continue;
+                    }
+                    auto output_rel_x = static_cast<size_t>(pos.x - user_state.range.offset.x);
+                    auto output_rel_y = static_cast<size_t>(pos.y - user_state.range.offset.y);
+                    auto output_rel_z = static_cast<size_t>(pos.z - user_state.range.offset.z);
+                    auto output_index = static_cast<size_t>(output_rel_x + output_rel_y * user_state.range.extent.x + output_rel_z * user_state.range.extent.x * user_state.range.extent.y);
+                    user_func(output_index, pos);
                 }
-                auto output_rel_x = static_cast<size_t>(pos.x - user_state.range.offset.x);
-                auto output_rel_y = static_cast<size_t>(pos.y - user_state.range.offset.y);
-                auto output_rel_z = static_cast<size_t>(pos.z - user_state.range.offset.z);
-                auto output_index = static_cast<size_t>(output_rel_x + output_rel_y * user_state.range.extent.x + output_rel_z * user_state.range.extent.x * user_state.range.extent.y);
-                user_func(output_index, pos);
             }
         }
     }
-}
+} // namespace
 
 // Serialize Driven
 extern "C" void gvox_serialize_adapter_gvox_octree_serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t /* channel_flags */) {

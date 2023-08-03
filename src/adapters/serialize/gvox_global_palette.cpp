@@ -26,7 +26,7 @@ struct GlobalPaletteUserState {
 // Base
 extern "C" void gvox_serialize_adapter_gvox_global_palette_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GlobalPaletteUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GlobalPaletteUserState());
+    new (user_state_ptr) GlobalPaletteUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 

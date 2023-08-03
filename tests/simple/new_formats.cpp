@@ -11,18 +11,18 @@
 #include <gvox/adapters/serialize/random_sample.h>
 #include <adapters/procedural.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 
 void handle_gvox_error(GvoxContext *gvox_ctx) {
     GvoxResult res = gvox_get_result(gvox_ctx);
     int error_count = 0;
     while (res != GVOX_RESULT_SUCCESS) {
-        size_t size;
-        gvox_get_result_message(gvox_ctx, NULL, &size);
+        size_t size = 0;
+        gvox_get_result_message(gvox_ctx, nullptr, &size);
         char *str = new char[size + 1];
-        gvox_get_result_message(gvox_ctx, str, NULL);
+        gvox_get_result_message(gvox_ctx, str, nullptr);
         str[size] = '\0';
         printf("ERROR: %s\n", str);
         gvox_pop_result(gvox_ctx);
@@ -74,10 +74,10 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
 #if PARSE_MAGICAVOXEL
         auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "magicavoxel"), NULL);
 #else
-        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), NULL);
+        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_register_parse_adapter(gvox_ctx, &procedural_adapter_info), nullptr);
 #endif
         auto *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "file"), &o_config);
-        auto *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, adapter_name), NULL);
+        auto *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, adapter_name), nullptr);
         gvox_blit_region(i_ctx, o_ctx, p_ctx, s_ctx, region_range_ptr, GVOX_CHANNEL_BIT_COLOR);
         gvox_destroy_adapter_context(i_ctx);
         gvox_destroy_adapter_context(o_ctx);
@@ -93,8 +93,8 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
         auto i_config = GvoxFileInputAdapterConfig{.filepath = output_filepath, .byte_offset = 0};
         auto s_config = GvoxColoredTextSerializeAdapterConfig{.non_color_max_value = 5};
         auto *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
-        auto *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
-        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, adapter_name), NULL);
+        auto *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), nullptr);
+        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, adapter_name), nullptr);
         auto *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
         gvox_blit_region(i_ctx, o_ctx, p_ctx, s_ctx, region_range_ptr, GVOX_CHANNEL_BIT_COLOR);
         gvox_destroy_adapter_context(i_ctx);
@@ -115,7 +115,7 @@ void test_adapter(char const *const output_filepath, char const *const adapter_n
         auto s_config = GvoxRandomSampleSerializeAdapterConfig{.sample_count = 10000000};
         auto *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
         auto *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "byte_buffer"), &o_config);
-        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, adapter_name), NULL);
+        auto *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, adapter_name), nullptr);
         auto *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "random_sample"), &s_config);
         gvox_blit_region_serialize_driven(i_ctx, o_ctx, p_ctx, s_ctx, region_range_ptr, GVOX_CHANNEL_BIT_COLOR);
         gvox_destroy_adapter_context(i_ctx);

@@ -52,7 +52,7 @@ extern "C" void gvox_input_adapter_file_blit_end(GvoxBlitContext * /*unused*/, G
 extern "C" void gvox_input_adapter_file_read(GvoxAdapterContext *ctx, size_t position, size_t size, void *data) {
     auto &user_state = *static_cast<FileInputUserState *>(gvox_adapter_get_user_pointer(ctx));
 #if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
-    auto lock = std::lock_guard{user_state.mtx};
+    [[maybe_unused]] auto lock = std::lock_guard{user_state.mtx};
 #endif
     user_state.file.seekg(static_cast<std::streamoff>(position), std::ios_base::beg);
     user_state.file.read(static_cast<char *>(data), static_cast<std::streamsize>(size));

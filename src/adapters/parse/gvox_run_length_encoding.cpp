@@ -24,7 +24,7 @@ struct RunLengthEncodingParseUserState {
 // Base
 extern "C" void gvox_parse_adapter_gvox_run_length_encoding_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(RunLengthEncodingParseUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) RunLengthEncodingParseUserState());
+    new (user_state_ptr) RunLengthEncodingParseUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -54,8 +54,8 @@ extern "C" void gvox_parse_adapter_gvox_run_length_encoding_blit_begin(GvoxBlitC
 
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
 
-    user_state.column_pointers.resize(user_state.range.extent.x * user_state.range.extent.y);
-    user_state.columns.resize(user_state.range.extent.x * user_state.range.extent.y);
+    user_state.column_pointers.resize(static_cast<size_t>(user_state.range.extent.x) * user_state.range.extent.y);
+    user_state.columns.resize(static_cast<size_t>(user_state.range.extent.x) * user_state.range.extent.y);
     gvox_input_read(blit_ctx, user_state.offset, user_state.column_pointers.size() * sizeof(user_state.column_pointers[0]), user_state.column_pointers.data());
     // user_state.offset += user_state.column_pointers.size() * sizeof(user_state.column_pointers[0]);
 #if !CACHE_COLUMNS
@@ -98,7 +98,7 @@ extern "C" auto gvox_parse_adapter_gvox_run_length_encoding_query_parsable_range
     return user_state.range;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_run_length_encoding_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
+extern "C" auto gvox_parse_adapter_gvox_run_length_encoding_sample_region(GvoxBlitContext * /*blit_ctx*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<RunLengthEncodingParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     auto x_pos = static_cast<size_t>(offset->x - user_state.range.offset.x);
     auto y_pos = static_cast<size_t>(offset->y - user_state.range.offset.y);

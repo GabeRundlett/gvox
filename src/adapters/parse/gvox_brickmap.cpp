@@ -25,7 +25,7 @@ struct BrickmapParseUserState {
 // Base
 extern "C" void gvox_parse_adapter_gvox_brickmap_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(BrickmapParseUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) BrickmapParseUserState());
+    new (user_state_ptr) BrickmapParseUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -63,7 +63,7 @@ extern "C" void gvox_parse_adapter_gvox_brickmap_blit_begin(GvoxBlitContext *bli
     user_state.bricks_extent.y = (user_state.range.extent.y + 7) / 8;
     user_state.bricks_extent.z = (user_state.range.extent.z + 7) / 8;
 
-    user_state.brick_headers.resize(user_state.channel_n * user_state.bricks_extent.x * user_state.bricks_extent.y * user_state.bricks_extent.z);
+    user_state.brick_headers.resize(static_cast<size_t>(user_state.channel_n) * user_state.bricks_extent.x * user_state.bricks_extent.y * user_state.bricks_extent.z);
     user_state.bricks_heap.resize(heap_size);
 
     gvox_input_read(blit_ctx, user_state.offset, user_state.brick_headers.size() * sizeof(user_state.brick_headers[0]), user_state.brick_headers.data());

@@ -18,7 +18,7 @@ struct OctreeParseUserState {
 // Base
 extern "C" void gvox_parse_adapter_gvox_octree_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(OctreeParseUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) OctreeParseUserState());
+    new (user_state_ptr) OctreeParseUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -74,7 +74,7 @@ extern "C" auto gvox_parse_adapter_gvox_octree_sample_region(GvoxBlitContext * /
     auto x_pos = static_cast<uint32_t>(offset->x - user_state.gvox_octree.range.offset.x);
     auto y_pos = static_cast<uint32_t>(offset->y - user_state.gvox_octree.range.offset.y);
     auto z_pos = static_cast<uint32_t>(offset->z - user_state.gvox_octree.range.offset.z);
-    uint32_t voxel_data = user_state.gvox_octree.sample(user_state.gvox_octree.nodes[0].parent, x_pos, y_pos, z_pos);
+    uint32_t const voxel_data = user_state.gvox_octree.sample(user_state.gvox_octree.nodes[0].parent, x_pos, y_pos, z_pos);
     return {voxel_data, 1u};
 }
 

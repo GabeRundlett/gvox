@@ -11,7 +11,7 @@
 #include "../shared/thread_pool.hpp"
 
 struct TempBrickInfo {
-    uint32_t first_voxel;
+    uint32_t first_voxel{};
     uint32_t state = 0;
 #if GVOX_ENABLE_MULTITHREADED_ADAPTERS
     std::mutex access_mtx;
@@ -31,7 +31,7 @@ struct BrickmapUserState {
 // Base
 extern "C" void gvox_serialize_adapter_gvox_brickmap_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(BrickmapUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) BrickmapUserState());
+    new (user_state_ptr) BrickmapUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -71,14 +71,13 @@ extern "C" void gvox_serialize_adapter_gvox_brickmap_blit_end(GvoxBlitContext *b
     auto &user_state = *static_cast<BrickmapUserState *>(gvox_adapter_get_user_pointer(ctx));
     std::vector<Brick> bricks_heap{};
     std::vector<BrickmapHeader> brick_headers{};
-    brick_headers.resize(user_state.bricks_extent.x * user_state.bricks_extent.y * user_state.bricks_extent.z * user_state.channels.size());
+    brick_headers.resize(static_cast<size_t>(user_state.bricks_extent.x) * user_state.bricks_extent.y * user_state.bricks_extent.z * user_state.channels.size());
     bricks_heap.reserve(user_state.brick_heap_size);
     for (uint32_t ci = 0; ci < user_state.channels.size(); ++ci) {
         for (uint32_t bzi = 0; bzi < user_state.bricks_extent.z; ++bzi) {
             for (uint32_t byi = 0; byi < user_state.bricks_extent.y; ++byi) {
                 for (uint32_t bxi = 0; bxi < user_state.bricks_extent.x; ++bxi) {
                     auto brick_index = bxi + byi * user_state.bricks_extent.x + bzi * user_state.bricks_extent.x * user_state.bricks_extent.y;
-                    auto &temp_brick = (*user_state.temp_brick_infos)[brick_index * user_state.channels.size() + ci];
                     auto &brick_header = brick_headers[brick_index + ci * user_state.bricks_extent.x * user_state.bricks_extent.y * user_state.bricks_extent.z];
                     auto brick_result = Brick{};
                     auto first_voxel = uint32_t{};
@@ -111,6 +110,7 @@ extern "C" void gvox_serialize_adapter_gvox_brickmap_blit_end(GvoxBlitContext *b
                         brick_header.loaded.heap_index = static_cast<uint32_t>(bricks_heap.size());
                         bricks_heap.push_back(brick_result);
                     } else {
+                        auto &temp_brick = (*user_state.temp_brick_infos)[brick_index * user_state.channels.size() + ci];
                         brick_header.unloaded.lod_color = temp_brick.first_voxel;
                     }
                 }

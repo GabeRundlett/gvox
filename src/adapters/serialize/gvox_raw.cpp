@@ -17,7 +17,7 @@ struct GvoxRawUserState {
 // Base
 extern "C" void gvox_serialize_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxRawUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxRawUserState());
+    new (user_state_ptr) GvoxRawUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 

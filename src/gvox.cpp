@@ -264,7 +264,7 @@ static void gvox_blit_region_impl(
         .channel_flags = channel_flags,
     };
 
-    auto gvox_ctx = parse_ctx->gvox_context_ptr;
+    auto *gvox_ctx = parse_ctx->gvox_context_ptr;
 
 #define CHECK_RESULT_OR_EARLY_OUT                           \
     if (gvox_get_result(gvox_ctx) != GVOX_RESULT_SUCCESS) { \

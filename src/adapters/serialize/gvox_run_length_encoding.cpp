@@ -17,7 +17,7 @@ struct RunLengthEncodingUserState {
 // Base
 extern "C" void gvox_serialize_adapter_gvox_run_length_encoding_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(RunLengthEncodingUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) RunLengthEncodingUserState());
+    new (user_state_ptr) RunLengthEncodingUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 

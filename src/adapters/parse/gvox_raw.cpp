@@ -22,7 +22,7 @@ struct GvoxRawParseUserState {
 // Base
 extern "C" void gvox_parse_adapter_gvox_raw_create(GvoxAdapterContext *ctx, void const * /*unused*/) {
     auto *user_state_ptr = malloc(sizeof(GvoxRawParseUserState));
-    [[maybe_unused]] auto &user_state = *(new (user_state_ptr) GvoxRawParseUserState());
+    new (user_state_ptr) GvoxRawParseUserState();
     gvox_adapter_set_user_pointer(ctx, user_state_ptr);
 }
 
@@ -52,7 +52,7 @@ extern "C" void gvox_parse_adapter_gvox_raw_blit_begin(GvoxBlitContext *blit_ctx
 
     user_state.channel_n = static_cast<uint32_t>(std::popcount(user_state.channel_flags));
 
-    user_state.voxels.resize(user_state.range.extent.x * user_state.range.extent.y * user_state.range.extent.z * user_state.channel_n);
+    user_state.voxels.resize(static_cast<size_t>(user_state.range.extent.x) * user_state.range.extent.y * user_state.range.extent.z * user_state.channel_n);
     gvox_input_read(blit_ctx, user_state.offset, user_state.voxels.size() * sizeof(user_state.voxels[0]), user_state.voxels.data());
 }
 
@@ -71,7 +71,7 @@ extern "C" auto gvox_parse_adapter_gvox_raw_query_parsable_range(GvoxBlitContext
     return user_state.range;
 }
 
-extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
+extern "C" auto gvox_parse_adapter_gvox_raw_sample_region(GvoxBlitContext * /*blit_ctx*/, GvoxAdapterContext *ctx, GvoxRegion const * /*unused*/, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<GvoxRawParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     uint32_t voxel_channel_index = 0;
