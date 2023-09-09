@@ -1,4 +1,4 @@
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/adapters/input/file.h>
 
 #include <fstream>

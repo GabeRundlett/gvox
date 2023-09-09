@@ -1,6 +1,8 @@
 #include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/adapters/input/file.h>
 
+#if 1
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -96,6 +98,10 @@ void test_simple(void) {
     }
 
     {
+        // check_result(
+        //     gvox_blit_prepare(grass_image_parser),
+        //     "Failed to begin blit\n");
+
         GvoxBlitInfo blit_info = {0};
         blit_info.struct_type = GVOX_STRUCT_TYPE_BLIT_INFO;
         blit_info.next = NULL;
@@ -113,8 +119,10 @@ void test_simple(void) {
     gvox_destroy_parser(grass_image_parser);
     gvox_destroy_input_adapter(grass_file_input);
 }
+#endif
 
 int main(void) {
+    gvox_init();
     test_simple();
     return 0;
 }

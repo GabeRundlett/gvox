@@ -1,5 +1,7 @@
 .out*
 .vs*
+build*
+.cache*
 
 imgui.ini
 *.dot
@@ -12,3 +14,4 @@ imgui.ini
 *.nbt
 
 assets/
+vcpkg/

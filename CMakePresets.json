@@ -10,9 +10,9 @@
             "name": "defaults",
             "hidden": true,
             "binaryDir": "${sourceDir}/.out/${presetName}",
-            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
+                "GVOX_USE_VCPKG": true,
                 "GVOX_ENABLE_FILE_IO": true,
                 "GVOX_ENABLE_MULTITHREADED_ADAPTERS": true,
                 "GVOX_ENABLE_THREADSAFETY": true,
@@ -63,18 +63,27 @@
             }
         },
         {
+            "name": "defaults-clangd",
+            "hidden": true,
+            "binaryDir": "build",
+            "cacheVariables": {
+                "GVOX_CONFIG_CLANGD": true,
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
+        },
+        {
             "name": "emscripten-wasm32-unknown-unknown",
             "displayName": "Emscripten wasm32",
             "inherits": [
                 "defaults"
             ],
+            "toolchainFile": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake",
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "GVOX_BUILD_FOR_WEB": true,
-                "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake"
+                "VCPKG_TARGET_TRIPLET": "wasm32-emscripten"
             }
         },
         {
@@ -83,14 +92,23 @@
             "inherits": [
                 "defaults"
             ],
+            "toolchainFile": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake",
             "cacheVariables": {
                 "GVOX_ENABLE_FILE_IO": false,
                 "GVOX_ENABLE_THREADSAFETY": false,
                 "GVOX_ENABLE_TESTS": false,
                 "GVOX_BUILD_FOR_WEB": true,
-                "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk",
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake"
+                "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk"
             }
+        },
+        {
+            "name": "windows-clangd",
+            "displayName": "Windows Clangd",
+            "inherits": [
+                "defaults-clangd",
+                "defaults-windows"
+            ],
+            "toolchainFile": "${sourceDir}/cmake/toolchains/clang-x86_64-windows-msvc.cmake"
         },
         {
             "name": "clang-x86_64-windows-msvc",
@@ -98,9 +116,7 @@
             "inherits": [
                 "defaults-windows"
             ],
-            "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/clang-x86_64-windows-msvc.cmake"
-            }
+            "toolchainFile": "${sourceDir}/cmake/toolchains/clang-x86_64-windows-msvc.cmake"
         },
         {
             "name": "cl-x86_64-windows-msvc",
@@ -108,9 +124,7 @@
             "inherits": [
                 "defaults-windows"
             ],
-            "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/cl-x86_64-windows-msvc.cmake"
-            }
+            "toolchainFile": "${sourceDir}/cmake/toolchains/cl-x86_64-windows-msvc.cmake"
         },
         {
             "name": "gcc-x86_64-linux-gnu",
@@ -118,9 +132,7 @@
             "inherits": [
                 "defaults-linux"
             ],
-            "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/gcc-x86_64-linux-gnu.cmake"
-            }
+            "toolchainFile": "${sourceDir}/cmake/toolchains/gcc-x86_64-linux-gnu.cmake"
         },
         {
             "name": "clang-x86_64-linux-gnu",
@@ -128,9 +140,7 @@
             "inherits": [
                 "defaults-linux"
             ],
-            "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/clang-x86_64-linux-gnu.cmake"
-            }
+            "toolchainFile": "${sourceDir}/cmake/toolchains/clang-x86_64-linux-gnu.cmake"
         },
         {
             "name": "clang-aarch64-macos-gnu",
@@ -138,9 +148,7 @@
             "inherits": [
                 "defaults-macos"
             ],
-            "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/clang-aarch64-macos-gnu.cmake"
-            }
+            "toolchainFile": "${sourceDir}/cmake/toolchains/clang-aarch64-macos-gnu.cmake"
         }
     ],
     "buildPresets": [
@@ -269,6 +277,20 @@
             "displayName": "Clang AArch64 MacOS (GNU ABI?) Release",
             "configurePreset": "clang-aarch64-macos-gnu",
             "configuration": "Release"
+        },
+        {
+            "name": "windows-clangd-debug",
+            "displayName": "Windows Clangd",
+            "configurePreset": "windows-clangd",
+            "configuration": "Debug"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "tests",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "cl-x86_64-windows-msvc"
         }
     ]
 }

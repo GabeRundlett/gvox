@@ -1,4 +1,4 @@
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/adapters/input/gzip.h>
 
 #include <vector>

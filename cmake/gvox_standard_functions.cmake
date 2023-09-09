@@ -1,7 +1,7 @@
 
 set(HEADER_CONTENT "#pragma once
 
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <string_view>
 #include <array>
 #include <utility>

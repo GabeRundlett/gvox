@@ -1,4 +1,4 @@
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/parsers/image.h>
 
 #include <FreeImage.h>
@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <vector>
 #include <span>
+
+#include "../utils/tracy.hpp"
 
 struct Pixel {
     uint8_t b, g, r, a;
@@ -60,7 +62,8 @@ auto GvoxImageParser::blit_emit_regions_in_range() -> GvoxResult {
 }
 
 namespace {
-    inline auto create_io_and_get_format(GvoxInputAdapter input_adapter) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
+    inline auto create_io_and_get_voxel_desc(GvoxInputAdapter input_adapter) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
+        ZoneScoped;
         auto io = FreeImageIO{
             .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
                 gvox_input_read(static_cast<GvoxInputAdapter>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
@@ -76,17 +79,18 @@ namespace {
                 return gvox_input_tell(static_cast<GvoxInputAdapter>(handle));
             },
         };
-        auto fi_format = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_adapter), 0);
-        return {io, fi_format};
+        auto fi_voxel_desc = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_adapter), 0);
+        return {io, fi_voxel_desc};
     }
 } // namespace
 
 auto GvoxImageParser::load(GvoxInputAdapter input_adapter) -> GvoxResult {
-    auto [io, fi_format] = create_io_and_get_format(input_adapter);
-    if (fi_format == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+    ZoneScoped;
+    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_adapter);
+    if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
-    FIBITMAP *fi_bitmap = FreeImage_LoadFromHandle(fi_format, &io, static_cast<fi_handle>(input_adapter));
+    FIBITMAP *fi_bitmap = FreeImage_LoadFromHandle(fi_voxel_desc, &io, static_cast<fi_handle>(input_adapter));
     if (fi_bitmap == nullptr) {
         // Failed to load the image
         return GVOX_ERROR_UNKNOWN;
@@ -102,26 +106,30 @@ auto GvoxImageParser::load(GvoxInputAdapter input_adapter) -> GvoxResult {
 
     FreeImage_Unload(fi_bitmap);
 
-    std::cout.fill('0');
-    for (uint32_t yi = 0; yi < size_y; ++yi) {
-        for (uint32_t xi = 0; xi < size_x; ++xi) {
-            auto index = static_cast<size_t>(xi + (size_y - 1 - yi) * size_x);
-            auto r = static_cast<uint32_t>(pixels[index].r);
-            auto g = static_cast<uint32_t>(pixels[index].g);
-            auto b = static_cast<uint32_t>(pixels[index].b);
-            r = std::min(std::max(r, 0u), 255u);
-            g = std::min(std::max(g, 0u), 255u);
-            b = std::min(std::max(b, 0u), 255u);
-            std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
+    {
+        ZoneScoped;
+        std::cout.fill('0');
+        for (uint32_t yi = 0; yi < size_y; ++yi) {
+            for (uint32_t xi = 0; xi < size_x; ++xi) {
+                auto index = static_cast<size_t>(xi + (size_y - 1 - yi) * size_x);
+                auto r = static_cast<uint32_t>(pixels[index].r);
+                auto g = static_cast<uint32_t>(pixels[index].g);
+                auto b = static_cast<uint32_t>(pixels[index].b);
+                r = std::min(std::max(r, 0u), 255u);
+                g = std::min(std::max(g, 0u), 255u);
+                b = std::min(std::max(b, 0u), 255u);
+                std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
+            }
+            std::cout << "\033[0m\n";
         }
-        std::cout << "\033[0m\n";
+        std::cout << "\033[0m" << std::flush;
     }
-    std::cout << "\033[0m" << std::flush;
 
     return GVOX_SUCCESS;
 }
 
 auto gvox_parser_image_create(void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
+    ZoneScoped;
     GvoxImageParserConfig config;
     if (args->config != nullptr) {
         config = *static_cast<GvoxImageParserConfig const *>(args->config);
@@ -146,8 +154,9 @@ auto gvox_parser_image_blit_unload_region(void *self) -> GvoxResult { return sta
 auto gvox_parser_image_blit_emit_regions_in_range(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_emit_regions_in_range(); }
 
 auto gvox_parser_image_create_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult {
-    auto [io, fi_format] = create_io_and_get_format(input_adapter);
-    if (fi_format == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+    ZoneScoped;
+    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_adapter);
+    if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
 

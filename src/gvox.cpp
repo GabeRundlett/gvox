@@ -1,143 +1,51 @@
 #include <gvox/gvox.h>
-#include <gvox_standard_functions.hpp>
 
 #include <vector>
+#include <thread>
 
-#define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
-
-#define IMPL_STRUCT_DEFAULTS(Name, destructor_extra)                                   \
-    void *self{};                                                                      \
-    Gvox##Name##Description desc{};                                                    \
-    ~IMPL_STRUCT_NAME(Name)() {                                                        \
-        if (self != nullptr) {                                                         \
-            desc.destroy(self);                                                        \
-        }                                                                              \
-        destructor_extra;                                                              \
-    }                                                                                  \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    () = default;                                                                      \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    (IMPL_STRUCT_NAME(Name) const &) = delete;                                         \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    (IMPL_STRUCT_NAME(Name) &&) = default;                                             \
-    auto operator=(IMPL_STRUCT_NAME(Name) const &)->IMPL_STRUCT_NAME(Name) & = delete; \
-    auto operator=(IMPL_STRUCT_NAME(Name) &&)->IMPL_STRUCT_NAME(Name) & = default
-
-struct IMPL_STRUCT_NAME(InputAdapter) {
-    GvoxInputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(InputAdapter, { delete next; });
-};
-struct IMPL_STRUCT_NAME(OutputAdapter) {
-    GvoxOutputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(OutputAdapter, { delete next; });
-};
-struct IMPL_STRUCT_NAME(Parser) {
-    IMPL_STRUCT_DEFAULTS(Parser, {});
-};
-struct IMPL_STRUCT_NAME(Serializer) {
-    IMPL_STRUCT_DEFAULTS(Serializer, {});
-};
-struct IMPL_STRUCT_NAME(Container) {
-    IMPL_STRUCT_DEFAULTS(Container, {});
-};
+#include "utils/tracy.hpp"
 
 struct GvoxChainStruct {
     GvoxStructType struct_type;
     void const *next;
 };
 
-#define HANDLE_CREATE(Type, TYPE)                                                      \
-    if (info == nullptr) {                                                             \
-        return GVOX_ERROR_INVALID_ARGUMENT;                                            \
-    }                                                                                  \
-    if (handle == nullptr) {                                                           \
-        return GVOX_ERROR_INVALID_ARGUMENT;                                            \
-    }                                                                                  \
-    if (info->struct_type != GVOX_STRUCT_TYPE_##TYPE##_CREATE_INFO) {                  \
-        return GVOX_ERROR_BAD_STRUCT_TYPE;                                             \
-    }                                                                                  \
-    *handle = new IMPL_STRUCT_NAME(Type){};                                            \
-    (*handle)->desc = info->description;                                               \
-    {                                                                                  \
-        auto create_result = (*handle)->desc.create(&(*handle)->self, &info->cb_args); \
-        if (create_result != GVOX_SUCCESS) {                                           \
-            delete *handle;                                                            \
-            return create_result;                                                      \
-        }                                                                              \
+void gvox_init(void) GVOX_FUNC_ATTRIB {
+    // TODO: REMOVE gvox_init
+    // ZoneScoped;
+    using namespace std::literals;
+    std::this_thread::sleep_for(5s);
+}
+
+auto gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
+    ZoneScoped;
+
+    if (info == nullptr) {
+        return GVOX_ERROR_INVALID_ARGUMENT;
+    }
+    if (info->struct_type != GVOX_STRUCT_TYPE_FILL_INFO) {
+        return GVOX_ERROR_BAD_STRUCT_TYPE;
     }
 
-auto gvox_create_input_adapter(GvoxInputAdapterCreateInfo const *info, GvoxInputAdapter *handle) -> GvoxResult {
-    HANDLE_CREATE(InputAdapter, INPUT_ADAPTER)
+    // TODO: Formalize with adapters
+    info->dst;
 
-    if (!info->adapter_chain) {
-        return GVOX_SUCCESS;
+    return GVOX_ERROR_UNKNOWN;
+}
+
+auto gvox_blit_prepare(GvoxParser parser) GVOX_FUNC_ATTRIB->GvoxResult {
+    ZoneScoped;
+
+    if (parser == nullptr) {
+        return GVOX_ERROR_INVALID_ARGUMENT;
     }
 
-    return gvox_create_input_adapter(info->adapter_chain, &((*handle)->next));
-}
-auto gvox_create_output_adapter(GvoxOutputAdapterCreateInfo const *info, GvoxOutputAdapter *handle) -> GvoxResult {
-    HANDLE_CREATE(OutputAdapter, OUTPUT_ADAPTER)
-    return GVOX_SUCCESS;
-}
-auto gvox_create_parser(GvoxParserCreateInfo const *info, GvoxParser *handle) -> GvoxResult {
-    HANDLE_CREATE(Parser, PARSER)
-    return GVOX_SUCCESS;
-}
-auto gvox_create_serializer(GvoxSerializerCreateInfo const *info, GvoxSerializer *handle) -> GvoxResult {
-    HANDLE_CREATE(Serializer, SERIALIZER)
-    return GVOX_SUCCESS;
-}
-auto gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *handle) -> GvoxResult {
-    HANDLE_CREATE(Container, CONTAINER)
-    return GVOX_SUCCESS;
+    return GVOX_ERROR_UNKNOWN;
 }
 
-#undef HANDLE_CREATE
+auto gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
+    ZoneScoped;
 
-namespace {
-    inline void destroy_handle(auto *handle) { delete handle; }
-} // namespace
-
-void gvox_destroy_input_adapter(GvoxInputAdapter handle) { destroy_handle(handle); }
-void gvox_destroy_output_adapter(GvoxOutputAdapter handle) { destroy_handle(handle); }
-void gvox_destroy_parser(GvoxParser handle) { destroy_handle(handle); }
-void gvox_destroy_serializer(GvoxSerializer handle) { destroy_handle(handle); }
-void gvox_destroy_container(GvoxContainer handle) { destroy_handle(handle); }
-
-#define HANDLE_GET_DESC(type, Type, TYPE)                                                                                                                       \
-    auto name_str = std::string_view{name};                                                                                                                     \
-    auto iter = std::find_if(standard_##type##s.begin(), standard_##type##s.end(), [name_str](Std##Type##Info const &info) { return info.first == name_str; }); \
-    if (iter == standard_##type##s.end()) {                                                                                                                     \
-        return GVOX_ERROR_UNKNOWN_STANDARD_##TYPE;                                                                                                              \
-    }                                                                                                                                                           \
-    *desc = iter->second;                                                                                                                                       \
-    return GVOX_SUCCESS
-
-auto gvox_get_standard_input_adapter_description(char const *name, GvoxInputAdapterDescription *desc) -> GvoxResult { HANDLE_GET_DESC(input_adapter, InputAdapter, INPUT_ADAPTER); }
-auto gvox_get_standard_output_adapter_description(char const *name, GvoxOutputAdapterDescription *desc) -> GvoxResult { HANDLE_GET_DESC(output_adapter, OutputAdapter, OUTPUT_ADAPTER); }
-auto gvox_get_standard_parser_description(char const *name, GvoxParserDescription *desc) -> GvoxResult { HANDLE_GET_DESC(parser, Parser, PARSER); }
-auto gvox_get_standard_serializer_description(char const *name, GvoxSerializerDescription *desc) -> GvoxResult { HANDLE_GET_DESC(serializer, Serializer, SERIALIZER); }
-auto gvox_get_standard_container_description(char const *name, GvoxContainerDescription *desc) -> GvoxResult { HANDLE_GET_DESC(container, Container, CONTAINER); }
-
-#undef HANDLE_GET_DESC
-
-auto gvox_create_parser_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult {
-    auto initial_input_pos = gvox_input_tell(input_adapter);
-    for (auto const &[parser_name, parser_desc] : standard_parsers) {
-        if (parser_desc.create_from_input != nullptr) {
-            auto creation_result = parser_desc.create_from_input(input_adapter, user_parser);
-            // we should reset the input adapter to where it was before the
-            // checking took place.
-            gvox_input_seek(input_adapter, initial_input_pos, GVOX_SEEK_ORIGIN_BEG);
-            if (creation_result == GVOX_SUCCESS) {
-                return GVOX_SUCCESS;
-            }
-        }
-    }
-    return GVOX_ERROR_UNKNOWN_STANDARD_PARSER;
-}
-
-auto gvox_blit(GvoxBlitInfo const *info) -> GvoxResult {
     if (info == nullptr) {
         return GVOX_ERROR_INVALID_ARGUMENT;
     }
@@ -149,11 +57,3 @@ auto gvox_blit(GvoxBlitInfo const *info) -> GvoxResult {
 }
 
 // Adapter API
-
-auto gvox_input_read(GvoxInputAdapter handle, uint8_t *data, size_t size) -> GvoxResult { return handle->desc.read(handle->self, handle->next, data, size); }
-auto gvox_input_seek(GvoxInputAdapter handle, long offset, GvoxSeekOrigin origin) -> GvoxResult { return handle->desc.seek(handle->self, handle->next, offset, origin); }
-auto gvox_input_tell(GvoxInputAdapter handle) -> long { return handle->desc.tell(handle->self, handle->next); }
-
-auto gvox_output_write(GvoxOutputAdapter handle, uint8_t *data, size_t size) -> GvoxResult { return handle->desc.write(handle->self, handle->next, data, size); }
-auto gvox_output_seek(GvoxOutputAdapter handle, long offset, GvoxSeekOrigin origin) -> GvoxResult { return handle->desc.seek(handle->self, handle->next, offset, origin); }
-auto gvox_output_seek(GvoxOutputAdapter handle) -> long { return handle->desc.tell(handle->self, handle->next); }

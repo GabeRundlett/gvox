@@ -1,4 +1,4 @@
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/adapters/input/byte_buffer.h>
 
 #include <vector>

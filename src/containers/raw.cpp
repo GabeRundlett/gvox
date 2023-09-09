@@ -1,4 +1,4 @@
-#include <gvox/gvox.h>
+#include <gvox/adapter.h>
 #include <gvox/containers/raw.h>
 
 #include <cstdlib>
@@ -13,12 +13,12 @@ static constexpr auto CHUNK_SIZE = size_t{64};
 static constexpr auto VOXELS_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 struct Chunk {
-    std::array<uint32_t, VOXELS_PER_CHUNK> voxels{};
+    std::vector<uint64_t> voxels{};
 };
 
 struct GvoxRawContainer {
     // GvoxRegionRange range{};
-    std::map<std::array<int32_t, 3>, Chunk> chunks{};
+    std::map<std::array<int64_t, 3>, Chunk> chunks{};
 };
 
 auto gvox_container_raw_create(void **self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {

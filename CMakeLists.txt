@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
 include(cmake/warnings.cmake)
+if(GVOX_USE_VCPKG)
+    include(cmake/vcpkg.cmake)
+endif()
 
 if(GVOX_ENABLE_FILE_IO)
     list(APPEND VCPKG_MANIFEST_FEATURES "file-io")
@@ -42,6 +45,8 @@ endif()
 
 add_library(${PROJECT_NAME}
     "src/gvox.cpp"
+    "src/adapter.cpp"
+    "src/format.cpp"
 )
 
 find_package(ZLIB REQUIRED)
@@ -76,6 +81,12 @@ set(GVOX_CONTAINERS
 
 find_package(freeimage CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
+
+find_package(Tracy CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)
+
+find_package(gcem CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE gcem)
 
 include("cmake/gvox_standard_functions.cmake")
 
