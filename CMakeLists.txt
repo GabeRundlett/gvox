@@ -5,11 +5,20 @@ if(GVOX_USE_VCPKG)
     include(cmake/vcpkg.cmake)
 endif()
 
-if(GVOX_ENABLE_FILE_IO)
-    list(APPEND VCPKG_MANIFEST_FEATURES "file-io")
+if(GVOX_FEATURE_IO_FILE)
+    list(APPEND VCPKG_MANIFEST_FEATURES "io-file")
+endif()
+if(GVOX_FEATURE_IO_IMAGE)
+    list(APPEND VCPKG_MANIFEST_FEATURES "io-image")
+endif()
+if(GVOX_FEATURE_IO_ADAPT_ZIP)
+    list(APPEND VCPKG_MANIFEST_FEATURES "io-adapt-zip")
 endif()
 if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
+endif()
+if(GVOX_ENABLE_TRACY)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tracy")
 endif()
 
 project(gvox VERSION 2.0.0)
@@ -49,26 +58,15 @@ add_library(${PROJECT_NAME}
     "src/format.cpp"
 )
 
-find_package(ZLIB REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
-
-find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
-target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
-
 set(GVOX_INPUT_ADAPTERS
-    "file"
     "byte_buffer"
-    "gzip"
 )
 
 set(GVOX_OUTPUT_ADAPTERS
-    # "file"
     # "byte_buffer"
-    "stdout"
 )
 
 set(GVOX_PARSERS
-    "image"
 )
 
 set(GVOX_SERIALIZERS
@@ -77,59 +75,62 @@ set(GVOX_SERIALIZERS
 
 set(GVOX_CONTAINERS
     "raw"
+    "bounded_raw"
 )
 
-find_package(freeimage CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
+target_compile_definitions(${PROJECT_NAME}
+PUBLIC
+    GVOX_FEATURE_IO_FILE=${GVOX_FEATURE_IO_FILE}
+    GVOX_FEATURE_IO_IMAGE=${GVOX_FEATURE_IO_IMAGE}
+    GVOX_FEATURE_IO_ADAPT_ZIP=${GVOX_FEATURE_IO_ADAPT_ZIP}
+    GVOX_ENABLE_TRACY=${GVOX_ENABLE_TRACY}
 
-find_package(Tracy CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)
+    GVOX_BUILD_FOR_RUST=${GVOX_BUILD_FOR_RUST}
+    GVOX_BUILD_FOR_ODIN=${GVOX_BUILD_FOR_ODIN}
+    GVOX_BUILD_FOR_JAVA=${GVOX_BUILD_FOR_JAVA}
+
+PRIVATE
+    GVOX_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    GVOX_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    GVOX_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+)
+
+if(GVOX_FEATURE_IO_FILE)
+    list(APPEND GVOX_INPUT_ADAPTERS
+        "file"
+    )
+    list(APPEND GVOX_OUTPUT_ADAPTERS
+        # "file"
+        "stdout"
+    )
+endif()
+
+if(GVOX_FEATURE_IO_IMAGE)
+    find_package(freeimage CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
+    list(APPEND GVOX_PARSERS
+        "image"
+    )
+endif()
+
+if(GVOX_FEATURE_IO_ADAPT_ZIP)
+    list(APPEND GVOX_INPUT_ADAPTERS
+        "gzip"
+    )
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
+endif()
+if(GVOX_ENABLE_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)
+endif()
 
 find_package(gcem CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE gcem)
 
 include("cmake/gvox_standard_functions.cmake")
-
-if(GVOX_ENABLE_THREADSAFETY)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=1)
-else()
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_THREADSAFETY=0)
-endif()
-
-if(GVOX_BUILD_FOR_WEB)
-    set(GVOX_ENABLE_MULTITHREADED_ADAPTERS false)
-else()
-    find_package(Threads REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
-endif()
-
-if(GVOX_BUILD_FOR_RUST)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=1)
-else()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_RUST=0)
-endif()
-
-if(GVOX_BUILD_FOR_ODIN)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=1)
-else()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_ODIN=0)
-endif()
-
-if(GVOX_BUILD_FOR_JAVA)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_JAVA=1)
-else()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_BUILD_FOR_JAVA=0)
-endif()
-
-if(GVOX_ENABLE_MULTITHREADED_ADAPTERS)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=1)
-else()
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_MULTITHREADED_ADAPTERS=0)
-endif()
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
-target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_VERSION_MINOR=${PROJECT_VERSION_MINOR})
-target_compile_definitions(${PROJECT_NAME} PRIVATE GVOX_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 if(BUILD_SHARED_LIBS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -151,13 +152,6 @@ if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)
     endif()
 endif()
 
-if(GVOX_ENABLE_FILE_IO)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=1)
-    # list(APPEND GVOX_INPUT_ADAPTERS "file" "console")
-else()
-    target_compile_definitions(${PROJECT_NAME} PUBLIC GVOX_ENABLE_FILE_IO=0)
-endif()
-
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 include(GNUInstallDirs)
@@ -168,6 +162,11 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 set_project_warnings(${PROJECT_NAME})
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/arch:AVX2>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-ftree-vectorize -march=native -mtune=native -mavx2 -O3>
+)
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS

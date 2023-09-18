@@ -1,14 +1,68 @@
+
+
 #include "gvox/format.h"
 #include <gvox/gvox.h>
 
-#include <gvox/containers/raw.h>
+#include <gvox/containers/bounded_raw.h>
 
-#include <daxa/daxa.hpp>
+#include <iostream>
+#include <array>
+#include <chrono>
+
+#include <MiniFB.h>
 
 #define HANDLE_RES(x)        \
     if (x != GVOX_SUCCESS) { \
         return -1;           \
     }
+
+#define MAKE_COLOR_RGBA(red, green, blue, alpha) (uint32_t)(((uint8_t)(alpha) << 24) | ((uint8_t)(blue) << 16) | ((uint8_t)(green) << 8) | (uint8_t)(red))
+
+struct Image {
+    GvoxExtent2D extent{};
+    std::vector<uint32_t> pixels = std::vector<uint32_t>(extent.x * extent.y);
+};
+
+inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_t height, uint32_t color) {
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    int32_t x2 = x1 + width - 1;
+    int32_t y2 = y1 + height - 1;
+
+    auto image_size_x = static_cast<int32_t>(image->extent.x);
+    auto image_size_y = static_cast<int32_t>(image->extent.y);
+
+    if (x1 >= image_size_x || x2 < 0 ||
+        y1 >= image_size_y || y2 < 0) {
+        return;
+    }
+
+    if (x1 < 0) {
+        x1 = 0;
+    }
+    if (y1 < 0) {
+        y1 = 0;
+    }
+    if (x2 >= image_size_x) {
+        x2 = image_size_x - 1;
+    }
+    if (y2 >= image_size_y) {
+        y2 = image_size_y - 1;
+    }
+
+    int32_t clipped_width = x2 - x1 + 1;
+    int32_t next_row = image_size_x - clipped_width;
+    uint32_t *pixel = image->pixels.data() + static_cast<ptrdiff_t>(y1) * image_size_x + x1;
+    for (int y = y1; y <= y2; y++) {
+        int32_t num_pixels = clipped_width;
+        while (num_pixels-- != 0) {
+            *pixel++ = color;
+        }
+        pixel += next_row;
+    }
+}
 
 auto main() -> int {
     auto *rgb_voxel_desc = GvoxVoxelDesc{};
@@ -18,19 +72,7 @@ auto main() -> int {
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
                 .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                .format = GVOX_FORMAT_R8G8B8_SRGB,
-            },
-            GvoxAttribute{
-                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
-                .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_NORMAL,
-                .format = GVOX_FORMAT_R12G12B12_OCT_UNIT,
-            },
-            GvoxAttribute{
-                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
-                .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_UNKNOWN,
-                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_LINEAR, 3, 8, 12, 4, 0),
+                .format = GVOX_FORMAT_R8G8B8A8_SRGB,
             },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -42,10 +84,14 @@ auto main() -> int {
         HANDLE_RES(gvox_create_voxel_desc(&voxel_desc_info, &rgb_voxel_desc))
     }
 
+    auto image = Image{.extent = GvoxExtent2D{320, 240}};
+
     auto *raw_container = GvoxContainer{};
     {
-        auto raw_container_conf = GvoxRawContainerConfig{
+        auto raw_container_conf = GvoxBoundedRawContainerConfig{
             .voxel_desc = rgb_voxel_desc,
+            .extent = {2, &image.extent.x},
+            .pre_allocated_buffer = image.pixels.data(),
         };
 
         auto cont_info = GvoxContainerCreateInfo{
@@ -58,62 +104,62 @@ auto main() -> int {
                 .config = &raw_container_conf,
             },
         };
-        HANDLE_RES(gvox_get_standard_container_description("raw", &cont_info.description))
+        HANDLE_RES(gvox_get_standard_container_description("bounded_raw", &cont_info.description))
 
         HANDLE_RES(gvox_create_container(&cont_info, &raw_container))
     }
 
-    {
-        uint32_t voxel_data = 0x00ff00ff;
-        auto offset = GvoxOffset3D{0, 0, 0};
-        auto extent = GvoxExtent3D{256, 256, 256};
-        auto fill_info = GvoxFillInfo{
-            .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
-            .next = nullptr,
-            .dst = raw_container,
-            .range = {
-                {3, &offset.x},
-                {3, &extent.x},
-            },
-            .data = &voxel_data,
-            .data_voxel_desc = rgb_voxel_desc,
-        };
-        HANDLE_RES(gvox_fill(&fill_info));
-    }
+    uint64_t voxel_data{};
+    GvoxOffset2D offset{};
+    GvoxExtent2D extent{};
+    auto fill_info = GvoxFillInfo{
+        .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
+        .next = nullptr,
+        .src_data = &voxel_data,
+        .src_desc = rgb_voxel_desc,
+        .dst = raw_container,
+        .range = {
+            {2, &offset.x},
+            {2, &extent.x},
+        },
+    };
 
-    {
-        uint32_t size_x = 16;
-        uint32_t size_y = 16;
+    auto const N_ITER = uint64_t{20000};
 
-        std::cout.fill('0');
-        for (uint32_t yi = 0; yi < size_y; ++yi) {
-            for (uint32_t xi = 0; xi < size_x; ++xi) {
-                auto voxel_data = std::array<uint8_t, 3>{};
-                // auto offset = GvoxOffset3D{static_cast<int32_t>(xi), static_cast<int32_t>(yi), 0};
-                // auto sample_info = GvoxSampleInfo{
-                //     .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
-                //     .next = nullptr,
-                //     .src = raw_container,
-                //     .src_channel_index = 0,
-                //     .src_voxel_desc = rgb_voxel_desc,
-                //     .offset = {3, &offset.x},
-                //     .dst = &voxel_data,
-                //     .dst_format = GVOX_FORMAT_R8G8B8_UNORM,
-                // };
-                // HANDLE_RES(gvox_sample(&sample_info));
+    struct mfb_window *window = mfb_open("viewer", image.extent.x * 2, image.extent.y * 2);
 
-                auto r = static_cast<uint32_t>(voxel_data[0]);
-                auto g = static_cast<uint32_t>(voxel_data[1]);
-                auto b = static_cast<uint32_t>(voxel_data[2]);
-                // r = std::min(std::max(r, 0u), 255u);
-                // g = std::min(std::max(g, 0u), 255u);
-                // b = std::min(std::max(b, 0u), 255u);
-                std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
-            }
-            std::cout << "\033[0m\n";
+    srand(0);
+
+    voxel_data = MAKE_COLOR_RGBA(rand() % 255, rand() % 255, rand() % 255, 255);
+    offset.x = rand() % 320;
+    offset.y = rand() % 240;
+    extent.x = std::min<uint64_t>(rand() % (320 / 5), 320 - offset.x);
+    extent.y = std::min<uint64_t>(rand() % (240 / 5), 240 - offset.y);
+    HANDLE_RES(gvox_fill(&fill_info));
+
+    do {
+        uint64_t voxel_n = 0;
+        using Clock = std::chrono::high_resolution_clock;
+        auto t0 = Clock::now();
+
+        for (int i = 0; i < N_ITER; i++) {
+            voxel_data = MAKE_COLOR_RGBA(rand() % 255, rand() % 255, rand() % 255, 255);
+            offset.x = rand() % 320;
+            offset.y = rand() % 240;
+            extent.x = std::min<uint64_t>(rand() % (320 / 5), 320 - offset.x);
+            extent.y = std::min<uint64_t>(rand() % (240 / 5), 240 - offset.y);
+            voxel_n += extent.x * extent.y;
+            // rect_opt(&image, offset.x, offset.y, extent.x, extent.y, voxel_data);
+            HANDLE_RES(gvox_fill(&fill_info));
         }
-        std::cout << "\033[0m" << std::flush;
-    }
+        auto t1 = Clock::now();
+        auto seconds = std::chrono::duration<double>(t1 - t0).count();
+        auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
+        std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
+
+        if (mfb_update_ex(window, image.pixels.data(), image.extent.x, image.extent.y) < 0)
+            break;
+    } while (mfb_wait_sync(window));
 
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(rgb_voxel_desc);

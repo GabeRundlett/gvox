@@ -4,20 +4,34 @@
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
-    "freeimage",
-    "gzip-hpp",
-    "tracy",
     "gcem"
   ],
   "features": {
-    "file-io": {
+    "io-file": {
       "description": "Enable file IO library features"
+    },
+    "io-image": {
+      "description": "Image IO",
+      "dependencies": [
+        "freeimage"
+      ]
+    },
+    "io-adapt-zip": {
+      "description": "Gzip IO Adapters",
+      "dependencies": [
+        "gzip-hpp"
+      ]
+    },
+    "tracy": {
+      "description": "Tracy profiler support",
+      "dependencies": [
+        "tracy"
+      ]
     },
     "tests": {
       "description": "Build Tests",
       "dependencies": [
-        "catch2",
-        "daxa"
+        "minifb"
       ]
     }
   },

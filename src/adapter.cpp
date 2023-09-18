@@ -1,26 +1,7 @@
-#include <gvox/adapter.h>
 #include <gvox_standard_functions.hpp>
 
-#include "utils/tracy.hpp"
+#include "types.hpp"
 #include "utils/handle.hpp"
-
-#define IMPL_STRUCT_DEFAULTS(Name, destructor_extra)                                   \
-    void *self{};                                                                      \
-    Gvox##Name##Description desc{};                                                    \
-    ~IMPL_STRUCT_NAME(Name)() {                                                        \
-        if (self != nullptr) {                                                         \
-            desc.destroy(self);                                                        \
-        }                                                                              \
-        destructor_extra;                                                              \
-    }                                                                                  \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    () = default;                                                                      \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    (IMPL_STRUCT_NAME(Name) const &) = delete;                                         \
-    IMPL_STRUCT_NAME(Name)                                                             \
-    (IMPL_STRUCT_NAME(Name) &&) = default;                                             \
-    auto operator=(IMPL_STRUCT_NAME(Name) const &)->IMPL_STRUCT_NAME(Name) & = delete; \
-    auto operator=(IMPL_STRUCT_NAME(Name) &&)->IMPL_STRUCT_NAME(Name) & = default
 
 #define HANDLE_CREATE(Type, TYPE)                                                      \
     ZoneScoped;                                                                        \
@@ -33,24 +14,6 @@
             return create_result;                                                      \
         }                                                                              \
     }
-
-struct IMPL_STRUCT_NAME(InputAdapter) {
-    GvoxInputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(InputAdapter, { delete next; });
-};
-struct IMPL_STRUCT_NAME(OutputAdapter) {
-    GvoxOutputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(OutputAdapter, { delete next; });
-};
-struct IMPL_STRUCT_NAME(Parser) {
-    IMPL_STRUCT_DEFAULTS(Parser, {});
-};
-struct IMPL_STRUCT_NAME(Serializer) {
-    IMPL_STRUCT_DEFAULTS(Serializer, {});
-};
-struct IMPL_STRUCT_NAME(Container) {
-    IMPL_STRUCT_DEFAULTS(Container, {});
-};
 
 auto gvox_create_input_adapter(GvoxInputAdapterCreateInfo const *info, GvoxInputAdapter *handle) GVOX_FUNC_ATTRIB->GvoxResult {
     HANDLE_CREATE(InputAdapter, INPUT_ADAPTER)

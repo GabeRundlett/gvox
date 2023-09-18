@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <string_view>
-#include <cassert>
 
 struct GvoxStdoutOutputAdapter {
     explicit GvoxStdoutOutputAdapter(GvoxStdoutOutputAdapterConfig const &config);
@@ -34,11 +33,9 @@ auto gvox_output_adapter_stdout_write(void *self, GvoxOutputAdapter /*unused*/, 
     return static_cast<GvoxStdoutOutputAdapter *>(self)->write(data, size);
 }
 auto gvox_output_adapter_stdout_seek(void * /*unused*/, GvoxOutputAdapter /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
-    assert(false && "Why are you trying to seek in stdout?!");
     return GVOX_ERROR_UNKNOWN;
 }
 auto gvox_output_adapter_stdout_tell(void * /*unused*/, GvoxOutputAdapter /*unused*/) -> long {
-    assert(false && "Why are you trying to seek in stdout?!");
     return GVOX_ERROR_UNKNOWN;
 }
 void gvox_output_adapter_stdout_destroy(void *self) {

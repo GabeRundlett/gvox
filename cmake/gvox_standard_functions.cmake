@@ -94,15 +94,21 @@ endforeach()
 foreach(NAME ${GVOX_CONTAINERS})
     target_sources(${PROJECT_NAME} PRIVATE "src/containers/${NAME}.cpp")
     set(HEADER_CONTENT "${HEADER_CONTENT}
-    auto gvox_container_${NAME}_create(void **self, GvoxContainerCreateCbArgs const *args) -> GvoxResult;
-    void gvox_container_${NAME}_destroy(void *self);
+    auto gvox_container_${NAME}_create(void **self_ptr, GvoxContainerCreateCbArgs const *args) -> GvoxResult;
+    void gvox_container_${NAME}_destroy(void *self_ptr);
+    auto gvox_container_${NAME}_get_voxel_desc(void *self_ptr) -> GvoxVoxelDesc;
+    auto gvox_container_${NAME}_fill(void *self_ptr, void *single_voxel_data, GvoxRange range) -> GvoxResult;
+    auto gvox_container_${NAME}_sample(void *self_ptr, uint32_t attrib_index, void *single_attrib_data, GvoxOffset offset) -> GvoxResult;
     ")
     set(CONTAINER_INFOS_CONTENT "${CONTAINER_INFOS_CONTENT}
     StdContainerInfo{
         \"${NAME}\",
-        {
-            .create    = gvox_container_${NAME}_create,
-            .destroy   = gvox_container_${NAME}_destroy,
+        GvoxContainerDescription{
+            .create         = gvox_container_${NAME}_create,
+            .destroy        = gvox_container_${NAME}_destroy,
+            .get_voxel_desc = gvox_container_${NAME}_get_voxel_desc,
+            .fill           = gvox_container_${NAME}_fill,
+            .sample         = gvox_container_${NAME}_sample,
         },
     },")
 endforeach()

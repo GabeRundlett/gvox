@@ -1,6 +1,8 @@
 #ifndef GVOX_SERIALIZER_COLORED_TEXT_H
 #define GVOX_SERIALIZER_COLORED_TEXT_H
 
+#include <stdint.h>
+
 typedef struct {
     // Doesn't make sense to have a default for this, when the default channel is color data
     uint32_t non_color_max_value;

@@ -1,15 +1,15 @@
 
-find_package(Catch2 CONFIG REQUIRED)
-find_package(daxa CONFIG REQUIRED)
-
-include(CTest)
-include(Catch)
+find_package(minifb CONFIG REQUIRED)
 
 function(GVOX_CREATE_TARGET)
-    set(OPT_ARGS UNUSED)
+    set(OPT_ARGS WEB_COMPATIBLE)
     set(SNG_ARGS FILE LANG NAME_PREFIX OUTPUT_NAME)
     set(MUL_ARGS FOLDER LIBS)
     cmake_parse_arguments(PARSE_ARGV 0 GCT "${OPT_ARGS}" "${SNG_ARGS}" "${MUL_ARGS}")
+
+    if(GVOX_BUILD_FOR_WEB AND NOT GCT_WEB_COMPATIBLE)
+        return()
+    endif()
 
     list(JOIN GCT_FOLDER "_" FOLDER_NAME)
     list(JOIN GCT_FOLDER "/" FOLDER_PATH)
@@ -29,6 +29,35 @@ function(GVOX_CREATE_TARGET)
         endif()
     endif()
 
+    if(GVOX_BUILD_FOR_WEB AND EMSCRIPTEN)
+        add_custom_target(${TGT}_web_assets
+            COMMAND ${CMAKE_COMMAND}
+            -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/${FOLDER_PATH}/${GCT_FILE}.html
+            $<TARGET_FILE_DIR:${TGT}>/${TGT}.html
+            COMMAND ${CMAKE_COMMAND}
+            -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/main.css
+            $<TARGET_FILE_DIR:${TGT}>
+        )
+        add_dependencies(${TGT} ${TGT}_web_assets)
+
+        target_link_options(${TGT} PRIVATE
+            "-sSTRICT=1"
+            "-sENVIRONMENT=web"
+            "-sLLD_REPORT_UNDEFINED"
+            "-sMODULARIZE=1"
+            "-sALLOW_MEMORY_GROWTH=1"
+            "-sALLOW_TABLE_GROWTH"
+            "-sMALLOC=emmalloc"
+            "-sEXPORT_ALL=1"
+            "-sEXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_main\"]"
+            "-sASYNCIFY"
+            "--no-entry"
+            "-sEXPORT_NAME=${TGT}"
+        )
+    endif()
+
     set_project_sanitizers(${TGT})
 endfunction()
 
@@ -40,30 +69,6 @@ function(GVOX_CREATE_SAMPLE)
     )
 endfunction()
 
-function(GVOX_CREATE_TEST)
-    GVOX_CREATE_TARGET(
-        NAME_PREFIX gvox_test
-        OUTPUT_NAME TGT_NAME
-        ${ARGN}
-    )
-    target_link_libraries(${TGT_NAME} PRIVATE
-        Catch2::Catch2WithMain # Catch2::Catch2
-    )
-    catch_discover_tests(
-        ${TGT_NAME}
-        TEST_PREFIX
-        "unittests."
-        REPORTER
-        XML
-        OUTPUT_DIR
-        .
-        OUTPUT_PREFIX
-        "unittests."
-        OUTPUT_SUFFIX
-        .xml
-    )
-endfunction()
-
 GVOX_CREATE_SAMPLE(
     FOLDER simple
     FILE main
@@ -71,16 +76,10 @@ GVOX_CREATE_SAMPLE(
     LIBS
 )
 
-GVOX_CREATE_TEST(
-    FOLDER simple
-    FILE unittests
-    LANG cpp
-    LIBS
-)
-
 GVOX_CREATE_SAMPLE(
     FOLDER viewer
     FILE main
     LANG cpp
-    LIBS daxa::daxa
+    LIBS minifb::minifb
+    WEB_COMPATIBLE
 )

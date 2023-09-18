@@ -122,7 +122,6 @@ void test_simple(void) {
 #endif
 
 int main(void) {
-    gvox_init();
     test_simple();
     return 0;
 }

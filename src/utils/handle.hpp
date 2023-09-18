@@ -1,6 +1,6 @@
 #pragma once
 
-#define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
+#include "tracy.hpp"
 
 #define HANDLE_NEW(Type, TYPE)                                        \
     if (info == nullptr) {                                            \
@@ -12,8 +12,8 @@
     if (info->struct_type != GVOX_STRUCT_TYPE_##TYPE##_CREATE_INFO) { \
         return GVOX_ERROR_BAD_STRUCT_TYPE;                            \
     }                                                                 \
-    *handle = new (std::nothrow) IMPL_STRUCT_NAME(Type){};            \
-    if (*handle == nullptr) {                                         \
+    (*handle) = new (std::nothrow) IMPL_STRUCT_NAME(Type){};          \
+    if ((*handle) == nullptr) {                                       \
         return GVOX_ERROR_UNKNOWN;                                    \
     }
 

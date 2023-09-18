@@ -13,10 +13,11 @@
             "generator": "Ninja Multi-Config",
             "cacheVariables": {
                 "GVOX_USE_VCPKG": true,
-                "GVOX_ENABLE_FILE_IO": true,
-                "GVOX_ENABLE_MULTITHREADED_ADAPTERS": true,
-                "GVOX_ENABLE_THREADSAFETY": true,
+                "GVOX_FEATURE_IO_FILE": true,
+                "GVOX_FEATURE_IO_IMAGE": false,
+                "GVOX_FEATURE_IO_ADAPT_ZIP": true,
                 "GVOX_ENABLE_TESTS": true,
+                "GVOX_ENABLE_TRACY": false,
                 "GVOX_ENABLE_ASAN": false,
                 "GVOX_ENABLE_STATIC_ANALYSIS": false,
                 "GVOX_BUILD_FOR_WEB": false,
@@ -72,17 +73,28 @@
             }
         },
         {
-            "name": "emscripten-wasm32-unknown-unknown",
-            "displayName": "Emscripten wasm32",
+            "name": "defaults-web",
+            "hidden": true,
             "inherits": [
                 "defaults"
             ],
+            "cacheVariables": {
+                "GVOX_FEATURE_IO_FILE": false,
+                "GVOX_FEATURE_IO_IMAGE": false,
+                "GVOX_FEATURE_IO_ADAPT_ZIP": false,
+                "GVOX_ENABLE_TESTS": true,
+                "GVOX_ENABLE_TRACY": false,
+                "GVOX_BUILD_FOR_WEB": true
+            }
+        },
+        {
+            "name": "emscripten-wasm32-unknown-unknown",
+            "displayName": "Emscripten wasm32",
+            "inherits": [
+                "defaults-web"
+            ],
             "toolchainFile": "${sourceDir}/cmake/toolchains/emscripten-llvm-unknown-unknown.cmake",
             "cacheVariables": {
-                "GVOX_ENABLE_FILE_IO": false,
-                "GVOX_ENABLE_THREADSAFETY": false,
-                "GVOX_ENABLE_TESTS": false,
-                "GVOX_BUILD_FOR_WEB": true,
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten"
             }
         },
@@ -90,14 +102,10 @@
             "name": "wasi-wasm32-unknown-unknown",
             "displayName": "wasi wasm32",
             "inherits": [
-                "defaults"
+                "defaults-web"
             ],
             "toolchainFile": "${sourceDir}/cmake/toolchains/wasi-llvm-unknown-unknown.cmake",
             "cacheVariables": {
-                "GVOX_ENABLE_FILE_IO": false,
-                "GVOX_ENABLE_THREADSAFETY": false,
-                "GVOX_ENABLE_TESTS": false,
-                "GVOX_BUILD_FOR_WEB": true,
                 "VCPKG_TARGET_TRIPLET": "wasm32-wasisdk"
             }
         },
@@ -121,6 +129,15 @@
         {
             "name": "cl-x86_64-windows-msvc",
             "displayName": "CL.exe x86_64 Windows (MSVC ABI)",
+            "inherits": [
+                "defaults-windows"
+            ],
+            "toolchainFile": "${sourceDir}/cmake/toolchains/cl-x86_64-windows-msvc.cmake"
+        },
+        {
+            "name": "vs-x86_64-windows-msvc",
+            "generator": "Visual Studio 17 2022",
+            "displayName": "Visual Studio x86_64 Windows (MSVC ABI)",
             "inherits": [
                 "defaults-windows"
             ],

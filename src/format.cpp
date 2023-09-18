@@ -1,35 +1,8 @@
-#include <gvox/format.h>
-
-#include "gvox/core.h"
+#include "types.hpp"
 #include "utils/tracy.hpp"
 #include "utils/handle.hpp"
 
-#include <vector>
-#include <cmath>
 #include <bit>
-
-#include <gcem.hpp>
-
-struct FormatDescriptor {
-    uint32_t encoding : 10;
-    uint32_t component_count : 2;
-    uint32_t c0_bit_count : 5;
-    uint32_t c1_bit_count : 5;
-    uint32_t c2_bit_count : 5;
-    uint32_t c3_bit_count : 5;
-};
-
-struct Attribute {
-    uint32_t bit_count;
-    uint32_t bit_offset;
-    GvoxAttributeType type;
-    FormatDescriptor format_desc;
-};
-
-struct IMPL_STRUCT_NAME(VoxelDesc) {
-    uint32_t bit_count;
-    std::vector<Attribute> attributes;
-};
 
 auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
@@ -39,7 +12,8 @@ auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *
         return GVOX_ERROR_BAD_STRUCT_TYPE;
     }
 
-    auto &result = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
+    auto &result = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(*handle);
+
     for (size_t i = 0; i < info->attribute_count; ++i) {
         auto const &in_attrib = info->attributes[i];
         if (in_attrib.struct_type != GVOX_STRUCT_TYPE_ATTRIBUTE) {
@@ -58,53 +32,20 @@ auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *
 
     return GVOX_SUCCESS;
 }
-
 void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB {
     destroy_handle(handle);
 }
 
-auto gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->size_t {
+auto gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->uint32_t {
     auto &voxel_desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
     return voxel_desc.bit_count;
 }
-auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->size_t {
+auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->uint32_t {
     auto &voxel_desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
-    return voxel_desc.attributes.size();
+    return static_cast<uint32_t>(voxel_desc.attributes.size());
 }
 
-namespace float_conv {
-    constexpr auto from_unorm(uint32_t bit_n, uint32_t data) -> float {
-        uint32_t mask = (1 << bit_n) - 1;
-        return static_cast<float>(data & mask) / static_cast<float>(mask);
-    }
-    constexpr auto to_unorm(uint32_t bit_n, float data) -> uint32_t {
-        uint32_t mask = (1 << bit_n) - 1;
-        return static_cast<uint32_t>(data * static_cast<float>(mask)) & mask;
-    }
-
-    constexpr auto from_snorm(uint32_t bit_n, uint32_t data) -> float {
-        return from_unorm(bit_n, data) * 2.0f - 1.0f;
-    }
-    constexpr auto to_snorm(uint32_t bit_n, float data) -> uint32_t {
-        return to_unorm(bit_n, data * 0.5f + 0.5f);
-    }
-
-    constexpr auto from_srgb(uint32_t bit_n, uint32_t data) -> float {
-        if (std::is_constant_evaluated()) {
-            return gcem::pow(from_unorm(bit_n, data), 2.2f);
-        } else {
-            return std::pow(from_unorm(bit_n, data), 2.2f);
-        }
-    }
-    constexpr auto to_srgb(uint32_t bit_n, float data) -> uint32_t {
-        if (std::is_constant_evaluated()) {
-            return to_unorm(bit_n, gcem::pow(data, 2.2f));
-        } else {
-            return to_unorm(bit_n, std::pow(data, 2.2f));
-        }
-    }
-} // namespace float_conv
-
+#if 0
 void gvox_translate_voxels(
     GvoxVoxelDesc src_desc, uint32_t src_n, void *src_data,
     GvoxVoxelDesc dst_desc, void *dst_data) {
@@ -126,12 +67,16 @@ void gvox_translate_voxels(
         auto src_voxel_bit_offset = voxel_i * src_desc->bit_count;
         auto dst_voxel_bit_offset = voxel_i * dst_desc->bit_count;
         for (size_t attrib_i = 0; attrib_i < dst_sources.size(); ++attrib_i) {
-            auto const &src_attrib = src_desc->attributes[dst_sources[attrib_i]];
-            auto const &dst_attrib = dst_desc->attributes[attrib_i];
-            auto src_attrib_bit_offset = src_voxel_bit_offset + src_attrib.bit_offset;
-            auto dst_attrib_bit_offset = dst_voxel_bit_offset + dst_attrib.bit_offset;
-            //
+            auto src_attrib_i = dst_sources[attrib_i];
+            if (src_attrib_i != 0xffffffff) {
+                auto const &src_attrib = src_desc->attributes[dst_sources[attrib_i]];
+                auto const &dst_attrib = dst_desc->attributes[attrib_i];
+                auto src_attrib_bit_offset = src_voxel_bit_offset + src_attrib.bit_offset;
+                auto dst_attrib_bit_offset = dst_voxel_bit_offset + dst_attrib.bit_offset;
+                //
+            }
         }
         static_cast<uint64_t *>(src_data);
     }
 }
+#endif
