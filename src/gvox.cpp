@@ -11,6 +11,7 @@
 #include "utils/handle.hpp"
 
 #include <gcem.hpp>
+#include <entt/entt.hpp>
 
 struct GvoxChainStruct {
     GvoxStructType struct_type;

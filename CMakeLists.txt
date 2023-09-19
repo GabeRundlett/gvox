@@ -130,6 +130,9 @@ endif()
 find_package(gcem CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE gcem)
 
+find_package(EnTT CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE EnTT::EnTT)
+
 include("cmake/gvox_standard_functions.cmake")
 
 if(BUILD_SHARED_LIBS)

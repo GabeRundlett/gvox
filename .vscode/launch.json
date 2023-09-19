@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Desktop launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [ ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [ ],
+            "linux": {
+                "type": "lldb"
+            },
+            "windows": {
+                "type": "cppvsdbg",
+                "console": "externalTerminal"
+            }
+        },
+        {
+            "type": "node-terminal",
+            "name": "Web launch",
+            "request": "launch",
+            "preLaunchTask": "CMake: build",
+            "command": "static-server ${command:cmake.getLaunchTargetDirectory} 8123 $(tools/web/target-to-html.sh ${command:cmake.getLaunchTargetFilename})",
+            "cwd": "${workspaceFolder}",
+            "windows": {
+                "type": "node-terminal",
+                "name": "Web run",
+                "request": "launch",
+                "command": "${workspaceFolder}/tools/web/run-web.bat ${command:cmake.getLaunchTargetDirectory} ${command:cmake.getLaunchTargetFilename}",
+            }
+        },
+    ]
+}
