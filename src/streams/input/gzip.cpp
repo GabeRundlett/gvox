@@ -1,28 +1,28 @@
-#include <gvox/adapter.h>
-#include <gvox/adapters/input/gzip.h>
+#include <gvox/stream.h>
+#include <gvox/streams/input/gzip.h>
 
 #include <vector>
 #include <algorithm>
 
 #include <gzip/decompress.hpp>
 
-struct GzipInputAdapter {
+struct GzipInputStream {
     std::vector<uint8_t> bytes{};
     long current_read_head{};
 
-    explicit GzipInputAdapter(GzipInputAdapterConfig const &config);
+    explicit GzipInputStream(GzipInputStreamConfig const &config);
 
-    auto read(GvoxInputAdapter next_handle, uint8_t *data, size_t size) -> GvoxResult;
-    auto seek(GvoxInputAdapter next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult;
-    auto tell(GvoxInputAdapter next_handle) -> long;
+    auto read(GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult;
+    auto seek(GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto tell(GvoxInputStream next_handle) -> long;
 
-    auto make_prepared(GvoxInputAdapter next_handle) -> GvoxResult;
+    auto make_prepared(GvoxInputStream next_handle) -> GvoxResult;
 };
 
-GzipInputAdapter::GzipInputAdapter(GzipInputAdapterConfig const &) {
+GzipInputStream::GzipInputStream(GzipInputStreamConfig const &) {
 }
 
-auto GzipInputAdapter::read(GvoxInputAdapter next_handle, uint8_t *data, size_t size) -> GvoxResult {
+auto GzipInputStream::read(GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
     auto prepare_result = make_prepared(next_handle);
     if (prepare_result != GVOX_SUCCESS) {
         return prepare_result;
@@ -36,7 +36,7 @@ auto GzipInputAdapter::read(GvoxInputAdapter next_handle, uint8_t *data, size_t 
     return GVOX_SUCCESS;
 }
 
-auto GzipInputAdapter::seek(GvoxInputAdapter next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+auto GzipInputStream::seek(GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
     auto prepare_result = make_prepared(next_handle);
     if (prepare_result != GVOX_SUCCESS) {
         return prepare_result;
@@ -50,7 +50,7 @@ auto GzipInputAdapter::seek(GvoxInputAdapter next_handle, long offset, GvoxSeekO
     return GVOX_SUCCESS;
 }
 
-auto GzipInputAdapter::tell(GvoxInputAdapter next_handle) -> long {
+auto GzipInputStream::tell(GvoxInputStream next_handle) -> long {
     auto prepare_result = make_prepared(next_handle);
     if (prepare_result != GVOX_SUCCESS) {
         return prepare_result;
@@ -62,7 +62,7 @@ auto GzipInputAdapter::tell(GvoxInputAdapter next_handle) -> long {
     if (res != GVOX_SUCCESS) { \
         return res;            \
     }
-auto GzipInputAdapter::make_prepared(GvoxInputAdapter next_handle) -> GvoxResult {
+auto GzipInputStream::make_prepared(GvoxInputStream next_handle) -> GvoxResult {
     auto res = GVOX_SUCCESS;
     res = gvox_input_seek(next_handle, 0, GVOX_SEEK_ORIGIN_END);
     HANDLE_RES;
@@ -87,25 +87,25 @@ auto GzipInputAdapter::make_prepared(GvoxInputAdapter next_handle) -> GvoxResult
     return res;
 }
 
-auto gvox_input_adapter_gzip_create(void **self, GvoxInputAdapterCreateCbArgs const *args) -> GvoxResult {
-    GzipInputAdapterConfig config;
+auto gvox_input_stream_gzip_create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
+    GzipInputStreamConfig config;
     if (args->config != nullptr) {
-        config = *static_cast<GzipInputAdapterConfig const *>(args->config);
+        config = *static_cast<GzipInputStreamConfig const *>(args->config);
     } else {
         config = {};
     }
-    *self = new GzipInputAdapter(config);
+    *self = new GzipInputStream(config);
     return GVOX_SUCCESS;
 }
-auto gvox_input_adapter_gzip_read(void *self, GvoxInputAdapter next_handle, uint8_t *data, size_t size) -> GvoxResult {
-    return static_cast<GzipInputAdapter *>(self)->read(next_handle, data, size);
+auto gvox_input_stream_gzip_read(void *self, GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
+    return static_cast<GzipInputStream *>(self)->read(next_handle, data, size);
 }
-auto gvox_input_adapter_gzip_seek(void *self, GvoxInputAdapter next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-    return static_cast<GzipInputAdapter *>(self)->seek(next_handle, offset, origin);
+auto gvox_input_stream_gzip_seek(void *self, GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+    return static_cast<GzipInputStream *>(self)->seek(next_handle, offset, origin);
 }
-auto gvox_input_adapter_gzip_tell(void *self, GvoxInputAdapter next_handle) -> long {
-    return static_cast<GzipInputAdapter *>(self)->tell(next_handle);
+auto gvox_input_stream_gzip_tell(void *self, GvoxInputStream next_handle) -> long {
+    return static_cast<GzipInputStream *>(self)->tell(next_handle);
 }
-void gvox_input_adapter_gzip_destroy(void *self) {
-    delete static_cast<GzipInputAdapter *>(self);
+void gvox_input_stream_gzip_destroy(void *self) {
+    delete static_cast<GzipInputStream *>(self);
 }

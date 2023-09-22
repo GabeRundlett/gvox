@@ -18,7 +18,7 @@
       ]
     },
     "io-adapt-zip": {
-      "description": "Gzip IO Adapters",
+      "description": "Gzip IO Streams",
       "dependencies": [
         "gzip-hpp"
       ]

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <gvox/format.h>
-#include <gvox/adapter.h>
+#include <gvox/stream.h>
 #include <vector>
 
 #define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
 
-// Adapters
+// Streams
 
 #define IMPL_STRUCT_DEFAULTS(Name, destructor_extra)                                   \
     void *self{};                                                                      \
@@ -26,13 +26,13 @@
     auto operator=(IMPL_STRUCT_NAME(Name) const &)->IMPL_STRUCT_NAME(Name) & = delete; \
     auto operator=(IMPL_STRUCT_NAME(Name) &&)->IMPL_STRUCT_NAME(Name) & = default
 
-struct IMPL_STRUCT_NAME(InputAdapter) {
-    GvoxInputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(InputAdapter, { delete next; });
+struct IMPL_STRUCT_NAME(InputStream) {
+    GvoxInputStream next{};
+    IMPL_STRUCT_DEFAULTS(InputStream, { delete next; });
 };
-struct IMPL_STRUCT_NAME(OutputAdapter) {
-    GvoxOutputAdapter next{};
-    IMPL_STRUCT_DEFAULTS(OutputAdapter, { delete next; });
+struct IMPL_STRUCT_NAME(OutputStream) {
+    GvoxOutputStream next{};
+    IMPL_STRUCT_DEFAULTS(OutputStream, { delete next; });
 };
 struct IMPL_STRUCT_NAME(Parser) {
     IMPL_STRUCT_DEFAULTS(Parser, {});

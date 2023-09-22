@@ -193,4 +193,4 @@ auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     return GVOX_SUCCESS;
 }
 
-// Adapter API
+// Stream API

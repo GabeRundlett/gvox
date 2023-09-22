@@ -1,4 +1,4 @@
-#include <gvox/adapter.h>
+#include <gvox/stream.h>
 #include <gvox/parsers/image.h>
 
 #include <FreeImage.h>
@@ -21,7 +21,7 @@ struct GvoxImageParser {
 
     explicit GvoxImageParser(GvoxImageParserConfig const &a_config) : config{a_config} {}
 
-    auto load(GvoxInputAdapter input_adapter) -> GvoxResult;
+    auto load(GvoxInputStream input_stream) -> GvoxResult;
 
     static auto sample_region() -> GvoxResult;
 
@@ -62,35 +62,35 @@ auto GvoxImageParser::blit_emit_regions_in_range() -> GvoxResult {
 }
 
 namespace {
-    inline auto create_io_and_get_voxel_desc(GvoxInputAdapter input_adapter) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
+    inline auto create_io_and_get_voxel_desc(GvoxInputStream input_stream) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
         ZoneScoped;
         auto io = FreeImageIO{
             .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
-                gvox_input_read(static_cast<GvoxInputAdapter>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
+                gvox_input_read(static_cast<GvoxInputStream>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
                 return size;
             },
             .write_proc = [](void *, unsigned, unsigned, fi_handle) -> unsigned {
                 return 0;
             },
             .seek_proc = [](fi_handle handle, long offset, int origin) -> int {
-                return gvox_input_seek(static_cast<GvoxInputAdapter>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
+                return gvox_input_seek(static_cast<GvoxInputStream>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
             },
             .tell_proc = [](fi_handle handle) -> long {
-                return gvox_input_tell(static_cast<GvoxInputAdapter>(handle));
+                return gvox_input_tell(static_cast<GvoxInputStream>(handle));
             },
         };
-        auto fi_voxel_desc = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_adapter), 0);
+        auto fi_voxel_desc = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_stream), 0);
         return {io, fi_voxel_desc};
     }
 } // namespace
 
-auto GvoxImageParser::load(GvoxInputAdapter input_adapter) -> GvoxResult {
+auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
     ZoneScoped;
-    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_adapter);
+    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
     if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
-    FIBITMAP *fi_bitmap = FreeImage_LoadFromHandle(fi_voxel_desc, &io, static_cast<fi_handle>(input_adapter));
+    FIBITMAP *fi_bitmap = FreeImage_LoadFromHandle(fi_voxel_desc, &io, static_cast<fi_handle>(input_stream));
     if (fi_bitmap == nullptr) {
         // Failed to load the image
         return GVOX_ERROR_UNKNOWN;
@@ -137,7 +137,7 @@ auto gvox_parser_image_create(void **self, GvoxParserCreateCbArgs const *args) -
         config = {};
     }
     *self = new GvoxImageParser(config);
-    auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_adapter);
+    auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_stream);
     if (load_res != GVOX_SUCCESS) {
         return load_res;
     }
@@ -153,9 +153,9 @@ auto gvox_parser_image_blit_load_region(void *self) -> GvoxResult { return stati
 auto gvox_parser_image_blit_unload_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_unload_region(); }
 auto gvox_parser_image_blit_emit_regions_in_range(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_emit_regions_in_range(); }
 
-auto gvox_parser_image_create_from_input(GvoxInputAdapter input_adapter, GvoxParser *user_parser) -> GvoxResult {
+auto gvox_parser_image_create_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
     ZoneScoped;
-    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_adapter);
+    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
     if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
     }
@@ -164,7 +164,7 @@ auto gvox_parser_image_create_from_input(GvoxInputAdapter input_adapter, GvoxPar
     parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
     parser_ci.next = NULL;
     parser_ci.cb_args.config = NULL;
-    parser_ci.cb_args.input_adapter = input_adapter;
+    parser_ci.cb_args.input_stream = input_stream;
 
     auto result = GVOX_SUCCESS;
 

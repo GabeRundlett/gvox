@@ -54,15 +54,15 @@ endif()
 
 add_library(${PROJECT_NAME}
     "src/gvox.cpp"
-    "src/adapter.cpp"
+    "src/stream.cpp"
     "src/format.cpp"
 )
 
-set(GVOX_INPUT_ADAPTERS
+set(GVOX_INPUT_STREAMS
     "byte_buffer"
 )
 
-set(GVOX_OUTPUT_ADAPTERS
+set(GVOX_OUTPUT_STREAMS
     # "byte_buffer"
 )
 
@@ -96,10 +96,10 @@ PRIVATE
 )
 
 if(GVOX_FEATURE_IO_FILE)
-    list(APPEND GVOX_INPUT_ADAPTERS
+    list(APPEND GVOX_INPUT_STREAMS
         "file"
     )
-    list(APPEND GVOX_OUTPUT_ADAPTERS
+    list(APPEND GVOX_OUTPUT_STREAMS
         # "file"
         "stdout"
     )
@@ -130,7 +130,7 @@ if(GVOX_FEATURE_IO_IMAGE)
 endif()
 
 if(GVOX_FEATURE_IO_ADAPT_ZIP)
-    list(APPEND GVOX_INPUT_ADAPTERS
+    list(APPEND GVOX_INPUT_STREAMS
         "gzip"
     )
     find_package(ZLIB REQUIRED)

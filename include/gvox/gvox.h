@@ -7,7 +7,7 @@ extern "C" {
 
 #include <gvox/core.h>
 #include <gvox/format.h>
-#include <gvox/adapter.h>
+#include <gvox/stream.h>
 
 GVOX_STRUCT(GvoxVolume) {
     uint32_t n_dimensions;
@@ -58,7 +58,7 @@ GVOX_STRUCT(GvoxSerializeInfo) {
     GvoxStructType struct_type;
     void const *next;
     GvoxContainer src;
-    GvoxInputAdapter dst;
+    GvoxInputStream dst;
 };
 
 // Consumer API

@@ -1,4 +1,4 @@
-#include <gvox/adapter.h>
+#include <gvox/stream.h>
 
 #include <gvox/serializers/colored_text.h>
 
