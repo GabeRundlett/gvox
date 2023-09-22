@@ -17,9 +17,10 @@
 #include <iostream>
 #include <iomanip>
 
+#include "raw_helper.hpp"
+
 static constexpr auto LOG2_CHUNK_SIZE = size_t{6};
 static constexpr auto CHUNK_SIZE = size_t{1} << LOG2_CHUNK_SIZE;
-using Word = uint32_t;
 
 struct Chunk {
     std::vector<int64_t> key_data{};
@@ -85,6 +86,7 @@ struct GvoxRawContainer {
     GvoxVoxelDesc voxel_desc{};
     std::unordered_map<ChunkKey, Chunk> chunks{};
 
+    // TODO: create key allocator
     std::vector<int64_t> chunk_key_buffer{};
     std::vector<uint64_t> chunk_key_free_list{};
 };
@@ -103,11 +105,6 @@ auto gvox_container_raw_create(void **out_self, GvoxContainerCreateCbArgs const 
 }
 void gvox_container_raw_destroy(void *self_ptr) {
     delete static_cast<GvoxRawContainer *>(self_ptr);
-}
-
-auto gvox_container_raw_get_voxel_desc(void *self_ptr) -> GvoxVoxelDesc {
-    auto &self = *static_cast<GvoxRawContainer *>(self_ptr);
-    return self.voxel_desc;
 }
 
 template <std::integral T>
@@ -181,12 +178,7 @@ struct TestIter {
     // std::vector<int64_t> coord_data{};
 };
 
-struct Voxel {
-    uint8_t *ptr{};
-    uint32_t size{};
-};
-
-auto gvox_container_raw_sample(void *self_ptr, uint32_t attrib_index, void *single_attrib_data, GvoxOffset offset) -> GvoxResult {
+auto gvox_container_raw_sample(void *self_ptr, void *out_voxel_data, GvoxVoxelDesc out_voxel_desc, GvoxOffset offset) -> GvoxResult {
     auto &self = *static_cast<GvoxRawContainer *>(self_ptr);
     auto const dim = offset.axis_n;
     auto offset_buffer = std::vector<int64_t>(static_cast<size_t>(dim) * 2);
@@ -210,21 +202,24 @@ auto gvox_container_raw_sample(void *self_ptr, uint32_t attrib_index, void *sing
     }
 
     auto &chunk = chunk_iter->second;
-
-    // TODO: ...
-    uint32_t attrib_offset = attrib_index * 0;
-    uint32_t attrib_size = 4;
-
-    std::copy(
-        chunk.data.data() + voxel_offset + attrib_offset,
-        chunk.data.data() + voxel_offset + attrib_offset + attrib_size,
-        static_cast<uint8_t *>(single_attrib_data));
-
-    return GVOX_SUCCESS;
+    auto *data = chunk.data.data();
+    return gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc);
 }
 
-auto gvox_container_raw_fill(void *self_ptr, void *single_voxel_data, GvoxRange range) -> GvoxResult {
+auto gvox_container_raw_fill(void *self_ptr, void *single_voxel_data, GvoxVoxelDesc src_voxel_desc, GvoxRange range) -> GvoxResult {
     auto &self = *static_cast<GvoxRawContainer *>(self_ptr);
+
+    // convert src data to be compatible with the dst_voxel_desc
+    auto *converted_data = static_cast<void *>(nullptr);
+    // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
+    auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
+        return desc_a == desc_b;
+    };
+    if (is_compatible_voxel_desc(src_voxel_desc, self.voxel_desc)) {
+        converted_data = single_voxel_data;
+    } else {
+        // converted_data = convert_data(converted_data_stack);
+    }
 
     if (range.offset.axis_n < range.extent.axis_n) {
         return GVOX_ERROR_INVALID_ARGUMENT;
@@ -242,7 +237,7 @@ auto gvox_container_raw_fill(void *self_ptr, void *single_voxel_data, GvoxRange 
     }
 
     Voxel in_voxel = {
-        .ptr = static_cast<uint8_t *>(single_voxel_data),
+        .ptr = static_cast<uint8_t *>(converted_data),
         .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
     };
     auto const voxels_in_chunk = int_pow(static_cast<uint64_t>(CHUNK_SIZE), static_cast<uint64_t>(dim));
@@ -317,7 +312,7 @@ auto gvox_container_raw_fill(void *self_ptr, void *single_voxel_data, GvoxRange 
         if (chunk.dim < dim) {
             // Need to resize the current chunk
             // TODO: copy old data over
-            chunk.data.resize(chunk_size);
+            chunk.data.resize(static_cast<size_t>(chunk_size));
         }
         chunk.dim = std::max(dim, chunk.dim);
 
@@ -331,199 +326,8 @@ auto gvox_container_raw_fill(void *self_ptr, void *single_voxel_data, GvoxRange 
             }
         }
 
-        // TODO: Implement general case
         // NOTE: Currently breaks with N > 4 because the chunk alloc would be too big
-        switch (dim) {
-        case 1:
-            for (uint32_t xi = 0; xi < voxel_range_extent.axis[0]; xi++) {
-                for (uint32_t i = 0; i < in_voxel.size; i++) {
-                    *voxel_ptr++ = in_voxel.ptr[i];
-                }
-            }
-            break;
-        case 2: {
-            auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-            auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-            auto max_b = in_voxel.size;
-            auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-            auto next_word_axis_0 = next_axis_0 / sizeof(Word);
-            auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
-            auto *in_word_ptr = reinterpret_cast<Word *>(in_voxel.ptr);
-            auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
-            if (max_b == sizeof(Word)) {
-                auto in_word = *in_word_ptr;
-                for (uint32_t yi = 0; yi < max_y; yi++) {
-                    for (uint32_t xi = 0; xi < max_x; xi++) {
-                        *out_word_ptr++ = in_word;
-                    }
-                    out_word_ptr += next_word_axis_0;
-                }
-            } else if ((max_b % sizeof(Word)) == 0) {
-                for (uint32_t yi = 0; yi < max_y; yi++) {
-                    for (uint32_t vi = 0; vi < word_n; ++vi) {
-                        auto *line_begin = out_word_ptr + vi;
-                        auto in_word = in_word_ptr[vi];
-                        for (uint32_t xi = 0; xi < max_x; xi++) {
-                            *line_begin = in_word;
-                            line_begin += word_n;
-                        }
-                    }
-                    out_word_ptr += word_n * max_x;
-                    out_word_ptr += next_word_axis_0;
-                }
-            } else {
-                for (uint32_t yi = 0; yi < max_y; yi++) {
-                    for (uint32_t xi = 0; xi < max_x; xi++) {
-                        for (uint32_t i = 0; i < max_b; i++) {
-                            *voxel_ptr++ = in_voxel.ptr[i];
-                        }
-                    }
-                    voxel_ptr += next_axis_0;
-                }
-            }
-        } break;
-        case 3: {
-            auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-            auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-            auto max_z = static_cast<uint32_t>(voxel_range_extent.axis[2]);
-            auto max_b = in_voxel.size;
-            auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-            auto next_axis_1 = static_cast<size_t>(voxel_next.axis[1]);
-            auto next_word_axis_0 = next_axis_0 / sizeof(Word);
-            auto next_word_axis_1 = next_axis_1 / sizeof(Word);
-            auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
-            auto *in_word_ptr = reinterpret_cast<Word *>(in_voxel.ptr);
-            auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
-            if (max_b == sizeof(Word)) {
-                auto in_word = *in_word_ptr;
-                for (uint32_t zi = 0; zi < max_z; zi++) {
-                    for (uint32_t yi = 0; yi < max_y; yi++) {
-                        for (uint32_t xi = 0; xi < max_x; xi++) {
-                            *out_word_ptr++ = in_word;
-                        }
-                        out_word_ptr += next_word_axis_0;
-                    }
-                    out_word_ptr += next_word_axis_1;
-                }
-            } else if ((max_b % sizeof(Word)) == 0) {
-                for (uint32_t zi = 0; zi < max_z; zi++) {
-                    for (uint32_t yi = 0; yi < max_y; yi++) {
-                        for (uint32_t vi = 0; vi < word_n; ++vi) {
-                            auto *line_begin = out_word_ptr + vi;
-                            auto in_word = in_word_ptr[vi];
-                            for (uint32_t xi = 0; xi < max_x; xi++) {
-                                *line_begin = in_word;
-                                line_begin += word_n;
-                            }
-                        }
-                        out_word_ptr += word_n * max_x;
-                        out_word_ptr += next_word_axis_0;
-                    }
-                    out_word_ptr += next_word_axis_1;
-                }
-            } else {
-                for (uint32_t zi = 0; zi < max_z; zi++) {
-                    for (uint32_t yi = 0; yi < max_y; yi++) {
-                        for (uint32_t xi = 0; xi < max_x; xi++) {
-                            for (uint32_t i = 0; i < max_b; i++) {
-                                *voxel_ptr++ = in_voxel.ptr[i];
-                            }
-                        }
-                        voxel_ptr += next_axis_0;
-                    }
-                    voxel_ptr += next_axis_1;
-                }
-            }
-        } break;
-        case 4: {
-            auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-            auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-            auto max_z = static_cast<uint32_t>(voxel_range_extent.axis[2]);
-            auto max_w = static_cast<uint32_t>(voxel_range_extent.axis[3]);
-            auto max_b = in_voxel.size;
-            auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-            auto next_axis_1 = static_cast<size_t>(voxel_next.axis[1]);
-            auto next_axis_2 = static_cast<size_t>(voxel_next.axis[2]);
-            for (uint32_t wi = 0; wi < max_w; wi++) {
-                for (uint32_t zi = 0; zi < max_z; zi++) {
-                    for (uint32_t yi = 0; yi < max_y; yi++) {
-                        for (uint32_t xi = 0; xi < max_x; xi++) {
-                            for (uint32_t i = 0; i < max_b; i++) {
-                                *voxel_ptr++ = in_voxel.ptr[i];
-                            }
-                        }
-                        voxel_ptr += next_axis_0;
-                    }
-                    voxel_ptr += next_axis_1;
-                }
-                voxel_ptr += next_axis_2;
-            }
-        } break;
-        case 5: {
-            auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-            auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-            auto max_z = static_cast<uint32_t>(voxel_range_extent.axis[2]);
-            auto max_w = static_cast<uint32_t>(voxel_range_extent.axis[3]);
-            auto max_v = static_cast<uint32_t>(voxel_range_extent.axis[4]);
-            auto max_b = in_voxel.size;
-            auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-            auto next_axis_1 = static_cast<size_t>(voxel_next.axis[1]);
-            auto next_axis_2 = static_cast<size_t>(voxel_next.axis[2]);
-            auto next_axis_3 = static_cast<size_t>(voxel_next.axis[3]);
-            for (uint32_t vi = 0; vi < max_v; vi++) {
-                for (uint32_t wi = 0; wi < max_w; wi++) {
-                    for (uint32_t zi = 0; zi < max_z; zi++) {
-                        for (uint32_t yi = 0; yi < max_y; yi++) {
-                            for (uint32_t xi = 0; xi < max_x; xi++) {
-                                for (uint32_t i = 0; i < max_b; i++) {
-                                    *voxel_ptr++ = in_voxel.ptr[i];
-                                }
-                            }
-                            voxel_ptr += next_axis_0;
-                        }
-                        voxel_ptr += next_axis_1;
-                    }
-                    voxel_ptr += next_axis_2;
-                }
-                voxel_ptr += next_axis_3;
-            }
-        } break;
-        case 6: {
-            auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-            auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-            auto max_z = static_cast<uint32_t>(voxel_range_extent.axis[2]);
-            auto max_w = static_cast<uint32_t>(voxel_range_extent.axis[3]);
-            auto max_v = static_cast<uint32_t>(voxel_range_extent.axis[4]);
-            auto max_u = static_cast<uint32_t>(voxel_range_extent.axis[5]);
-            auto max_b = in_voxel.size;
-            auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-            auto next_axis_1 = static_cast<size_t>(voxel_next.axis[1]);
-            auto next_axis_2 = static_cast<size_t>(voxel_next.axis[2]);
-            auto next_axis_3 = static_cast<size_t>(voxel_next.axis[3]);
-            auto next_axis_4 = static_cast<size_t>(voxel_next.axis[4]);
-            for (uint32_t ui = 0; ui < max_u; ui++) {
-                for (uint32_t vi = 0; vi < max_v; vi++) {
-                    for (uint32_t wi = 0; wi < max_w; wi++) {
-                        for (uint32_t zi = 0; zi < max_z; zi++) {
-                            for (uint32_t yi = 0; yi < max_y; yi++) {
-                                for (uint32_t xi = 0; xi < max_x; xi++) {
-                                    for (uint32_t i = 0; i < max_b; i++) {
-                                        *voxel_ptr++ = in_voxel.ptr[i];
-                                    }
-                                }
-                                voxel_ptr += next_axis_0;
-                            }
-                            voxel_ptr += next_axis_1;
-                        }
-                        voxel_ptr += next_axis_2;
-                    }
-                    voxel_ptr += next_axis_3;
-                }
-                voxel_ptr += next_axis_4;
-            }
-        } break;
-        default: return GVOX_ERROR_UNKNOWN;
-        }
+        fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
     }
 
     return GVOX_SUCCESS;

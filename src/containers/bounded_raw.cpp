@@ -18,17 +18,14 @@
 #include <iostream>
 #include <iomanip>
 
-using Word = uint32_t;
-
-struct Voxel {
-    uint8_t *ptr{};
-    uint32_t size{};
-};
+#include "raw_helper.hpp"
 
 struct GvoxBoundedRawContainer {
     GvoxVoxelDesc voxel_desc{};
     GvoxExtent extent{};
     void *pre_allocated_buffer{};
+
+    std::vector<int64_t> pre_alloc_offset_buffer{};
 };
 
 auto gvox_container_bounded_raw_create(void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
@@ -42,6 +39,7 @@ auto gvox_container_bounded_raw_create(void **out_self, GvoxContainerCreateCbArg
         .voxel_desc = config.voxel_desc,
         .extent = config.extent,
         .pre_allocated_buffer = config.pre_allocated_buffer,
+        .pre_alloc_offset_buffer = std::vector<int64_t>(static_cast<size_t>(config.extent.axis_n) * 3),
     });
     return GVOX_SUCCESS;
 }
@@ -49,12 +47,7 @@ void gvox_container_bounded_raw_destroy(void *self_ptr) {
     delete static_cast<GvoxBoundedRawContainer *>(self_ptr);
 }
 
-auto gvox_container_bounded_raw_get_voxel_desc(void *self_ptr) -> GvoxVoxelDesc {
-    auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
-    return self.voxel_desc;
-}
-
-auto gvox_container_bounded_raw_sample(void *self_ptr, uint32_t attrib_index, void *single_attrib_data, GvoxOffset offset) -> GvoxResult {
+auto gvox_container_bounded_raw_sample(void *self_ptr, void *out_voxel_data, GvoxVoxelDesc out_voxel_desc, GvoxOffset offset) -> GvoxResult {
     auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
     auto const dim = std::min(offset.axis_n, self.extent.axis_n);
 
@@ -63,7 +56,7 @@ auto gvox_container_bounded_raw_sample(void *self_ptr, uint32_t attrib_index, vo
     auto stride = uint64_t{voxel_size_bytes};
 
     for (size_t i = 0; i < dim; ++i) {
-        if (offset.axis[i] < 0 || offset.axis[i] >= self.extent.axis[i]) {
+        if (offset.axis[i] < 0 || offset.axis[i] >= static_cast<int64_t>(self.extent.axis[i])) {
             return GVOX_SUCCESS;
         }
         auto axis_p = static_cast<uint64_t>(offset.axis[i]);
@@ -71,26 +64,29 @@ auto gvox_container_bounded_raw_sample(void *self_ptr, uint32_t attrib_index, vo
         stride *= self.extent.axis[i];
     }
 
-    // TODO: ...
-    uint32_t attrib_offset = attrib_index * 0;
-    uint32_t attrib_size = 4;
-
     auto *data = static_cast<uint8_t *>(self.pre_allocated_buffer);
-
-    std::copy(
-        data + voxel_offset + attrib_offset,
-        data + voxel_offset + attrib_offset + attrib_size,
-        static_cast<uint8_t *>(single_attrib_data));
-
-    return GVOX_SUCCESS;
+    return gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc);
 }
 
-auto gvox_container_bounded_raw_fill(void *self_ptr, void *single_voxel_data, GvoxRange range) -> GvoxResult {
+auto gvox_container_bounded_raw_fill(void *self_ptr, void *single_voxel_data, GvoxVoxelDesc src_voxel_desc, GvoxRange range) -> GvoxResult {
     auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
+
+    // convert src data to be compatible with the dst_voxel_desc
+    auto *converted_data = static_cast<void *>(nullptr);
+    // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
+    auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
+        return desc_a == desc_b;
+    };
+    if (is_compatible_voxel_desc(src_voxel_desc, self.voxel_desc)) {
+        converted_data = single_voxel_data;
+    } else {
+        // converted_data = convert_data(converted_data_stack);
+    }
+
     if (range.offset.axis_n < range.extent.axis_n) {
         return GVOX_ERROR_INVALID_ARGUMENT;
     }
-    auto const dim = range.extent.axis_n;
+    auto const dim = std::min(self.extent.axis_n, range.extent.axis_n);
 
     if (dim < 1) {
         return GVOX_SUCCESS;
@@ -103,11 +99,11 @@ auto gvox_container_bounded_raw_fill(void *self_ptr, void *single_voxel_data, Gv
     }
 
     Voxel in_voxel = {
-        .ptr = static_cast<uint8_t *>(single_voxel_data),
+        .ptr = static_cast<uint8_t *>(converted_data),
         .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
     };
 
-    auto offset_buffer = std::vector<int64_t>(static_cast<size_t>(dim) * 3);
+    auto &offset_buffer = self.pre_alloc_offset_buffer;
     auto voxel_range_offset = GvoxOffsetMut{.axis_n = dim, .axis = offset_buffer.data() + std::ptrdiff_t(0 * dim)};
     auto voxel_range_extent = GvoxExtentMut{.axis_n = dim, .axis = reinterpret_cast<uint64_t *>(offset_buffer.data() + std::ptrdiff_t(1 * dim))};
     auto voxel_next = GvoxOffsetMut{.axis_n = dim, .axis = offset_buffer.data() + std::ptrdiff_t(2 * dim)};
@@ -144,51 +140,7 @@ auto gvox_container_bounded_raw_fill(void *self_ptr, void *single_voxel_data, Gv
         }
     }
 
-    // TODO: Implement general case
-    switch (dim) {
-    case 2: {
-        auto max_x = static_cast<uint32_t>(voxel_range_extent.axis[0]);
-        auto max_y = static_cast<uint32_t>(voxel_range_extent.axis[1]);
-        auto max_b = in_voxel.size;
-        auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
-        auto next_word_axis_0 = next_axis_0 / sizeof(Word);
-        auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
-        auto *in_word_ptr = reinterpret_cast<Word *>(in_voxel.ptr);
-        auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
-        if (max_b == sizeof(Word)) {
-            auto in_word = *in_word_ptr;
-            for (uint32_t yi = 0; yi < max_y; yi++) {
-                for (uint32_t xi = 0; xi < max_x; xi++) {
-                    *out_word_ptr++ = in_word;
-                }
-                out_word_ptr += next_word_axis_0;
-            }
-        } else if ((max_b % sizeof(Word)) == 0) {
-            for (uint32_t yi = 0; yi < max_y; yi++) {
-                for (uint32_t vi = 0; vi < word_n; ++vi) {
-                    auto *line_begin = out_word_ptr + vi;
-                    auto in_word = in_word_ptr[vi];
-                    for (uint32_t xi = 0; xi < max_x; xi++) {
-                        *line_begin = in_word;
-                        line_begin += word_n;
-                    }
-                }
-                out_word_ptr += word_n * max_x;
-                out_word_ptr += next_word_axis_0;
-            }
-        } else {
-            for (uint32_t yi = 0; yi < max_y; yi++) {
-                for (uint32_t xi = 0; xi < max_x; xi++) {
-                    for (uint32_t i = 0; i < max_b; i++) {
-                        *voxel_ptr++ = in_voxel.ptr[i];
-                    }
-                }
-                voxel_ptr += next_axis_0;
-            }
-        }
-    } break;
-    default: return GVOX_ERROR_UNKNOWN;
-    }
+    fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
 
     return GVOX_SUCCESS;
 }

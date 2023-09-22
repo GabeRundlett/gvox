@@ -1,5 +1,3 @@
-
-
 #include "gvox/format.h"
 #include <gvox/gvox.h>
 
@@ -20,7 +18,7 @@
 
 struct Image {
     GvoxExtent2D extent{};
-    std::vector<uint32_t> pixels = std::vector<uint32_t>(extent.x * extent.y);
+    std::vector<uint32_t> pixels = std::vector<uint32_t>(static_cast<size_t>(extent.x * extent.y));
 };
 
 inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_t height, uint32_t color) {
@@ -62,6 +60,24 @@ inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_
         }
         pixel += next_row;
     }
+}
+
+auto xorshf96() -> uint32_t {
+    thread_local uint32_t x = 123456789;
+    thread_local uint32_t y = 362436069;
+    thread_local uint32_t z = 521288629;
+    x ^= x << 16;
+    x ^= x >> 5;
+    x ^= x << 1;
+    auto t = x;
+    x = y;
+    y = z;
+    z = t ^ x ^ y;
+    return z;
+}
+
+auto fast_random() -> uint32_t {
+    return xorshf96();
 }
 
 auto main() -> int {
@@ -109,7 +125,7 @@ auto main() -> int {
         HANDLE_RES(gvox_create_container(&cont_info, &raw_container))
     }
 
-    uint64_t voxel_data{};
+    uint32_t voxel_data{};
     GvoxOffset2D offset{};
     GvoxExtent2D extent{};
     auto fill_info = GvoxFillInfo{
@@ -126,30 +142,28 @@ auto main() -> int {
 
     auto const N_ITER = uint64_t{20000};
 
-    struct mfb_window *window = mfb_open("viewer", image.extent.x * 2, image.extent.y * 2);
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 3), static_cast<uint32_t>(image.extent.y * 3));
 
-    srand(0);
-
-    voxel_data = MAKE_COLOR_RGBA(rand() % 255, rand() % 255, rand() % 255, 255);
-    offset.x = rand() % 320;
-    offset.y = rand() % 240;
-    extent.x = std::min<uint64_t>(rand() % (320 / 5), 320 - offset.x);
-    extent.y = std::min<uint64_t>(rand() % (240 / 5), 240 - offset.y);
+    voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
+    offset.x = static_cast<int64_t>(fast_random() % 320);
+    offset.y = static_cast<int64_t>(fast_random() % 240);
+    extent.x = std::min(static_cast<uint64_t>(fast_random() % (320 / 5)), static_cast<uint64_t>(320 - offset.x));
+    extent.y = std::min(static_cast<uint64_t>(fast_random() % (240 / 5)), static_cast<uint64_t>(240 - offset.y));
     HANDLE_RES(gvox_fill(&fill_info));
 
-    do {
+    while (true) {
         uint64_t voxel_n = 0;
         using Clock = std::chrono::high_resolution_clock;
         auto t0 = Clock::now();
 
-        for (int i = 0; i < N_ITER; i++) {
-            voxel_data = MAKE_COLOR_RGBA(rand() % 255, rand() % 255, rand() % 255, 255);
-            offset.x = rand() % 320;
-            offset.y = rand() % 240;
-            extent.x = std::min<uint64_t>(rand() % (320 / 5), 320 - offset.x);
-            extent.y = std::min<uint64_t>(rand() % (240 / 5), 240 - offset.y);
+        for (uint64_t i = 0; i < N_ITER; i++) {
+            voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
+            offset.x = fast_random() % 320;
+            offset.y = fast_random() % 240;
+            extent.x = std::min(static_cast<uint64_t>(fast_random() % (320 / 5)), static_cast<uint64_t>(320 - offset.x));
+            extent.y = std::min(static_cast<uint64_t>(fast_random() % (240 / 5)), static_cast<uint64_t>(240 - offset.y));
             voxel_n += extent.x * extent.y;
-            // rect_opt(&image, offset.x, offset.y, extent.x, extent.y, voxel_data);
+            // rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), static_cast<int32_t>(extent.x), static_cast<int32_t>(extent.y), voxel_data);
             HANDLE_RES(gvox_fill(&fill_info));
         }
         auto t1 = Clock::now();
@@ -157,9 +171,14 @@ auto main() -> int {
         auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
         std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
 
-        if (mfb_update_ex(window, image.pixels.data(), image.extent.x, image.extent.y) < 0)
+        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.x), static_cast<uint32_t>(image.extent.y)) < 0) {
             break;
-    } while (mfb_wait_sync(window));
+        }
+
+        if (!mfb_wait_sync(window)) {
+            break;
+        }
+    }
 
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(rgb_voxel_desc);

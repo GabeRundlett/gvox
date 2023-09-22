@@ -45,42 +45,6 @@ GVOX_STRUCT(GvoxContainerCreateCbArgs) {
     void const *config;
 };
 
-// typedef const char *(*FI_FormatProc)(void);
-// typedef const char *(*FI_DescriptionProc)(void);
-// typedef const char *(*FI_ExtensionListProc)(void);
-// typedef const char *(*FI_RegExprProc)(void);
-// typedef void *(*FI_OpenProc)(FreeImageIO *io, fi_handle handle, BOOL read);
-// typedef void (*FI_CloseProc)(FreeImageIO *io, fi_handle handle, void *data);
-// typedef int (*FI_PageCountProc)(FreeImageIO *io, fi_handle handle, void *data);
-// typedef int (*FI_PageCapabilityProc)(FreeImageIO *io, fi_handle handle, void *data);
-// typedef FIBITMAP *(*FI_LoadProc)(FreeImageIO *io, fi_handle handle, int page, int flags, void *data);
-// typedef BOOL (*FI_SaveProc)(FreeImageIO *io, FIBITMAP *dib, fi_handle handle, int page, int flags, void *data);
-// typedef BOOL (*FI_ValidateProc)(FreeImageIO *io, fi_handle handle);
-// typedef const char *(*FI_MimeProc)(void);
-// typedef BOOL (*FI_SupportsExportBPPProc)(int bpp);
-// typedef BOOL (*FI_SupportsExportTypeProc)(FREE_IMAGE_TYPE type);
-// typedef BOOL (*FI_SupportsICCProfilesProc)(void);
-// typedef BOOL (*FI_SupportsNoPixelsProc)(void);
-
-// FI_STRUCT(Plugin) {
-//     FI_FormatProc format_proc;
-//     FI_DescriptionProc description_proc;
-//     FI_ExtensionListProc extension_proc;
-//     FI_RegExprProc regexpr_proc;
-//     FI_OpenProc open_proc;
-//     FI_CloseProc close_proc;
-//     FI_PageCountProc pagecount_proc;
-//     FI_PageCapabilityProc pagecapability_proc;
-//     FI_LoadProc load_proc;
-//     FI_SaveProc save_proc;
-//     FI_ValidateProc validate_proc;
-//     FI_MimeProc mime_proc;
-//     FI_SupportsExportBPPProc supports_export_bpp_proc;
-//     FI_SupportsExportTypeProc supports_export_type_proc;
-//     FI_SupportsICCProfilesProc supports_icc_profiles_proc;
-//     FI_SupportsNoPixelsProc supports_no_pixels_proc;
-// };
-
 GVOX_STRUCT(GvoxInputAdapterDescription) {
     GvoxResult (*create)(void **, GvoxInputAdapterCreateCbArgs const *);
     GvoxResult (*read)(void *, GvoxInputAdapter, uint8_t *, size_t);
@@ -111,9 +75,8 @@ GVOX_STRUCT(GvoxSerializerDescription) {
 GVOX_STRUCT(GvoxContainerDescription) {
     GvoxResult (*create)(void **, GvoxContainerCreateCbArgs const *);
     void (*destroy)(void *);
-    GvoxVoxelDesc (*get_voxel_desc)(void *);
-    GvoxResult (*fill)(void *, void *, GvoxRange range);
-    GvoxResult (*sample)(void *, uint32_t, void *, GvoxOffset offset);
+    GvoxResult (*fill)(void *, void *, GvoxVoxelDesc, GvoxRange);
+    GvoxResult (*sample)(void *, void *, GvoxVoxelDesc, GvoxOffset);
 };
 
 GVOX_STRUCT(GvoxInputAdapterCreateInfo) {

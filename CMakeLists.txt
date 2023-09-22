@@ -108,6 +108,22 @@ endif()
 if(GVOX_FEATURE_IO_IMAGE)
     find_package(freeimage CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
+
+    function(FIXUP_TARGET TGT_NAME)
+        if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
+            get_property(A_OPTIONS TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS)
+            string(REPLACE "/EHsc" "" A_OPTIONS "")
+            set_property(TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS "${A_OPTIONS}")
+        endif()
+    endfunction()
+
+    FIXUP_TARGET(Imath::Imath)
+    FIXUP_TARGET(OpenEXR::Iex)
+    FIXUP_TARGET(OpenEXR::IlmThread)
+    FIXUP_TARGET(OpenEXR::OpenEXRCore)
+    FIXUP_TARGET(OpenEXR::OpenEXR)
+    FIXUP_TARGET(OpenEXR::OpenEXRUtil)
+
     list(APPEND GVOX_PARSERS
         "image"
     )

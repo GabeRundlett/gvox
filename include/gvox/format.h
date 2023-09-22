@@ -71,6 +71,7 @@ void GVOX_EXPORT gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 
 uint32_t GVOX_EXPORT gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 uint32_t GVOX_EXPORT gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+
 #ifdef __cplusplus
 }
 #endif

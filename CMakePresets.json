@@ -14,7 +14,7 @@
             "cacheVariables": {
                 "GVOX_USE_VCPKG": true,
                 "GVOX_FEATURE_IO_FILE": true,
-                "GVOX_FEATURE_IO_IMAGE": false,
+                "GVOX_FEATURE_IO_IMAGE": true,
                 "GVOX_FEATURE_IO_ADAPT_ZIP": true,
                 "GVOX_ENABLE_TESTS": true,
                 "GVOX_ENABLE_TRACY": false,

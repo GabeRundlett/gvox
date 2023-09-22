@@ -73,7 +73,7 @@ auto GzipInputAdapter::make_prepared(GvoxInputAdapter next_handle) -> GvoxResult
     res = gvox_input_seek(next_handle, 0, GVOX_SEEK_ORIGIN_BEG);
     HANDLE_RES;
     std::vector<uint8_t> zipped_bytes{};
-    zipped_bytes.resize(size);
+    zipped_bytes.resize(static_cast<size_t>(size));
     res = gvox_input_read(next_handle, zipped_bytes.data(), zipped_bytes.size());
     HANDLE_RES;
 

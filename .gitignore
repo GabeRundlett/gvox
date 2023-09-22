@@ -16,4 +16,4 @@ imgui.ini
 assets/
 vcpkg/
 
-tools/web/static-server.exe
+tools/web/static-server*

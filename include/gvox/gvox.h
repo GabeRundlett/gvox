@@ -49,10 +49,9 @@ GVOX_STRUCT(GvoxSampleInfo) {
     GvoxStructType struct_type;
     void const *next;
     GvoxContainer src;
-    uint32_t src_channel_index;
     GvoxOffset offset;
     void *dst;
-    GvoxFormat dst_format;
+    GvoxVoxelDesc dst_voxel_desc;
 };
 
 GVOX_STRUCT(GvoxSerializeInfo) {
@@ -67,6 +66,9 @@ GVOX_STRUCT(GvoxSerializeInfo) {
 GvoxResult GVOX_EXPORT gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB;
 GvoxResult GVOX_EXPORT gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB;
 GvoxResult GVOX_EXPORT gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB;
+
+GvoxResult GVOX_EXPORT gvox_translate_format(void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format) GVOX_FUNC_ATTRIB;
+GvoxResult GVOX_EXPORT gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc) GVOX_FUNC_ATTRIB;
 
 #ifdef __cplusplus
 }

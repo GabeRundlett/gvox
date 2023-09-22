@@ -28,22 +28,8 @@ auto gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
         return GVOX_ERROR_BAD_STRUCT_TYPE;
     }
 
-    auto *dst_voxel_desc = info->dst->desc.get_voxel_desc(info->dst->self);
-    // convert src data to be compatible with the dst_voxel_desc
-
-    auto *converted_data = static_cast<void *>(nullptr);
-    // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
-    auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
-        return desc_a == desc_b;
-    };
-    if (is_compatible_voxel_desc(info->src_desc, dst_voxel_desc)) {
-        converted_data = info->src_data;
-    } else {
-        // converted_data = convert_data(converted_data_stack);
-    }
-
     // issue the fill call
-    return info->dst->desc.fill(info->dst->self, converted_data, info->range);
+    return info->dst->desc.fill(info->dst->self, info->src_data, info->src_desc, info->range);
 }
 
 auto gvox_blit_prepare(GvoxParser parser) GVOX_FUNC_ATTRIB->GvoxResult {
@@ -103,7 +89,7 @@ namespace float_conv {
 } // namespace float_conv
 
 namespace {
-    auto convert_formats(FormatDescriptor src_format, void *src_data, FormatDescriptor dst_format, void *dst_data) -> GvoxResult {
+    auto convert_formats(void const *src_data, FormatDescriptor src_format, void *dst_data, FormatDescriptor dst_format) -> GvoxResult {
         if (src_format.component_count != dst_format.component_count) {
             return GVOX_ERROR_INVALID_ARGUMENT;
         }
@@ -157,6 +143,38 @@ namespace {
     }
 } // namespace
 
+auto gvox_translate_format(void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format) GVOX_FUNC_ATTRIB->GvoxResult {
+    return convert_formats(src_data, std::bit_cast<FormatDescriptor>(src_format), dst_data, std::bit_cast<FormatDescriptor>(dst_format));
+}
+
+auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc) GVOX_FUNC_ATTRIB->GvoxResult {
+    // TODO: ...
+    auto src_attrib_i = size_t{0};
+    auto dst_attrib_i = size_t{0};
+
+    auto src_attrib_offset = size_t{0};
+
+    // if (info->src_channel_index >= src_voxel_desc->attributes.size()) {
+    //     return GVOX_ERROR_INVALID_ARGUMENT;
+    // }
+
+    auto temp_out_data0 = std::array<uint8_t, 16>{};
+    auto const *begin = static_cast<uint8_t const *>(src_data) + src_attrib_offset;
+    auto const *end = begin + 4;
+
+    std::copy(begin, end, temp_out_data0.data());
+
+    if (dst_desc->attributes.size() == 1) {
+        return convert_formats(
+            temp_out_data0.data(), src_desc->attributes.at(src_attrib_i).format_desc,
+            dst_data, dst_desc->attributes.at(dst_attrib_i).format_desc);
+    }
+
+    // auto temp_out_data1 = std::array<uint8_t, 16>{};
+
+    return GVOX_ERROR_UNKNOWN;
+}
+
 auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
 
@@ -167,22 +185,12 @@ auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
         return GVOX_ERROR_BAD_STRUCT_TYPE;
     }
 
-    auto *src_voxel_desc = info->src->desc.get_voxel_desc(info->src->self);
-
-    auto temp_out_data = std::array<uint32_t, 4>{};
-
-    if (info->src_channel_index >= src_voxel_desc->attributes.size()) {
-        return GVOX_ERROR_INVALID_ARGUMENT;
-    }
-
-    auto result = info->src->desc.sample(info->src->self, info->src_channel_index, temp_out_data.data(), info->offset);
+    auto result = info->src->desc.sample(info->src->self, info->dst, info->dst_voxel_desc, info->offset);
     if (result != GVOX_SUCCESS) {
         return result;
     }
 
-    return convert_formats(
-        src_voxel_desc->attributes.at(info->src_channel_index).format_desc, temp_out_data.data(),
-        std::bit_cast<FormatDescriptor>(info->dst_format), info->dst);
+    return GVOX_SUCCESS;
 }
 
 // Adapter API

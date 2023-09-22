@@ -32,7 +32,7 @@ function(GVOX_CREATE_TARGET)
     list(JOIN GCT_FOLDER "_" FOLDER_NAME)
     list(JOIN GCT_FOLDER "/" FOLDER_PATH)
 
-    set(TGT ${GCT_NAME_PREFIX}_${FOLDER_NAME}_${GCT_FILE})
+    set(TGT ${GCT_NAME_PREFIX}_${FOLDER_NAME}_${GCT_FILE}_${GCT_LANG})
     set(${GCT_OUTPUT_NAME} ${TGT} PARENT_SCOPE)
     add_executable(${TGT} "${FOLDER_PATH}/${GCT_FILE}.${GCT_LANG}")
     target_link_libraries(${TGT} PRIVATE gvox::gvox ${GCT_LIBS})
@@ -91,6 +91,13 @@ GVOX_CREATE_SAMPLE(
     FOLDER simple
     FILE main
     LANG c
+    LIBS
+)
+
+GVOX_CREATE_SAMPLE(
+    FOLDER simple
+    FILE main
+    LANG cpp
     LIBS
 )
 

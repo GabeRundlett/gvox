@@ -1,4 +1,3 @@
-
 #include "gvox/format.h"
 #include <gvox/gvox.h>
 
@@ -41,6 +40,25 @@ auto main() -> int {
             .attributes = attribs.data(),
         };
         HANDLE_RES(gvox_create_voxel_desc(&voxel_desc_info, &rgb_voxel_desc))
+    }
+
+    auto *u32_color_voxel_desc = GvoxVoxelDesc{};
+    {
+        auto const attribs = std::array{
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
+                .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+            },
+        };
+        auto voxel_desc_info = GvoxVoxelDescCreateInfo{
+            .struct_type = GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO,
+            .next = nullptr,
+            .attribute_count = static_cast<uint32_t>(attribs.size()),
+            .attributes = attribs.data(),
+        };
+        HANDLE_RES(gvox_create_voxel_desc(&voxel_desc_info, &u32_color_voxel_desc))
     }
 
     auto *raw_container = GvoxContainer{};
@@ -88,7 +106,7 @@ auto main() -> int {
         auto const N_ITER = uint64_t{2000};
         using Clock = std::chrono::high_resolution_clock;
         auto t0 = Clock::now();
-        for (int i = 0; i < N_ITER; i++) {
+        for (uint64_t i = 0; i < N_ITER; i++) {
             voxel_data = R96_ARGB(255, rand() % 255, rand() % 255, rand() % 255);
             // offset.x = rand() % 64;
             // offset.y = rand() % 64;
@@ -103,6 +121,8 @@ auto main() -> int {
         auto voxel_n = N_ITER * extent.x * extent.y * extent.z;
         auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
         std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
+
+        return 0;
     };
 
     auto test_6d = [&]() {
@@ -170,7 +190,7 @@ auto main() -> int {
                     for (uint32_t ui = 0; ui < size_u; ++ui) {
                         for (uint32_t wi = 0; wi < size_w; ++wi) {
                             for (uint32_t xi = 0; xi < size_x; ++xi) {
-                                auto offset = GvoxOffset6D{
+                                auto sample_offset = GvoxOffset6D{
                                     static_cast<int32_t>(xi),
                                     static_cast<int32_t>(size_y - yi - 1),
                                     static_cast<int32_t>(size_z - zi - 1),
@@ -178,20 +198,19 @@ auto main() -> int {
                                     static_cast<int32_t>(size_v - vi - 1),
                                     static_cast<int32_t>(ui),
                                 };
-                                auto voxel_data = std::array<uint8_t, 4>{};
+                                auto sampled_voxel_data = std::array<uint8_t, 4>{};
                                 auto sample_info = GvoxSampleInfo{
                                     .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
                                     .next = nullptr,
                                     .src = raw_container,
-                                    .src_channel_index = 0,
-                                    .offset = {6, &offset.x},
-                                    .dst = &voxel_data,
-                                    .dst_format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                                    .offset = {6, &sample_offset.x},
+                                    .dst = &sampled_voxel_data,
+                                    .dst_voxel_desc = u32_color_voxel_desc,
                                 };
                                 HANDLE_RES(gvox_sample(&sample_info));
-                                auto r = static_cast<uint32_t>(voxel_data[0]);
-                                auto g = static_cast<uint32_t>(voxel_data[1]);
-                                auto b = static_cast<uint32_t>(voxel_data[2]);
+                                auto r = static_cast<uint32_t>(sampled_voxel_data[0]);
+                                auto g = static_cast<uint32_t>(sampled_voxel_data[1]);
+                                auto b = static_cast<uint32_t>(sampled_voxel_data[2]);
                                 std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
                             }
                             std::cout << "\033[0m ";
@@ -205,8 +224,24 @@ auto main() -> int {
             std::cout << "\033[0m\n";
         }
         std::cout << "\033[0m" << std::flush;
+
+        return 0;
     };
+
+    {
+        auto result = test_6d();
+        if (result != 0) {
+            return result;
+        }
+    }
+    // {
+    //     auto result = speed_test_3d();
+    //     if (result != 0) {
+    //         return result;
+    //     }
+    // }
 
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(rgb_voxel_desc);
+    gvox_destroy_voxel_desc(u32_color_voxel_desc);
 }
