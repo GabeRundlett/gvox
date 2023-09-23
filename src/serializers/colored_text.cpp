@@ -49,18 +49,27 @@ auto GvoxColoredTextSerializer::receive_region() -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-auto gvox_serializer_colored_text_create(void **self, GvoxSerializerCreateCbArgs const *args) -> GvoxResult {
-    GvoxColoredTextSerializerConfig config;
-    if (args->config != nullptr) {
-        config = *static_cast<GvoxColoredTextSerializerConfig const *>(args->config);
-    } else {
-        config = {};
+namespace {
+    auto create(void **self, GvoxSerializerCreateCbArgs const *args) -> GvoxResult {
+        GvoxColoredTextSerializerConfig config;
+        if (args->config != nullptr) {
+            config = *static_cast<GvoxColoredTextSerializerConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        *self = new GvoxColoredTextSerializer(config);
+        return GVOX_SUCCESS;
     }
-    *self = new GvoxColoredTextSerializer(config);
-    return GVOX_SUCCESS;
+    void destroy(void *self) { delete static_cast<GvoxColoredTextSerializer *>(self); }
+    auto blit_begin(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_begin(); }
+    auto blit_end(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_end(); }
+    auto request_regions(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->request_regions(); }
+    auto receive_region(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->receive_region(); }
+} // namespace
+
+auto gvox_serializer_colored_text_description(void) GVOX_FUNC_ATTRIB->GvoxSerializerDescription {
+    return GvoxSerializerDescription{
+        .create = create,
+        .destroy = destroy,
+    };
 }
-void gvox_serializer_colored_text_destroy(void *self) { delete static_cast<GvoxColoredTextSerializer *>(self); }
-auto gvox_serializer_colored_text_blit_begin(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_begin(); }
-auto gvox_serializer_colored_text_blit_end(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->blit_end(); }
-auto gvox_serializer_colored_text_request_regions(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->request_regions(); }
-auto gvox_serializer_colored_text_receive_region(void *self) -> GvoxResult { return static_cast<GvoxColoredTextSerializer *>(self)->receive_region(); }

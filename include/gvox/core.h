@@ -4,13 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(GVOX_EXPORT)
-#define GVOX_EXPORT
+#if !defined(GVOX_CMAKE_EXPORT)
+#define GVOX_CMAKE_EXPORT
 #endif
 
 #define GVOX_DEFINE_HANDLE(NAME) typedef struct NAME##_ImplT *NAME
 
 #ifdef __cplusplus
+#define GVOX_EXPORT extern "C" GVOX_CMAKE_EXPORT
 #define GVOX_DEFAULT(x) = x
 #define GVOX_ENUM(x) enum x : int32_t
 #define GVOX_STRUCT(x) struct x
@@ -20,6 +21,7 @@
 #define GVOX_CONSTANT(x, value) static inline constexpr auto x = (value);
 #define GVOX_CONSTANTS_END()
 #else
+#define GVOX_EXPORT GVOX_CMAKE_EXPORT
 #define GVOX_DEFAULT(x)
 #define GVOX_ENUM(x)   \
     typedef int32_t x; \

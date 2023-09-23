@@ -113,14 +113,13 @@ auto main() -> int {
         auto cont_info = GvoxContainerCreateInfo{
             .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
             .next = nullptr,
-            .description = {},
+            .description = gvox_container_bounded_raw_description(),
             .cb_args = {
                 .struct_type = {}, // ?
                 .next = nullptr,
                 .config = &raw_container_conf,
             },
         };
-        HANDLE_RES(gvox_get_standard_container_description("bounded_raw", &cont_info.description))
 
         HANDLE_RES(gvox_create_container(&cont_info, &raw_container))
     }

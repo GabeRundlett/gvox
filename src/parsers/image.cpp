@@ -128,50 +128,54 @@ auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
     return GVOX_SUCCESS;
 }
 
-auto gvox_parser_image_create(void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
-    ZoneScoped;
-    GvoxImageParserConfig config;
-    if (args->config != nullptr) {
-        config = *static_cast<GvoxImageParserConfig const *>(args->config);
-    } else {
-        config = {};
+namespace {
+    auto create(void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
+        ZoneScoped;
+        GvoxImageParserConfig config;
+        if (args->config != nullptr) {
+            config = *static_cast<GvoxImageParserConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        *self = new GvoxImageParser(config);
+        auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_stream);
+        if (load_res != GVOX_SUCCESS) {
+            return load_res;
+        }
+        return GVOX_SUCCESS;
     }
-    *self = new GvoxImageParser(config);
-    auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_stream);
-    if (load_res != GVOX_SUCCESS) {
-        return load_res;
+    void destroy(void *self) { delete static_cast<GvoxImageParser *>(self); }
+
+    auto sample_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->sample_region(); }
+    auto blit_begin(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_begin(); }
+    auto blit_end(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_end(); }
+    auto blit_query_region_flags(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_query_region_flags(); }
+    auto blit_load_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_load_region(); }
+    auto blit_unload_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_unload_region(); }
+    auto blit_emit_regions_in_range(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_emit_regions_in_range(); }
+
+    auto create_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
+        ZoneScoped;
+        auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
+        if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+            return GVOX_ERROR_UNKNOWN;
+        }
+
+        auto parser_ci = GvoxParserCreateInfo{};
+        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+        parser_ci.next = NULL;
+        parser_ci.cb_args.config = NULL;
+        parser_ci.cb_args.input_stream = input_stream;
+        parser_ci.description = gvox_parser_image_description();
+
+        return gvox_create_parser(&parser_ci, user_parser);
     }
-    return GVOX_SUCCESS;
-}
-void gvox_parser_image_destroy(void *self) { delete static_cast<GvoxImageParser *>(self); }
+} // namespace
 
-auto gvox_parser_image_sample_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->sample_region(); }
-auto gvox_parser_image_blit_begin(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_begin(); }
-auto gvox_parser_image_blit_end(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_end(); }
-auto gvox_parser_image_blit_query_region_flags(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_query_region_flags(); }
-auto gvox_parser_image_blit_load_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_load_region(); }
-auto gvox_parser_image_blit_unload_region(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_unload_region(); }
-auto gvox_parser_image_blit_emit_regions_in_range(void *self) -> GvoxResult { return static_cast<GvoxImageParser *>(self)->blit_emit_regions_in_range(); }
-
-auto gvox_parser_image_create_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
-    ZoneScoped;
-    auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
-    if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
-        return GVOX_ERROR_UNKNOWN;
-    }
-
-    auto parser_ci = GvoxParserCreateInfo{};
-    parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
-    parser_ci.next = NULL;
-    parser_ci.cb_args.config = NULL;
-    parser_ci.cb_args.input_stream = input_stream;
-
-    auto result = GVOX_SUCCESS;
-
-    result = gvox_get_standard_parser_description("image", &parser_ci.description);
-    if (result != GVOX_SUCCESS) { // Failed to find standard parser 'image' description
-        return result;
-    }
-
-    return gvox_create_parser(&parser_ci, user_parser);
+auto gvox_parser_image_description(void) GVOX_FUNC_ATTRIB->GvoxParserDescription {
+    return GvoxParserDescription{
+        .create = create,
+        .destroy = destroy,
+        .create_from_input = create_from_input,
+    };
 }

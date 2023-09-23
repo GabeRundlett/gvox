@@ -19,26 +19,32 @@ auto GvoxStdoutOutputStream::write(uint8_t *data, size_t size) -> GvoxResult {
     return GVOX_SUCCESS;
 }
 
-auto gvox_output_stream_stdout_create(void **self, GvoxOutputStreamCreateCbArgs const *args) -> GvoxResult {
-    GvoxStdoutOutputStreamConfig config;
-    if (args->config != nullptr) {
-        config = *static_cast<GvoxStdoutOutputStreamConfig const *>(args->config);
-    } else {
-        config = {};
+namespace {
+    auto create(void **self, GvoxOutputStreamCreateCbArgs const *args) -> GvoxResult {
+        GvoxStdoutOutputStreamConfig config;
+        if (args->config != nullptr) {
+            config = *static_cast<GvoxStdoutOutputStreamConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        *self = new GvoxStdoutOutputStream(config);
+        return GVOX_SUCCESS;
     }
-    *self = new GvoxStdoutOutputStream(config);
-    return GVOX_SUCCESS;
-}
-auto gvox_output_stream_stdout_write(void *self, GvoxOutputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
-    return static_cast<GvoxStdoutOutputStream *>(self)->write(data, size);
-}
-auto gvox_output_stream_stdout_seek(void * /*unused*/, GvoxOutputStream /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-auto gvox_output_stream_stdout_tell(void * /*unused*/, GvoxOutputStream /*unused*/) -> long {
-    return GVOX_ERROR_UNKNOWN;
-}
-void gvox_output_stream_stdout_destroy(void *self) {
-    std::cout << std::flush;
-    delete static_cast<GvoxStdoutOutputStream *>(self);
+    auto write(void *self, GvoxOutputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
+        return static_cast<GvoxStdoutOutputStream *>(self)->write(data, size);
+    }
+    auto seek(void * /*unused*/, GvoxOutputStream /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
+        return GVOX_ERROR_UNKNOWN;
+    }
+    auto tell(void * /*unused*/, GvoxOutputStream /*unused*/) -> long {
+        return GVOX_ERROR_UNKNOWN;
+    }
+    void destroy(void *self) {
+        std::cout << std::flush;
+        delete static_cast<GvoxStdoutOutputStream *>(self);
+    }
+} // namespace
+
+auto gvox_output_stream_stdout_description() GVOX_FUNC_ATTRIB->GvoxOutputStreamDescription {
+    return GvoxOutputStreamDescription{.create = create, .write = write, .seek = seek, .tell = tell, .destroy = destroy};
 }

@@ -66,11 +66,11 @@ GVOX_STRUCT(GvoxVoxelDescCreateInfo) {
     GvoxAttribute const *attributes;
 };
 
-GvoxResult GVOX_EXPORT gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB;
-void GVOX_EXPORT gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+GVOX_EXPORT GvoxResult gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB;
+GVOX_EXPORT void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 
-uint32_t GVOX_EXPORT gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
-uint32_t GVOX_EXPORT gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+GVOX_EXPORT uint32_t gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+GVOX_EXPORT uint32_t gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 
 #ifdef __cplusplus
 }

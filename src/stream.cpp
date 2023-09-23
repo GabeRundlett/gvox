@@ -1,5 +1,5 @@
-#include <gvox_standard_functions.hpp>
 #include <string_view>
+#include <span>
 
 #include "types.hpp"
 #include "utils/handle.hpp"
@@ -48,24 +48,6 @@ void gvox_destroy_parser(GvoxParser handle) GVOX_FUNC_ATTRIB { destroy_handle(ha
 void gvox_destroy_serializer(GvoxSerializer handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 void gvox_destroy_container(GvoxContainer handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 
-#define HANDLE_GET_DESC(type, Type, TYPE)                                                                                                                       \
-    ZoneScoped;                                                                                                                                                 \
-    auto name_str = std::string_view{name};                                                                                                                     \
-    auto iter = std::find_if(standard_##type##s.begin(), standard_##type##s.end(), [name_str](Std##Type##Info const &info) { return info.first == name_str; }); \
-    if (iter == standard_##type##s.end()) {                                                                                                                     \
-        return GVOX_ERROR_UNKNOWN_STANDARD_##TYPE;                                                                                                              \
-    }                                                                                                                                                           \
-    *desc = iter->second;                                                                                                                                       \
-    return GVOX_SUCCESS
-
-auto gvox_get_standard_input_stream_description(char const *name, GvoxInputStreamDescription *desc) GVOX_FUNC_ATTRIB->GvoxResult { HANDLE_GET_DESC(input_stream, InputStream, INPUT_STREAM); }
-auto gvox_get_standard_output_stream_description(char const *name, GvoxOutputStreamDescription *desc) GVOX_FUNC_ATTRIB->GvoxResult { HANDLE_GET_DESC(output_stream, OutputStream, OUTPUT_STREAM); }
-auto gvox_get_standard_parser_description(char const *name, GvoxParserDescription *desc) GVOX_FUNC_ATTRIB->GvoxResult { HANDLE_GET_DESC(parser, Parser, PARSER); }
-auto gvox_get_standard_serializer_description(char const *name, GvoxSerializerDescription *desc) GVOX_FUNC_ATTRIB->GvoxResult { HANDLE_GET_DESC(serializer, Serializer, SERIALIZER); }
-auto gvox_get_standard_container_description(char const *name, GvoxContainerDescription *desc) GVOX_FUNC_ATTRIB->GvoxResult { HANDLE_GET_DESC(container, Container, CONTAINER); }
-
-#undef HANDLE_GET_DESC
-
 auto gvox_input_read(GvoxInputStream handle, uint8_t *data, size_t size) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     return handle->desc.read(handle->self, handle->next, data, size);
@@ -92,10 +74,11 @@ auto gvox_output_seek(GvoxOutputStream handle) -> long {
     return handle->desc.tell(handle->self, handle->next);
 }
 
-auto gvox_create_parser_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_create_parser_from_input(GvoxParserDescription const *parsers_ptr, uint32_t parser_n, GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     auto initial_input_pos = gvox_input_tell(input_stream);
-    for (auto const &[parser_name, parser_desc] : standard_parsers) {
+    auto parsers = std::span<GvoxParserDescription const>(parsers_ptr, parser_n);
+    for (auto const &parser_desc : parsers) {
         ZoneScoped;
         if (parser_desc.create_from_input != nullptr) {
             auto creation_result = parser_desc.create_from_input(input_stream, user_parser);

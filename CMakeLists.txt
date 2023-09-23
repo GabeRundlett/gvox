@@ -149,20 +149,34 @@ target_link_libraries(${PROJECT_NAME} PRIVATE gcem)
 find_package(EnTT CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE EnTT::EnTT)
 
-include("cmake/gvox_standard_functions.cmake")
+foreach(NAME ${GVOX_INPUT_STREAMS})
+    target_sources(${PROJECT_NAME} PRIVATE "src/streams/input/${NAME}.cpp")
+endforeach()
+foreach(NAME ${GVOX_OUTPUT_STREAMS})
+    target_sources(${PROJECT_NAME} PRIVATE "src/streams/output/${NAME}.cpp")
+endforeach()
+foreach(NAME ${GVOX_PARSERS})
+    target_sources(${PROJECT_NAME} PRIVATE "src/parsers/${NAME}.cpp")
+endforeach()
+foreach(NAME ${GVOX_SERIALIZERS})
+    target_sources(${PROJECT_NAME} PRIVATE "src/serializers/${NAME}.cpp")
+endforeach()
+foreach(NAME ${GVOX_CONTAINERS})
+    target_sources(${PROJECT_NAME} PRIVATE "src/containers/${NAME}.cpp")
+endforeach()
 
 if(BUILD_SHARED_LIBS)
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         target_compile_definitions(${PROJECT_NAME}
-            PRIVATE "GVOX_EXPORT=__declspec(dllexport)"
-            INTERFACE "GVOX_EXPORT=__declspec(dllimport)")
+            PRIVATE "GVOX_CMAKE_EXPORT=__declspec(dllexport)"
+            INTERFACE "GVOX_CMAKE_EXPORT=__declspec(dllimport)")
     else()
         target_compile_definitions(${PROJECT_NAME}
-            PUBLIC "GVOX_EXPORT=")
+            PUBLIC "GVOX_CMAKE_EXPORT=")
     endif()
 else()
     target_compile_definitions(${PROJECT_NAME}
-        PUBLIC "GVOX_EXPORT=")
+        PUBLIC "GVOX_CMAKE_EXPORT=")
 endif()
 
 if((GVOX_BUILD_FOR_RUST OR GVOX_BUILD_FOR_ODIN) AND GVOX_USE_STATIC_CRT)

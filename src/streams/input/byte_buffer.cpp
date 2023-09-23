@@ -44,25 +44,31 @@ auto GvoxByteBufferInputStream::tell() -> long {
     return current_read_head;
 }
 
-auto gvox_input_stream_byte_buffer_create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
-    GvoxByteBufferInputStreamConfig config;
-    if (args->config != nullptr) {
-        config = *static_cast<GvoxByteBufferInputStreamConfig const *>(args->config);
-    } else {
-        config = {};
+namespace {
+    auto create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
+        GvoxByteBufferInputStreamConfig config;
+        if (args->config != nullptr) {
+            config = *static_cast<GvoxByteBufferInputStreamConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        *self = new GvoxByteBufferInputStream(config);
+        return GVOX_SUCCESS;
     }
-    *self = new GvoxByteBufferInputStream(config);
-    return GVOX_SUCCESS;
-}
-auto gvox_input_stream_byte_buffer_read(void *self, GvoxInputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
-    return static_cast<GvoxByteBufferInputStream *>(self)->read(data, size);
-}
-auto gvox_input_stream_byte_buffer_seek(void *self, GvoxInputStream /*unused*/, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-    return static_cast<GvoxByteBufferInputStream *>(self)->seek(offset, origin);
-}
-auto gvox_input_stream_byte_buffer_tell(void *self, GvoxInputStream /*unused*/) -> long {
-    return static_cast<GvoxByteBufferInputStream *>(self)->tell();
-}
-void gvox_input_stream_byte_buffer_destroy(void *self) {
-    delete static_cast<GvoxByteBufferInputStream *>(self);
+    auto read(void *self, GvoxInputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
+        return static_cast<GvoxByteBufferInputStream *>(self)->read(data, size);
+    }
+    auto seek(void *self, GvoxInputStream /*unused*/, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+        return static_cast<GvoxByteBufferInputStream *>(self)->seek(offset, origin);
+    }
+    auto tell(void *self, GvoxInputStream /*unused*/) -> long {
+        return static_cast<GvoxByteBufferInputStream *>(self)->tell();
+    }
+    void destroy(void *self) {
+        delete static_cast<GvoxByteBufferInputStream *>(self);
+    }
+} // namespace
+
+auto gvox_input_stream_byte_buffer_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescription {
+    return GvoxInputStreamDescription{.create = create, .read = read, .seek = seek, .tell = tell, .destroy = destroy};
 }
