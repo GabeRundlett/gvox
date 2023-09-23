@@ -87,31 +87,27 @@ auto GzipInputStream::make_prepared(GvoxInputStream next_handle) -> GvoxResult {
     return res;
 }
 
-namespace {
-    auto create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
-        GzipInputStreamConfig config;
-        if (args->config != nullptr) {
-            config = *static_cast<GzipInputStreamConfig const *>(args->config);
-        } else {
-            config = {};
-        }
-        *self = new GzipInputStream(config);
-        return GVOX_SUCCESS;
-    }
-    auto read(void *self, GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
-        return static_cast<GzipInputStream *>(self)->read(next_handle, data, size);
-    }
-    auto seek(void *self, GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-        return static_cast<GzipInputStream *>(self)->seek(next_handle, offset, origin);
-    }
-    auto tell(void *self, GvoxInputStream next_handle) -> long {
-        return static_cast<GzipInputStream *>(self)->tell(next_handle);
-    }
-    void destroy(void *self) {
-        delete static_cast<GzipInputStream *>(self);
-    }
-} // namespace
-
 auto gvox_input_stream_gzip_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescription {
-    return GvoxInputStreamDescription{.create = create, .read = read, .seek = seek, .tell = tell, .destroy = destroy};
+    return GvoxInputStreamDescription{
+        .create = [](void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
+            GzipInputStreamConfig config;
+            if (args->config != nullptr) {
+                config = *static_cast<GzipInputStreamConfig const *>(args->config);
+            } else {
+                config = {};
+            }
+            *self = new GzipInputStream(config);
+            return GVOX_SUCCESS;
+        },
+        .read = [](void *self, GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
+            return static_cast<GzipInputStream *>(self)->read(next_handle, data, size);
+        },
+        .seek = [](void *self, GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+            return static_cast<GzipInputStream *>(self)->seek(next_handle, offset, origin);
+        },
+        .tell = [](void *self, GvoxInputStream next_handle) -> long {
+            return static_cast<GzipInputStream *>(self)->tell(next_handle);
+        },
+        .destroy = [](void *self) { delete static_cast<GzipInputStream *>(self); },
+    };
 }

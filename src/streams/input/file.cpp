@@ -39,32 +39,29 @@ auto GvoxFileInputStream::tell() -> long {
     return static_cast<long>(file_handle.tellg());
 }
 
-namespace {
-    auto create(void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
-        if (args->config == nullptr) {
-            return GVOX_ERROR_INVALID_ARGUMENT;
-        }
-        auto *result = new GvoxFileInputStream(*static_cast<GvoxFileInputStreamConfig const *>(args->config));
-        if (!result->file_handle.is_open()) {
-            return GVOX_ERROR_UNKNOWN;
-        }
-        *self = result;
-        return GVOX_SUCCESS;
-    }
-    auto read(void *self, GvoxInputStream, uint8_t *data, size_t size) -> GvoxResult {
-        return static_cast<GvoxFileInputStream *>(self)->read(data, size);
-    }
-    auto seek(void *self, GvoxInputStream, long offset, GvoxSeekOrigin origin) -> GvoxResult {
-        return static_cast<GvoxFileInputStream *>(self)->seek(offset, origin);
-    }
-    auto tell(void *self, GvoxInputStream) -> long {
-        return static_cast<GvoxFileInputStream *>(self)->tell();
-    }
-    void destroy(void *self) {
-        delete static_cast<GvoxFileInputStream *>(self);
-    }
-} // namespace
 
 auto gvox_input_stream_file_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescription {
-    return GvoxInputStreamDescription{.create = create, .read = read, .seek = seek, .tell = tell, .destroy = destroy};
+    return GvoxInputStreamDescription{
+        .create = [](void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
+            if (args->config == nullptr) {
+                return GVOX_ERROR_INVALID_ARGUMENT;
+            }
+            auto *result = new GvoxFileInputStream(*static_cast<GvoxFileInputStreamConfig const *>(args->config));
+            if (!result->file_handle.is_open()) {
+                return GVOX_ERROR_UNKNOWN;
+            }
+            *self = result;
+            return GVOX_SUCCESS;
+        },
+        .read = [](void *self, GvoxInputStream, uint8_t *data, size_t size) -> GvoxResult {
+            return static_cast<GvoxFileInputStream *>(self)->read(data, size);
+        },
+        .seek = [](void *self, GvoxInputStream, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+            return static_cast<GvoxFileInputStream *>(self)->seek(offset, origin);
+        },
+        .tell = [](void *self, GvoxInputStream) -> long {
+            return static_cast<GvoxFileInputStream *>(self)->tell();
+        },
+        .destroy = [](void *self) { delete static_cast<GvoxFileInputStream *>(self); },
+    };
 }
