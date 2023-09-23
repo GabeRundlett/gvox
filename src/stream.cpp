@@ -1,4 +1,5 @@
 #include <gvox_standard_functions.hpp>
+#include <string_view>
 
 #include "types.hpp"
 #include "utils/handle.hpp"

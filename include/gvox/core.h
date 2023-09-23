@@ -117,6 +117,17 @@ GVOX_STRUCT(GvoxRange) {
     GvoxExtent extent;
 };
 
+GVOX_STRUCT(GvoxRangeMut) {
+    GvoxOffsetMut offset;
+    GvoxExtentMut extent;
+
+#ifdef __cplusplus
+    explicit operator GvoxRange() const {
+        return GvoxRange{.offset = static_cast<GvoxOffset>(this->offset), .extent = static_cast<GvoxExtent>(this->extent)};
+    }
+#endif
+};
+
 #ifdef __cplusplus
 #define GVOX_FUNC_ATTRIB noexcept
 #else

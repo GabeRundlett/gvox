@@ -21,6 +21,15 @@
 #include "raw_helper.hpp"
 
 struct GvoxBoundedRawContainer {
+    struct Iterator {
+        uint64_t index;
+        uint64_t max_index;
+        GvoxBoundedRawContainer *container;
+        std::vector<int64_t> offset_buffer;
+        GvoxOffsetMut voxel_pos;
+        GvoxRangeMut range;
+    };
+
     GvoxVoxelDesc voxel_desc{};
     GvoxExtent extent{};
     void *pre_allocated_buffer{};
@@ -143,4 +152,50 @@ auto gvox_container_bounded_raw_fill(void *self_ptr, void *single_voxel_data, Gv
     fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
 
     return GVOX_SUCCESS;
+}
+
+void gvox_container_raw_create_input_iterator(void *self_ptr, void **out_iterator_ptr) {
+    auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
+    auto &iter = *new GvoxBoundedRawContainer::Iterator({
+        .index = ~uint64_t{0},
+        .max_index = 0,
+        .container = &self,
+        .offset_buffer = std::vector<int64_t>(static_cast<size_t>(self.extent.axis_n * 3)),
+        .voxel_pos = {.axis_n = self.extent.axis_n},
+        .range = {
+            .offset = {.axis_n = self.extent.axis_n},
+            .extent = {.axis_n = self.extent.axis_n},
+        },
+    });
+    iter.voxel_pos.axis = iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 0);
+    iter.range.offset.axis = iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 1);
+    iter.range.extent.axis = reinterpret_cast<uint64_t *>(iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 2));
+    uint64_t stride = 1;
+    for (uint32_t i = 0; i < self.extent.axis_n; ++i) {
+        iter.max_index += self.extent.axis[i] * stride;
+        stride *= self.extent.axis[i];
+    }
+    (*out_iterator_ptr) = &iter;
+}
+
+void gvox_container_raw_iterator_next(void *iterator_ptr, GvoxIteratorValue *out) {
+    auto &iter_self = *static_cast<GvoxBoundedRawContainer::Iterator *>(iterator_ptr);
+    auto &self = *iter_self.container;
+    if (iter_self.index == ~uint64_t{0}) {
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME;
+        out->enter_volume.range = static_cast<GvoxRange>(iter_self.range);
+        iter_self.index = 0;
+    } else if (iter_self.index < iter_self.max_index) {
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_VOXEL;
+        auto *voxel_ptr = static_cast<uint8_t *>(self.pre_allocated_buffer) + iter_self.index;
+        out->voxel.voxel_data = voxel_ptr;
+    } else {
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
+    }
+    ++iter_self.index;
+}
+
+void gvox_container_raw_destroy_iterator(void *iterator_ptr) {
+    auto *iterator = static_cast<GvoxBoundedRawContainer::Iterator *>(iterator_ptr);
+    delete iterator;
 }

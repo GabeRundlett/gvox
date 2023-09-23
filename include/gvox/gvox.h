@@ -29,6 +29,33 @@ GVOX_STRUCT(GvoxExtent5D) { uint64_t x, y, z, w, v; };
 GVOX_STRUCT(GvoxOffset6D) { int64_t x, y, z, w, v, u; };
 GVOX_STRUCT(GvoxExtent6D) { uint64_t x, y, z, w, v, u; };
 
+GVOX_ENUM(GvoxIteratorValueType){
+    GVOX_ITERATOR_VALUE_TYPE_NULL,
+    GVOX_ITERATOR_VALUE_TYPE_VOXEL,
+    GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME,
+    GVOX_ITERATOR_VALUE_TYPE_SUB_VOLUME,
+    GVOX_ITERATOR_VALUE_TYPE_LEAVE_VOLUME,
+};
+
+GVOX_STRUCT(GvoxIteratorValueVoxel) {
+    GvoxOffset voxel_pos;
+    void *voxel_data;
+};
+
+GVOX_STRUCT(GvoxIteratorValueVolume) {
+    GvoxRange range;
+};
+
+GVOX_STRUCT(GvoxIteratorValue) {
+    GvoxIteratorValueType tag;
+    union {
+        GvoxIteratorValueVoxel voxel;
+        GvoxIteratorValueVolume enter_volume;
+        GvoxIteratorValueVolume sub_volume;
+        GvoxIteratorValueVolume leave_volume;
+    };
+};
+
 GVOX_STRUCT(GvoxFillInfo) {
     GvoxStructType struct_type;
     void const *next;
