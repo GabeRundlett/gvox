@@ -53,25 +53,32 @@ GVOX_ENUM(GvoxResult){
     GVOX_ERROR_INVALID_ARGUMENT = -9,
     GVOX_ERROR_BAD_STRUCT_TYPE = -10,
     GVOX_ERROR_BAD_STREAM_CHAIN = -11,
+    GVOX_ERROR_UNPARSABLE_INPUT = -12,
 };
 
 GVOX_ENUM(GvoxStructType){
+    GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_CB_ARGS,
+    GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_CB_ARGS,
+    GVOX_STRUCT_TYPE_PARSER_CREATE_CB_ARGS,
+    GVOX_STRUCT_TYPE_SERIALIZER_CREATE_CB_ARGS,
+    GVOX_STRUCT_TYPE_CONTAINER_CREATE_CB_ARGS,
+
     GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO,
     GVOX_STRUCT_TYPE_OUTPUT_STREAM_CREATE_INFO,
     GVOX_STRUCT_TYPE_PARSER_CREATE_INFO,
     GVOX_STRUCT_TYPE_SERIALIZER_CREATE_INFO,
     GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
-
     GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO,
     GVOX_STRUCT_TYPE_SAMPLER_CREATE_INFO,
+    GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
 
-    GVOX_STRUCT_TYPE_PARSE_INFO,
     GVOX_STRUCT_TYPE_FILL_INFO,
     GVOX_STRUCT_TYPE_BLIT_INFO,
     GVOX_STRUCT_TYPE_SAMPLE_INFO,
     GVOX_STRUCT_TYPE_SERIALIZE_INFO,
 
     GVOX_STRUCT_TYPE_ATTRIBUTE,
+    GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
 };
 
 GVOX_DEFINE_HANDLE(GvoxInputStream);
@@ -83,6 +90,7 @@ GVOX_DEFINE_HANDLE(GvoxSerializer);
 GVOX_DEFINE_HANDLE(GvoxContainer);
 GVOX_DEFINE_HANDLE(GvoxVoxelDesc);
 GVOX_DEFINE_HANDLE(GvoxSampler);
+GVOX_DEFINE_HANDLE(GvoxIterator);
 
 GVOX_STRUCT(GvoxOffset) {
     uint32_t axis_n;
@@ -130,8 +138,56 @@ GVOX_STRUCT(GvoxRangeMut) {
 #endif
 };
 
+GVOX_ENUM(GvoxIteratorValueType){
+    GVOX_ITERATOR_VALUE_TYPE_NULL,
+    GVOX_ITERATOR_VALUE_TYPE_VOXEL,
+    GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME,
+    GVOX_ITERATOR_VALUE_TYPE_SUB_VOLUME,
+    GVOX_ITERATOR_VALUE_TYPE_LEAVE_VOLUME,
+};
+
+GVOX_STRUCT(GvoxIteratorValueVoxel) {
+    GvoxOffset pos;
+    void *data;
+    GvoxVoxelDesc desc;
+};
+
+GVOX_STRUCT(GvoxIteratorValueVolume) {
+    GvoxRange range;
+};
+
+GVOX_STRUCT(GvoxIteratorValue) {
+    GvoxIteratorValueType tag;
+    union {
+        GvoxIteratorValueVoxel voxel;
+        GvoxIteratorValueVolume enter_volume;
+        GvoxIteratorValueVolume sub_volume;
+        GvoxIteratorValueVolume leave_volume;
+    };
+};
+
 #ifdef __cplusplus
+
+#include <concepts>
+template <typename T>
+concept GvoxOffsetOrExtentType =
+    std::same_as<T, GvoxOffset> ||
+    std::same_as<T, GvoxOffsetMut> ||
+    std::same_as<T, GvoxExtent> ||
+    std::same_as<T, GvoxExtentMut>;
+
+template <typename T>
+concept GvoxOffsetType =
+    std::same_as<T, GvoxOffset> ||
+    std::same_as<T, GvoxOffsetMut>;
+
+template <typename T>
+concept GvoxExtentType =
+    std::same_as<T, GvoxExtent> ||
+    std::same_as<T, GvoxExtentMut>;
+
 #define GVOX_FUNC_ATTRIB noexcept
+
 #else
 #define GVOX_FUNC_ATTRIB
 #endif

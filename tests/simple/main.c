@@ -62,9 +62,16 @@ void test_simple(void) {
     GvoxInputStream grass_file_input = grass_zip_stream();
 
     GvoxParser grass_image_parser;
-    check_result(
-        gvox_create_parser_from_input(NULL, 0, grass_file_input, &grass_image_parser),
-        "Failed to find a suitable parser for the input stream\n");
+    {
+        GvoxParserDescriptionCollection parser_collection = {
+            .struct_type = GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
+            .next = NULL,
+        };
+        gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
+        check_result(
+            gvox_create_parser_from_input(&parser_collection, grass_file_input, &grass_image_parser),
+            "Failed to find a suitable parser for the input stream\n");
+    }
 
     GvoxSerializer grass_colored_text_serializer;
     {

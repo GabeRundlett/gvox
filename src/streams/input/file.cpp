@@ -9,7 +9,7 @@ struct GvoxFileInputStream {
 
     explicit GvoxFileInputStream(GvoxFileInputStreamConfig const &a_config);
 
-    auto read(uint8_t *data, size_t size) -> GvoxResult;
+    auto read(void *data, size_t size) -> GvoxResult;
     auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
     auto tell() -> long;
 };
@@ -18,7 +18,7 @@ GvoxFileInputStream::GvoxFileInputStream(GvoxFileInputStreamConfig const &a_conf
     file_handle = std::ifstream{config.filepath, std::ios::binary};
 }
 
-auto GvoxFileInputStream::read(uint8_t *data, size_t size) -> GvoxResult {
+auto GvoxFileInputStream::read(void *data, size_t size) -> GvoxResult {
     file_handle.read(reinterpret_cast<char *>(data), static_cast<std::streamsize>(size));
     return GVOX_SUCCESS;
 }
@@ -39,7 +39,6 @@ auto GvoxFileInputStream::tell() -> long {
     return static_cast<long>(file_handle.tellg());
 }
 
-
 auto gvox_input_stream_file_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescription {
     return GvoxInputStreamDescription{
         .create = [](void **self, GvoxInputStreamCreateCbArgs const *args) -> GvoxResult {
@@ -53,7 +52,7 @@ auto gvox_input_stream_file_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescr
             *self = result;
             return GVOX_SUCCESS;
         },
-        .read = [](void *self, GvoxInputStream, uint8_t *data, size_t size) -> GvoxResult {
+        .read = [](void *self, GvoxInputStream, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxFileInputStream *>(self)->read(data, size);
         },
         .seek = [](void *self, GvoxInputStream, long offset, GvoxSeekOrigin origin) -> GvoxResult {

@@ -24,7 +24,6 @@ struct GvoxBoundedRawContainer {
     struct Iterator {
         uint64_t index;
         uint64_t max_index;
-        GvoxBoundedRawContainer *container;
         std::vector<int64_t> offset_buffer;
         GvoxOffsetMut voxel_pos;
         GvoxRangeMut range;
@@ -42,7 +41,6 @@ void gvox_container_raw_create_input_iterator(void *self_ptr, void **out_iterato
     auto &iter = *new GvoxBoundedRawContainer::Iterator({
         .index = ~uint64_t{0},
         .max_index = 0,
-        .container = &self,
         .offset_buffer = std::vector<int64_t>(static_cast<size_t>(self.extent.axis_n * 3)),
         .voxel_pos = {.axis_n = self.extent.axis_n},
         .range = {
@@ -61,9 +59,9 @@ void gvox_container_raw_create_input_iterator(void *self_ptr, void **out_iterato
     (*out_iterator_ptr) = &iter;
 }
 
-void gvox_container_raw_iterator_next(void *iterator_ptr, GvoxIteratorValue *out) {
+void gvox_container_raw_iterator_next(void *self_ptr, void *iterator_ptr, GvoxIteratorValue *out) {
+    auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
     auto &iter_self = *static_cast<GvoxBoundedRawContainer::Iterator *>(iterator_ptr);
-    auto &self = *iter_self.container;
     if (iter_self.index == ~uint64_t{0}) {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME;
         out->enter_volume.range = static_cast<GvoxRange>(iter_self.range);
@@ -71,7 +69,7 @@ void gvox_container_raw_iterator_next(void *iterator_ptr, GvoxIteratorValue *out
     } else if (iter_self.index < iter_self.max_index) {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_VOXEL;
         auto *voxel_ptr = static_cast<uint8_t *>(self.pre_allocated_buffer) + iter_self.index;
-        out->voxel.voxel_data = voxel_ptr;
+        out->voxel.data = voxel_ptr;
     } else {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
     }
@@ -83,7 +81,7 @@ void gvox_container_raw_destroy_iterator(void *iterator_ptr) {
     delete iterator;
 }
 
-auto gvox_container_bounded_raw_description(void) GVOX_FUNC_ATTRIB->GvoxContainerDescription {
+auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription {
     return GvoxContainerDescription{
         .create = [](void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
             GvoxBoundedRawContainerConfig config;

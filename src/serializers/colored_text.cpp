@@ -24,32 +24,9 @@ struct GvoxColoredTextSerializer {
     std::vector<uint8_t> channels;
 
     explicit GvoxColoredTextSerializer(GvoxColoredTextSerializerConfig const &a_config) : config{a_config} {}
-
-    static auto blit_begin() -> GvoxResult;
-    static auto blit_end() -> GvoxResult;
-    static auto blit_range() -> GvoxResult;
-
-    static auto request_regions() -> GvoxResult;
-    static auto receive_region() -> GvoxResult;
 };
 
-auto GvoxColoredTextSerializer::blit_begin() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto GvoxColoredTextSerializer::blit_end() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto GvoxColoredTextSerializer::request_regions() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto GvoxColoredTextSerializer::receive_region() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto gvox_serializer_colored_text_description(void) GVOX_FUNC_ATTRIB->GvoxSerializerDescription {
+auto gvox_serializer_colored_text_description() GVOX_FUNC_ATTRIB->GvoxSerializerDescription {
     return GvoxSerializerDescription{
         .create = [](void **self, GvoxSerializerCreateCbArgs const *args) -> GvoxResult {
             GvoxColoredTextSerializerConfig config;

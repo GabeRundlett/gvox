@@ -10,7 +10,7 @@ struct GvoxByteBufferOutputStream {
 
     GvoxByteBufferOutputStream(GvoxByteBufferOutputStreamConfig const &config);
 
-    auto write(uint8_t *data, size_t size) -> GvoxResult;
+    auto write(void *data, size_t size) -> GvoxResult;
     auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
     auto tell() -> long;
 };
@@ -20,7 +20,7 @@ GvoxByteBufferOutputStream::GvoxByteBufferOutputStream(GvoxByteBufferOutputStrea
     // std::copy(config.data, config.data + config.size, bytes.begin());
 }
 
-auto GvoxByteBufferOutputStream::write(uint8_t *data, size_t size) -> GvoxResult {
+auto GvoxByteBufferOutputStream::write(void *data, size_t size) -> GvoxResult {
     // auto position = current_read_head;
     // current_read_head += size;
     // if (current_read_head > bytes.size()) {
@@ -57,7 +57,7 @@ auto gvox_output_stream_byte_buffer_description() GVOX_FUNC_ATTRIB->GvoxOutputSt
             *self = new GvoxByteBufferOutputStream(config);
             return GVOX_SUCCESS;
         },
-        .write = [](void *self, GvoxOutputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
+        .write = [](void *self, GvoxOutputStream next_handle, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxByteBufferOutputStream *>(self)->write(data, size);
         },
         .seek = [](void *self, GvoxOutputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {

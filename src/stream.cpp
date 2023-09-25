@@ -1,6 +1,8 @@
 #include <string_view>
 #include <span>
+#include <array>
 
+#include "gvox/core.h"
 #include "types.hpp"
 #include "utils/handle.hpp"
 
@@ -41,14 +43,25 @@ auto gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *h
     HANDLE_CREATE(Container, CONTAINER)
     return GVOX_SUCCESS;
 }
+auto gvox_create_iterator(GvoxIteratorCreateInfo const *info, GvoxIterator *handle) GVOX_FUNC_ATTRIB->GvoxResult {
+    HANDLE_NEW(Iterator, ITERATOR)
+
+    (*handle)->destroy_iterator = info->parser->desc.destroy_iterator;
+    (*handle)->iterator_next = info->parser->desc.iterator_next;
+    (*handle)->parent_self = info->parser->self;
+
+    info->parser->desc.create_input_iterator((*handle)->parent_self, &(*handle)->self);
+    return GVOX_SUCCESS;
+}
 
 void gvox_destroy_input_stream(GvoxInputStream handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 void gvox_destroy_output_stream(GvoxOutputStream handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 void gvox_destroy_parser(GvoxParser handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 void gvox_destroy_serializer(GvoxSerializer handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 void gvox_destroy_container(GvoxContainer handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
+void gvox_destroy_iterator(GvoxIterator handle) GVOX_FUNC_ATTRIB { destroy_handle(handle); }
 
-auto gvox_input_read(GvoxInputStream handle, uint8_t *data, size_t size) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_input_read(GvoxInputStream handle, void *data, size_t size) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     return handle->desc.read(handle->self, handle->next, data, size);
 }
@@ -61,7 +74,7 @@ auto gvox_input_tell(GvoxInputStream handle) GVOX_FUNC_ATTRIB->long {
     return handle->desc.tell(handle->self, handle->next);
 }
 
-auto gvox_output_write(GvoxOutputStream handle, uint8_t *data, size_t size) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_output_write(GvoxOutputStream handle, void *data, size_t size) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     return handle->desc.write(handle->self, handle->next, data, size);
 }
@@ -74,21 +87,47 @@ auto gvox_output_seek(GvoxOutputStream handle) -> long {
     return handle->desc.tell(handle->self, handle->next);
 }
 
-auto gvox_create_parser_from_input(GvoxParserDescription const *parsers_ptr, uint32_t parser_n, GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB->GvoxResult {
+#include <gvox/parsers/image.h>
+#include <gvox/parsers/magicavoxel.h>
+
+namespace {
+    const auto std_parser_descriptions = std::array{
+        gvox_parser_image_description(),
+        gvox_parser_magicavoxel_description(),
+    };
+} // namespace
+
+auto gvox_enumerate_standard_parser_descriptions(GvoxParserDescription const **out_descriptions, uint32_t *description_n) GVOX_FUNC_ATTRIB->GvoxResult {
+    *out_descriptions = std_parser_descriptions.data();
+    *description_n = static_cast<uint32_t>(std_parser_descriptions.size());
+    return GVOX_SUCCESS;
+}
+
+auto gvox_create_parser_from_input(GvoxParserDescriptionCollection const *parsers, GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     auto initial_input_pos = gvox_input_tell(input_stream);
-    auto parsers = std::span<GvoxParserDescription const>(parsers_ptr, parser_n);
-    for (auto const &parser_desc : parsers) {
-        ZoneScoped;
-        if (parser_desc.create_from_input != nullptr) {
-            auto creation_result = parser_desc.create_from_input(input_stream, user_parser);
-            // we should reset the input stream to where it was before the
-            // checking took place.
-            gvox_input_seek(input_stream, initial_input_pos, GVOX_SEEK_ORIGIN_BEG);
-            if (creation_result == GVOX_SUCCESS) {
-                return GVOX_SUCCESS;
+    auto const *parser_iter = parsers;
+    while (parser_iter != nullptr) {
+        if (parser_iter->struct_type == GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION) {
+            auto parser_descriptions = std::span<GvoxParserDescription const>(parser_iter->descriptions, parser_iter->description_n);
+            for (auto const &parser_desc : parser_descriptions) {
+                ZoneScoped;
+                if (parser_desc.create_from_input != nullptr) {
+                    auto creation_result = parser_desc.create_from_input(input_stream, user_parser);
+                    // we should reset the input stream to where it was before the
+                    // checking took place.
+                    gvox_input_seek(input_stream, initial_input_pos, GVOX_SEEK_ORIGIN_BEG);
+                    if (creation_result == GVOX_SUCCESS) {
+                        return GVOX_SUCCESS;
+                    }
+                }
             }
         }
+        parser_iter = static_cast<GvoxParserDescriptionCollection const *>(parser_iter->next);
     }
     return GVOX_ERROR_UNKNOWN_STANDARD_PARSER;
+}
+
+void gvox_iterator_next(GvoxIterator handle, GvoxIteratorValue *value) {
+    handle->iterator_next(handle->parent_self, &handle->self, value);
 }

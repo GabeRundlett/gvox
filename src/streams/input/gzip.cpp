@@ -12,7 +12,7 @@ struct GzipInputStream {
 
     explicit GzipInputStream(GzipInputStreamConfig const &config);
 
-    auto read(GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult;
+    auto read(GvoxInputStream next_handle, void *data, size_t size) -> GvoxResult;
     auto seek(GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult;
     auto tell(GvoxInputStream next_handle) -> long;
 
@@ -22,7 +22,7 @@ struct GzipInputStream {
 GzipInputStream::GzipInputStream(GzipInputStreamConfig const &) {
 }
 
-auto GzipInputStream::read(GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
+auto GzipInputStream::read(GvoxInputStream next_handle, void *data, size_t size) -> GvoxResult {
     auto prepare_result = make_prepared(next_handle);
     if (prepare_result != GVOX_SUCCESS) {
         return prepare_result;
@@ -99,7 +99,7 @@ auto gvox_input_stream_gzip_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescr
             *self = new GzipInputStream(config);
             return GVOX_SUCCESS;
         },
-        .read = [](void *self, GvoxInputStream next_handle, uint8_t *data, size_t size) -> GvoxResult {
+        .read = [](void *self, GvoxInputStream next_handle, void *data, size_t size) -> GvoxResult {
             return static_cast<GzipInputStream *>(self)->read(next_handle, data, size);
         },
         .seek = [](void *self, GvoxInputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {

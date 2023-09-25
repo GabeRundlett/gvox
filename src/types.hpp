@@ -43,6 +43,23 @@ struct IMPL_STRUCT_NAME(Serializer) {
 struct IMPL_STRUCT_NAME(Container) {
     IMPL_STRUCT_DEFAULTS(Container, {});
 };
+struct IMPL_STRUCT_NAME(Iterator) {
+    void *parent_self{};
+    void *self{};
+    void (*destroy_iterator)(void *, void *);
+    void (*iterator_next)(void *, void **, GvoxIteratorValue *);
+    ~IMPL_STRUCT_NAME(Iterator)() {
+        destroy_iterator(parent_self, self);
+    }
+    IMPL_STRUCT_NAME(Iterator)
+    () = default;
+    IMPL_STRUCT_NAME(Iterator)
+    (IMPL_STRUCT_NAME(Iterator) const &) = delete;
+    IMPL_STRUCT_NAME(Iterator)
+    (IMPL_STRUCT_NAME(Iterator) &&) = default;
+    auto operator=(IMPL_STRUCT_NAME(Iterator) const &) -> IMPL_STRUCT_NAME(Iterator) & = delete;
+    auto operator=(IMPL_STRUCT_NAME(Iterator) &&) -> IMPL_STRUCT_NAME(Iterator) & = default;
+};
 
 // Format
 

@@ -2,7 +2,6 @@
 #include <gvox/containers/raw.h>
 
 #include "../utils/tracy.hpp"
-#include "../utils/common.hpp"
 
 #include <cstdlib>
 #include <cstdint>
@@ -124,7 +123,6 @@ struct TestIter {
     }
 
     auto next() -> GvoxOffset {
-        // ZoneScopedN("Iter Next");
         if (!(index < total)) {
             return {.axis_n = 0, .axis = nullptr};
         }
@@ -162,7 +160,7 @@ struct TestIter {
     // std::vector<int64_t> coord_data{};
 };
 
-auto gvox_container_raw_description(void) GVOX_FUNC_ATTRIB->GvoxContainerDescription {
+auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription {
     return GvoxContainerDescription{
         .create = [](void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
             GvoxRawContainerConfig config;

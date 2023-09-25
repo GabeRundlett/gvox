@@ -7,13 +7,13 @@
 struct GvoxStdoutOutputStream {
     explicit GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const &config);
 
-    static auto write(uint8_t *data, size_t size) -> GvoxResult;
+    static auto write(void *data, size_t size) -> GvoxResult;
 };
 
 GvoxStdoutOutputStream::GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const & /*unused*/) {
 }
 
-auto GvoxStdoutOutputStream::write(uint8_t *data, size_t size) -> GvoxResult {
+auto GvoxStdoutOutputStream::write(void *data, size_t size) -> GvoxResult {
     auto *chars = reinterpret_cast<char *>(data);
     std::cout << std::string_view{chars, chars + size};
     return GVOX_SUCCESS;
@@ -31,7 +31,7 @@ auto gvox_output_stream_stdout_description() GVOX_FUNC_ATTRIB->GvoxOutputStreamD
             *self = new GvoxStdoutOutputStream(config);
             return GVOX_SUCCESS;
         },
-        .write = [](void *self, GvoxOutputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
+        .write = [](void *self, GvoxOutputStream /*unused*/, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxStdoutOutputStream *>(self)->write(data, size);
         },
         .seek = [](void * /*unused*/, GvoxOutputStream /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {

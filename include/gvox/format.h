@@ -1,10 +1,6 @@
 #ifndef GVOX_FORMAT_H
 #define GVOX_FORMAT_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <gvox/core.h>
 
 #define GVOX_CREATE_FORMAT(encoding, component_count, c0_bit_count, c1_bit_count, c2_bit_count, c3_bit_count) \
@@ -71,9 +67,5 @@ GVOX_EXPORT void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 
 GVOX_EXPORT uint32_t gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT uint32_t gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

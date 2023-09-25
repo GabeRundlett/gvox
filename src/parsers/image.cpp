@@ -22,48 +22,10 @@ struct GvoxImageParser {
     explicit GvoxImageParser(GvoxImageParserConfig const &a_config) : config{a_config} {}
 
     auto load(GvoxInputStream input_stream) -> GvoxResult;
-
-    static auto sample_region() -> GvoxResult;
-
-    static auto blit_begin() -> GvoxResult;
-    static auto blit_end() -> GvoxResult;
-    static auto blit_query_region_flags() -> GvoxResult;
-    static auto blit_load_region() -> GvoxResult;
-    static auto blit_unload_region() -> GvoxResult;
-    static auto blit_emit_regions_in_range() -> GvoxResult;
 };
-
-auto GvoxImageParser::sample_region() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto GvoxImageParser::blit_begin() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-auto GvoxImageParser::blit_end() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-// Serialize Driven
-auto GvoxImageParser::blit_query_region_flags() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-auto GvoxImageParser::blit_load_region() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-auto GvoxImageParser::blit_unload_region() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
-
-// Parse Driven
-auto GvoxImageParser::blit_emit_regions_in_range() -> GvoxResult {
-    return GVOX_ERROR_UNKNOWN;
-}
 
 namespace {
     inline auto create_io_and_get_voxel_desc(GvoxInputStream input_stream) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
-        ZoneScoped;
         auto io = FreeImageIO{
             .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
                 gvox_input_read(static_cast<GvoxInputStream>(handle), reinterpret_cast<uint8_t *>(buffer), static_cast<size_t>(size * count));
@@ -85,7 +47,6 @@ namespace {
 } // namespace
 
 auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
-    ZoneScoped;
     auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
     if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
@@ -107,7 +68,6 @@ auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
     FreeImage_Unload(fi_bitmap);
 
     {
-        ZoneScoped;
         std::cout.fill('0');
         for (uint32_t yi = 0; yi < size_y; ++yi) {
             for (uint32_t xi = 0; xi < size_x; ++xi) {
@@ -128,7 +88,7 @@ auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
     return GVOX_SUCCESS;
 }
 
-auto gvox_parser_image_description(void) GVOX_FUNC_ATTRIB->GvoxParserDescription {
+auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
     return GvoxParserDescription{
         .create = [](void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
             GvoxImageParserConfig config;
@@ -144,21 +104,24 @@ auto gvox_parser_image_description(void) GVOX_FUNC_ATTRIB->GvoxParserDescription
             }
             return GVOX_SUCCESS;
         },
-        .destroy = [](void *self) { delete static_cast<GvoxImageParser *>(self); },
+        .destroy = [](void *self) -> void { delete static_cast<GvoxImageParser *>(self); },
         .create_from_input = [](GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
-        ZoneScoped;
-        auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
-        if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
-            return GVOX_ERROR_UNKNOWN;
-        }
+            auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
+            if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+                return GVOX_ERROR_UNPARSABLE_INPUT;
+            }
 
-        auto parser_ci = GvoxParserCreateInfo{};
-        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
-        parser_ci.next = NULL;
-        parser_ci.cb_args.config = NULL;
-        parser_ci.cb_args.input_stream = input_stream;
-        parser_ci.description = gvox_parser_image_description();
+            auto parser_ci = GvoxParserCreateInfo{};
+            parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+            parser_ci.next = NULL;
+            parser_ci.cb_args.config = NULL;
+            parser_ci.cb_args.input_stream = input_stream;
+            parser_ci.description = gvox_parser_image_description();
 
-        return gvox_create_parser(&parser_ci, user_parser); },
+            return gvox_create_parser(&parser_ci, user_parser);
+        },
+        .create_input_iterator = [](void *self_ptr, void **out_iterator_ptr) -> void {},
+        .destroy_iterator = [](void *self_ptr, void *iterator_ptr) -> void {},
+        .iterator_next = [](void *self_ptr, void **iterator_ptr, GvoxIteratorValue *out) -> void {},
     };
 }

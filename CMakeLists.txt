@@ -67,6 +67,7 @@ set(GVOX_OUTPUT_STREAMS
 )
 
 set(GVOX_PARSERS
+    "magicavoxel"
 )
 
 set(GVOX_SERIALIZERS
@@ -145,9 +146,6 @@ endif()
 
 find_package(gcem CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE gcem)
-
-find_package(EnTT CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE EnTT::EnTT)
 
 foreach(NAME ${GVOX_INPUT_STREAMS})
     target_sources(${PROJECT_NAME} PRIVATE "src/streams/input/${NAME}.cpp")

@@ -10,7 +10,7 @@ struct GvoxByteBufferInputStream {
 
     explicit GvoxByteBufferInputStream(GvoxByteBufferInputStreamConfig const &config);
 
-    auto read(uint8_t *data, size_t size) -> GvoxResult;
+    auto read(void *data, size_t size) -> GvoxResult;
     auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
     auto tell() -> long;
 };
@@ -20,7 +20,7 @@ GvoxByteBufferInputStream::GvoxByteBufferInputStream(GvoxByteBufferInputStreamCo
     std::copy(config.data, config.data + config.size, bytes.begin());
 }
 
-auto GvoxByteBufferInputStream::read(uint8_t *data, size_t size) -> GvoxResult {
+auto GvoxByteBufferInputStream::read(void *data, size_t size) -> GvoxResult {
     auto position = current_read_head;
     current_read_head += static_cast<long>(size);
     if (static_cast<size_t>(current_read_head) > bytes.size()) {
@@ -56,7 +56,7 @@ auto gvox_input_stream_byte_buffer_description() GVOX_FUNC_ATTRIB->GvoxInputStre
             *self = new GvoxByteBufferInputStream(config);
             return GVOX_SUCCESS;
         },
-        .read = [](void *self, GvoxInputStream /*unused*/, uint8_t *data, size_t size) -> GvoxResult {
+        .read = [](void *self, GvoxInputStream /*unused*/, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxByteBufferInputStream *>(self)->read(data, size);
         },
         .seek = [](void *self, GvoxInputStream /*unused*/, long offset, GvoxSeekOrigin origin) -> GvoxResult {

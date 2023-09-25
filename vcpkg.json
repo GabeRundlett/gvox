@@ -4,8 +4,7 @@
   "description": "GVOX Voxel Format Library",
   "homepage": "https://github.com/GabeRundlett/gvox",
   "dependencies": [
-    "gcem",
-    "entt"
+    "gcem"
   ],
   "features": {
     "io-file": {
@@ -36,5 +35,5 @@
       ]
     }
   },
-  "builtin-baseline": "5165bce8fa75072d05f89e645baf0d201651464e"
+  "builtin-baseline": "78ba9711d30c64a6b40462c72f356c681e2255f3"
 }
