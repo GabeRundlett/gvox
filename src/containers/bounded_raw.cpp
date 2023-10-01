@@ -99,16 +99,16 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             return GVOX_SUCCESS;
         },
         .destroy = [](void *self_ptr) { delete static_cast<GvoxBoundedRawContainer *>(self_ptr); },
-        .fill = [](void *self_ptr, void *single_voxel_data, GvoxVoxelDesc src_voxel_desc, GvoxRange range) -> GvoxResult {
+        .fill = [](void *self_ptr, void const *single_voxel_data, GvoxVoxelDesc src_voxel_desc, GvoxRange range) -> GvoxResult {
             auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
 
             // convert src data to be compatible with the dst_voxel_desc
-            auto *converted_data = static_cast<void *>(nullptr);
+            auto *converted_data = static_cast<void const *>(nullptr);
             // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
             auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
                 return desc_a == desc_b;
             };
-            if (is_compatible_voxel_desc(src_voxel_desc, self.voxel_desc)) {
+            if (gvox_voxel_desc_compare(src_voxel_desc, self.voxel_desc) != 0) {
                 converted_data = single_voxel_data;
             } else {
                 // converted_data = convert_data(converted_data_stack);
@@ -130,7 +130,7 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             }
 
             Voxel in_voxel = {
-                .ptr = static_cast<uint8_t *>(converted_data),
+                .ptr = static_cast<uint8_t const *>(converted_data),
                 .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
             };
 

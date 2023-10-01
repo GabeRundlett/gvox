@@ -169,7 +169,7 @@ auto main() -> int {
     switch (input_mode) {
     case 0: {
         auto config = GvoxFileInputStreamConfig{};
-        config.filepath = "assets/test2.vox";
+        config.filepath = "assets/nuke.vox";
         auto input_ci = GvoxInputStreamCreateInfo{};
         input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
         input_ci.next = nullptr;
@@ -178,7 +178,7 @@ auto main() -> int {
         HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (file) input stream");
     } break;
     case 1: {
-        auto file = std::ifstream{"assets/test2.vox", std::ios::binary};
+        auto file = std::ifstream{"assets/nuke.vox", std::ios::binary};
         auto bytes = std::vector<uint8_t>((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         auto config = GvoxByteBufferInputStreamConfig{.data = bytes.data(), .size = bytes.size()};
         auto input_ci = GvoxInputStreamCreateInfo{};
@@ -201,6 +201,8 @@ auto main() -> int {
     }
 
     {
+        using Clock = std::chrono::high_resolution_clock;
+        auto t0 = Clock::now();
         auto *input_iterator = GvoxIterator{};
 
         auto temp_offset = GvoxOffset2D{};
@@ -221,44 +223,53 @@ auto main() -> int {
 
         auto depth_image = Image{.extent = image.extent};
         auto iter_value = GvoxIteratorValue{};
+        size_t voxel_count = 0;
 
-        uint32_t depth = 0;
+        // uint32_t depth = 0;
 
-        auto indent = std::string{};
+        // auto indent = std::string{};
         while (true) {
             gvox_iterator_next(input_iterator, file_input, &iter_value);
 
             // Skip volume utility?
 
-            if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_END) {
-                depth -= 1;
-            }
-            indent = "";
-            for (uint32_t i = 0; i < depth; ++i) {
-                indent += "  ";
-            }
-            if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN) {
-                depth += 1;
-            }
+            // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_END) {
+            //     depth -= 1;
+            // }
+            // indent = "";
+            // for (uint32_t i = 0; i < depth; ++i) {
+            //     indent += "  ";
+            // }
+            // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN) {
+            //     depth += 1;
+            // }
 
             bool should_break = false;
             switch (iter_value.tag) {
             case GVOX_ITERATOR_VALUE_TYPE_NULL: {
-                std::cout << "NULL\n";
+                // std::cout << "NULL\n";
                 should_break = true;
             } break;
             case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
-                std::array<uint8_t, 4> const &col = *static_cast<std::array<uint8_t, 4> const *>(iter_value.voxel_data);
-                std::cout << std::format("{}VOXEL: pos={}, data={} (\033[48;2;{:0>3};{:0>3};{:0>3}m  \033[0m), desc={}\n",
-                                         indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
+                // std::array<uint8_t, 4> const &col = *static_cast<std::array<uint8_t, 4> const *>(iter_value.voxel_data);
+                // std::cout << std::format("{}VOXEL: pos={}, data={} (\033[48;2;{:0>3};{:0>3};{:0>3}m  \033[0m), desc={}\n",
+                //                          indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
+                fill_info.src_data = iter_value.voxel_data;
+                fill_info.src_desc = iter_value.voxel_desc;
+                offset.x = (iter_value.range.offset.axis[0] * 1 - 20);
+                offset.y = 240 - 1 - (iter_value.range.offset.axis[2] * 1 + 10);
+                extent.x = iter_value.range.extent.axis[0] * 1;
+                extent.y = iter_value.range.extent.axis[2] * 1;
+                HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                ++voxel_count;
             } break;
             case GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN: {
-                std::cout << std::format("{}ENTER_VOLUME: offset={}, extent={}\n",
-                                         indent, iter_value.range.offset, iter_value.range.extent);
+                // std::cout << std::format("{}ENTER_VOLUME: offset={}, extent={}\n",
+                //                          indent, iter_value.range.offset, iter_value.range.extent);
             } break;
             case GVOX_ITERATOR_VALUE_TYPE_NODE_END: {
-                std::cout << std::format("{}LEAVE_VOLUME: offset={}, extent={}\n",
-                                         indent, iter_value.range.offset, iter_value.range.extent);
+                // std::cout << std::format("{}LEAVE_VOLUME: offset={}, extent={}\n",
+                //                          indent, iter_value.range.offset, iter_value.range.extent);
             } break;
             }
             if (should_break) {
@@ -267,38 +278,49 @@ auto main() -> int {
         }
 
         gvox_destroy_iterator(input_iterator);
+        auto t1 = Clock::now();
+        auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
+
+        std::cout << elapsed_s << " s (" << (static_cast<float>(voxel_count) / (elapsed_s * 1'000'000.0f)) << " MVx/s)" << std::endl;
     }
 
-    // auto const N_ITER = uint64_t{20000};
-    // bool test_rect_speed = false;
-    // struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 3), static_cast<uint32_t>(image.extent.y * 3));
-    // while (true) {
-    //     if (test_rect_speed) {
-    //         uint64_t voxel_n = 0;
-    //         using Clock = std::chrono::high_resolution_clock;
-    //         auto t0 = Clock::now();
-    //         for (uint64_t i = 0; i < N_ITER; i++) {
-    //             voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
-    //             offset.x = fast_random() % 320;
-    //             offset.y = fast_random() % 240;
-    //             extent.x = std::min(static_cast<uint64_t>(fast_random() % (320 / 5)), static_cast<uint64_t>(320 - offset.x));
-    //             extent.y = std::min(static_cast<uint64_t>(fast_random() % (240 / 5)), static_cast<uint64_t>(240 - offset.y));
-    //             voxel_n += extent.x * extent.y;
-    //             // rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), static_cast<int32_t>(extent.x), static_cast<int32_t>(extent.y), voxel_data);
-    //             HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
-    //         }
-    //         auto t1 = Clock::now();
-    //         auto seconds = std::chrono::duration<double>(t1 - t0).count();
-    //         auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
-    //         std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
-    //     }
-    //     if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.x), static_cast<uint32_t>(image.extent.y)) < 0) {
-    //         break;
-    //     }
-    //     if (!mfb_wait_sync(window)) {
-    //         break;
-    //     }
-    // }
+    fill_info.src_data = &voxel_data;
+    fill_info.src_desc = rgb_voxel_desc;
+    fill_info.range = {
+        {2, &offset.x},
+        {2, &extent.x},
+    };
+
+    auto const N_ITER = uint64_t{20000};
+    bool test_rect_speed = false;
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 3), static_cast<uint32_t>(image.extent.y * 3));
+    while (true) {
+        if (test_rect_speed) {
+            uint64_t voxel_n = 0;
+            using Clock = std::chrono::high_resolution_clock;
+            auto t0 = Clock::now();
+            for (uint64_t i = 0; i < N_ITER; i++) {
+                voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
+                offset.x = fast_random() % 320;
+                offset.y = fast_random() % 240;
+                extent.x = std::min(static_cast<uint64_t>(fast_random() % (320 / 5)), static_cast<uint64_t>(320 - offset.x));
+                extent.y = std::min(static_cast<uint64_t>(fast_random() % (240 / 5)), static_cast<uint64_t>(240 - offset.y));
+                voxel_n += extent.x * extent.y;
+                // rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), static_cast<int32_t>(extent.x), static_cast<int32_t>(extent.y), voxel_data);
+                HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+            }
+            auto t1 = Clock::now();
+            auto seconds = std::chrono::duration<double>(t1 - t0).count();
+            auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
+            std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
+        }
+        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.x), static_cast<uint32_t>(image.extent.y)) < 0) {
+            break;
+        }
+        if (!mfb_wait_sync(window)) {
+            break;
+        }
+    }
 
     gvox_destroy_input_stream(file_input);
     gvox_destroy_parser(file_parser);

@@ -28,7 +28,7 @@ GVOX_STRUCT(GvoxExtent6D) { uint64_t x, y, z, w, v, u; };
 GVOX_STRUCT(GvoxFillInfo) {
     GvoxStructType struct_type;
     void const *next;
-    void *src_data;
+    void const *src_data;
     GvoxVoxelDesc src_desc;
     GvoxContainer dst;
     GvoxRange range;

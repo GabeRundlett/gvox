@@ -75,7 +75,7 @@ GVOX_STRUCT(GvoxSerializerDescription) {
 GVOX_STRUCT(GvoxContainerDescription) {
     GvoxResult (*create)(void **, GvoxContainerCreateCbArgs const *);
     void (*destroy)(void *);
-    GvoxResult (*fill)(void *, void *, GvoxVoxelDesc, GvoxRange);
+    GvoxResult (*fill)(void *, void const *, GvoxVoxelDesc, GvoxRange);
     GvoxResult (*sample)(void *, void *, GvoxVoxelDesc, GvoxOffset);
 };
 

@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "gvox/core.h"
 #include <gvox/stream.h>
 #include <gvox/streams/input/file.h>
@@ -7,27 +9,31 @@
 struct GvoxFileInputStream {
     GvoxFileInputStreamConfig config{};
     // std::ifstream file_handle;
-    FILE *file_handle;
+    FILE *file_handle{};
 
     explicit GvoxFileInputStream(GvoxFileInputStreamConfig const &a_config);
 
-    auto read(void *data, size_t size) -> GvoxResult;
-    auto seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult;
-    auto tell() -> int64_t;
+    auto read(void *data, size_t size) const -> GvoxResult;
+    [[nodiscard]] auto seek(int64_t offset, GvoxSeekOrigin origin) const -> GvoxResult;
+    [[nodiscard]] auto tell() const -> int64_t;
 };
 
-GvoxFileInputStream::GvoxFileInputStream(GvoxFileInputStreamConfig const &a_config) : config{a_config} {
-    // file_handle = std::ifstream{config.filepath, std::ios::binary};
-    file_handle = fopen(config.filepath, "rb");
+GvoxFileInputStream::GvoxFileInputStream(GvoxFileInputStreamConfig const &a_config)
+    : config{a_config},
+      // file_handle{std::ifstream{config.filepath, std::ios::binary}} {
+      file_handle{fopen(config.filepath, "rb")} {
 }
 
-auto GvoxFileInputStream::read(void *data, size_t size) -> GvoxResult {
+auto GvoxFileInputStream::read(void *data, size_t size) const -> GvoxResult {
     // file_handle.read(reinterpret_cast<char *>(data), static_cast<std::streamsize>(size));
-    fread(data, size, 1, file_handle);
+    auto size_read = fread(data, size, 1, file_handle);
+    if (size_read != size) {
+        return GVOX_ERROR_UNKNOWN;
+    }
     return GVOX_SUCCESS;
 }
 
-auto GvoxFileInputStream::seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult {
+auto GvoxFileInputStream::seek(int64_t offset, GvoxSeekOrigin origin) const -> GvoxResult {
     // auto seekdir = std::ios_base::seekdir{};
     // switch (origin) {
     // case GVOX_SEEK_ORIGIN_BEG: seekdir = std::ios::beg; break;
@@ -43,11 +49,14 @@ auto GvoxFileInputStream::seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxRes
     case GVOX_SEEK_ORIGIN_END: seekdir = SEEK_END; break;
     default: break;
     }
-    fseek(file_handle, offset, seekdir);
+    auto ret = fseek(file_handle, static_cast<long>(offset), seekdir);
+    if (ret != 0) {
+        return GVOX_ERROR_UNKNOWN;
+    }
     return GVOX_SUCCESS;
 }
 
-auto GvoxFileInputStream::tell() -> int64_t {
+auto GvoxFileInputStream::tell() const -> int64_t {
     return ftell(file_handle);
     // return static_cast<int64_t>(file_handle.tellg());
 }
@@ -58,11 +67,11 @@ auto gvox_input_stream_file_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescr
             if (args->config == nullptr) {
                 return GVOX_ERROR_INVALID_ARGUMENT;
             }
-            auto *result = new GvoxFileInputStream(*static_cast<GvoxFileInputStreamConfig const *>(args->config));
+            auto *result = new (std::nothrow) GvoxFileInputStream(*static_cast<GvoxFileInputStreamConfig const *>(args->config));
             // if (!result->file_handle.is_open()) {
             //     return GVOX_ERROR_UNKNOWN;
             // }
-            if (!result->file_handle) {
+            if (result->file_handle != nullptr) {
                 return GVOX_ERROR_UNKNOWN;
             }
             *self = result;

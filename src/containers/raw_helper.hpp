@@ -6,7 +6,7 @@
 using Word = uint32_t;
 
 struct Voxel {
-    uint8_t *ptr{};
+    uint8_t const *ptr{};
     uint32_t size{};
 };
 
@@ -25,7 +25,7 @@ namespace {
         auto next_axis_0 = static_cast<size_t>(voxel_next.axis[0]);
         auto next_word_axis_0 = next_axis_0 / sizeof(Word);
         auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
-        auto *in_word_ptr = reinterpret_cast<Word *>(in_voxel.ptr);
+        auto const *in_word_ptr = reinterpret_cast<Word const *>(in_voxel.ptr);
         auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
         if (max_b == sizeof(Word)) {
             auto in_word = *in_word_ptr;
@@ -69,7 +69,7 @@ namespace {
         auto next_word_axis_0 = next_axis_0 / sizeof(Word);
         auto next_word_axis_1 = next_axis_1 / sizeof(Word);
         auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
-        auto *in_word_ptr = reinterpret_cast<Word *>(in_voxel.ptr);
+        auto *in_word_ptr = reinterpret_cast<Word const *>(in_voxel.ptr);
         auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
         if (max_b == sizeof(Word)) {
             auto in_word = *in_word_ptr;

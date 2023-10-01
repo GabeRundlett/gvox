@@ -45,6 +45,21 @@ auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->uin
     return static_cast<uint32_t>(voxel_desc.attributes.size());
 }
 
+auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB->uint8_t {
+    if (desc_a == desc_b) {
+        return 2;
+    }
+    if (desc_a->attributes.size() != desc_b->attributes.size()) {
+        return 0;
+    }
+    for (size_t i = 0; i < desc_a->attributes.size(); ++i) {
+        if (memcmp(&desc_a->attributes[i], &desc_b->attributes[i], sizeof(Attribute)) != 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 #if 0
 void gvox_translate_voxels(
     GvoxVoxelDesc src_desc, uint32_t src_n, void *src_data,

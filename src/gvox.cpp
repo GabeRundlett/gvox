@@ -93,7 +93,7 @@ namespace {
             return GVOX_ERROR_INVALID_ARGUMENT;
         }
 
-        if (std::bit_cast<uint32_t>(src_format) == std::bit_cast<uint32_t>(dst_format)) {
+        if (std::bit_cast<uint64_t>(src_format) == std::bit_cast<uint64_t>(dst_format)) {
             auto size = static_cast<size_t>(src_format.c0_bit_count + src_format.c1_bit_count + src_format.c2_bit_count + src_format.c3_bit_count + 7) / 8;
             std::memcpy(dst_data, src_data, size);
             return GVOX_SUCCESS;

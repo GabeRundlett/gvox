@@ -4,12 +4,12 @@
 #include <gvox/core.h>
 
 #define GVOX_CREATE_FORMAT(encoding, component_count, c0_bit_count, c1_bit_count, c2_bit_count, c3_bit_count) \
-    ((((uint32_t)(encoding)) << 0) |                                                                          \
-     (((uint32_t)(component_count)-1) << 10) |                                                                \
-     (((uint32_t)(c0_bit_count)) << 12) |                                                                     \
-     (((uint32_t)(c1_bit_count)) << 17) |                                                                     \
-     (((uint32_t)(c2_bit_count)) << 22) |                                                                     \
-     (((uint32_t)(c3_bit_count)) << 27))
+    ((((uint64_t)(encoding)) << 0) |                                                                          \
+     (((uint64_t)(component_count)-1) << 10) |                                                                \
+     (((uint64_t)(c0_bit_count)) << 12) |                                                                     \
+     (((uint64_t)(c1_bit_count)) << 17) |                                                                     \
+     (((uint64_t)(c2_bit_count)) << 22) |                                                                     \
+     (((uint64_t)(c3_bit_count)) << 27))
 
 GVOX_ENUM(GvoxFormatEncoding){
     GVOX_FORMAT_ENCODING_UNKNOWN,
@@ -29,7 +29,7 @@ GVOX_ENUM(GvoxAttributeType){
     GVOX_ATTRIBUTE_TYPE_OPACITY,
 };
 
-GVOX_TYPE(GvoxFormat, uint32_t);
+GVOX_TYPE(GvoxFormat, uint64_t);
 
 GVOX_CONSTANTS_BEGIN(GvoxStandardFormat)
 
@@ -67,5 +67,7 @@ GVOX_EXPORT void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 
 GVOX_EXPORT uint32_t gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT uint32_t gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+
+GVOX_EXPORT uint8_t gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB;
 
 #endif

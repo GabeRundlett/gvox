@@ -217,11 +217,12 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             {
                 // Next voxel
                 auto voxel = std::array<uint8_t, 4>{};
-                gvox_input_seek(input_stream, model.input_offset + iter.voxel_index * sizeof(voxel), GVOX_SEEK_ORIGIN_BEG);
+                gvox_input_seek(input_stream, model.input_offset + static_cast<int64_t>(iter.voxel_index * sizeof(voxel)), GVOX_SEEK_ORIGIN_BEG);
                 gvox_input_read(input_stream, &voxel, sizeof(voxel));
                 iter.offset = GvoxOffset3D{static_cast<int64_t>(voxel[0]), static_cast<int64_t>(voxel[1]), static_cast<int64_t>(voxel[2])};
                 iter.extent = GvoxExtent3D{1, 1, 1};
                 iter.voxel = self.palette[voxel[3] - 1];
+                // std::swap(iter.voxel.r, iter.voxel.b);
                 out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
                 out->range = GvoxRange{
                     .offset = {.axis_n = 3, .axis = &iter.offset.x},

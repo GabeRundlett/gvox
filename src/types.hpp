@@ -64,12 +64,12 @@ struct IMPL_STRUCT_NAME(Iterator) {
 // Format
 
 struct FormatDescriptor {
-    uint32_t encoding : 10;
-    uint32_t component_count : 2;
-    uint32_t c0_bit_count : 5;
-    uint32_t c1_bit_count : 5;
-    uint32_t c2_bit_count : 5;
-    uint32_t c3_bit_count : 5;
+    uint64_t encoding : 10;
+    uint64_t component_count : 2;
+    uint64_t c0_bit_count : 5;
+    uint64_t c1_bit_count : 5;
+    uint64_t c2_bit_count : 5;
+    uint64_t c3_bit_count : 5;
 };
 
 struct Attribute {
