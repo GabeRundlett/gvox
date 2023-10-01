@@ -6,13 +6,13 @@
 
 struct GvoxByteBufferInputStream {
     std::vector<uint8_t> bytes{};
-    long current_read_head{};
+    int64_t current_read_head{};
 
     explicit GvoxByteBufferInputStream(GvoxByteBufferInputStreamConfig const &config);
 
     auto read(void *data, size_t size) -> GvoxResult;
-    auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
-    auto tell() -> long;
+    auto seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto tell() -> int64_t;
 };
 
 GvoxByteBufferInputStream::GvoxByteBufferInputStream(GvoxByteBufferInputStreamConfig const &config) {
@@ -22,7 +22,7 @@ GvoxByteBufferInputStream::GvoxByteBufferInputStream(GvoxByteBufferInputStreamCo
 
 auto GvoxByteBufferInputStream::read(void *data, size_t size) -> GvoxResult {
     auto position = current_read_head;
-    current_read_head += static_cast<long>(size);
+    current_read_head += static_cast<int64_t>(size);
     if (static_cast<size_t>(current_read_head) > bytes.size()) {
         return GVOX_ERROR_UNKNOWN;
     }
@@ -30,17 +30,17 @@ auto GvoxByteBufferInputStream::read(void *data, size_t size) -> GvoxResult {
     return GVOX_SUCCESS;
 }
 
-auto GvoxByteBufferInputStream::seek(long offset, GvoxSeekOrigin origin) -> GvoxResult {
+auto GvoxByteBufferInputStream::seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult {
     switch (origin) {
     case GVOX_SEEK_ORIGIN_BEG: current_read_head = 0 + offset; break;
-    case GVOX_SEEK_ORIGIN_END: current_read_head = static_cast<long>(bytes.size()) + offset; break;
+    case GVOX_SEEK_ORIGIN_END: current_read_head = static_cast<int64_t>(bytes.size()) + offset; break;
     case GVOX_SEEK_ORIGIN_CUR: current_read_head = current_read_head + offset; break;
     default: break;
     }
     return GVOX_SUCCESS;
 }
 
-auto GvoxByteBufferInputStream::tell() -> long {
+auto GvoxByteBufferInputStream::tell() -> int64_t {
     return current_read_head;
 }
 
@@ -59,10 +59,10 @@ auto gvox_input_stream_byte_buffer_description() GVOX_FUNC_ATTRIB->GvoxInputStre
         .read = [](void *self, GvoxInputStream /*unused*/, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxByteBufferInputStream *>(self)->read(data, size);
         },
-        .seek = [](void *self, GvoxInputStream /*unused*/, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+        .seek = [](void *self, GvoxInputStream /*unused*/, int64_t offset, GvoxSeekOrigin origin) -> GvoxResult {
             return static_cast<GvoxByteBufferInputStream *>(self)->seek(offset, origin);
         },
-        .tell = [](void *self, GvoxInputStream /*unused*/) -> long {
+        .tell = [](void *self, GvoxInputStream /*unused*/) -> int64_t {
             return static_cast<GvoxByteBufferInputStream *>(self)->tell();
         },
         .destroy = [](void *self) { delete static_cast<GvoxByteBufferInputStream *>(self); },

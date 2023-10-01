@@ -65,11 +65,11 @@ auto gvox_input_read(GvoxInputStream handle, void *data, size_t size) GVOX_FUNC_
     ZoneScoped;
     return handle->desc.read(handle->self, handle->next, data, size);
 }
-auto gvox_input_seek(GvoxInputStream handle, long offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_input_seek(GvoxInputStream handle, int64_t offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     return handle->desc.seek(handle->self, handle->next, offset, origin);
 }
-auto gvox_input_tell(GvoxInputStream handle) GVOX_FUNC_ATTRIB->long {
+auto gvox_input_tell(GvoxInputStream handle) GVOX_FUNC_ATTRIB->int64_t {
     ZoneScoped;
     return handle->desc.tell(handle->self, handle->next);
 }
@@ -78,11 +78,11 @@ auto gvox_output_write(GvoxOutputStream handle, void *data, size_t size) GVOX_FU
     ZoneScoped;
     return handle->desc.write(handle->self, handle->next, data, size);
 }
-auto gvox_output_seek(GvoxOutputStream handle, long offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_output_seek(GvoxOutputStream handle, int64_t offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
     return handle->desc.seek(handle->self, handle->next, offset, origin);
 }
-auto gvox_output_seek(GvoxOutputStream handle) -> long {
+auto gvox_output_seek(GvoxOutputStream handle) -> int64_t {
     ZoneScoped;
     return handle->desc.tell(handle->self, handle->next);
 }
@@ -128,6 +128,6 @@ auto gvox_create_parser_from_input(GvoxParserDescriptionCollection const *parser
     return GVOX_ERROR_UNKNOWN_STANDARD_PARSER;
 }
 
-void gvox_iterator_next(GvoxIterator handle, GvoxIteratorValue *value) {
-    handle->iterator_next(handle->parent_self, &handle->self, value);
+void gvox_iterator_next(GvoxIterator handle, GvoxInputStream input_stream, GvoxIteratorValue *value) {
+    handle->iterator_next(handle->parent_self, &handle->self, input_stream, value);
 }

@@ -63,13 +63,13 @@ void gvox_container_raw_iterator_next(void *self_ptr, void *iterator_ptr, GvoxIt
     auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
     auto &iter_self = *static_cast<GvoxBoundedRawContainer::Iterator *>(iterator_ptr);
     if (iter_self.index == ~uint64_t{0}) {
-        out->tag = GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME;
-        out->enter_volume.range = static_cast<GvoxRange>(iter_self.range);
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
+        out->range = static_cast<GvoxRange>(iter_self.range);
         iter_self.index = 0;
     } else if (iter_self.index < iter_self.max_index) {
-        out->tag = GVOX_ITERATOR_VALUE_TYPE_VOXEL;
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
         auto *voxel_ptr = static_cast<uint8_t *>(self.pre_allocated_buffer) + iter_self.index;
-        out->voxel.data = voxel_ptr;
+        out->voxel_data = voxel_ptr;
     } else {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
     }

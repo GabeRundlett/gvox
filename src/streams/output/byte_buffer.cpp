@@ -6,13 +6,13 @@
 
 struct GvoxByteBufferOutputStream {
     std::vector<uint8_t> bytes{};
-    long current_read_head{};
+    int64_t current_read_head{};
 
     GvoxByteBufferOutputStream(GvoxByteBufferOutputStreamConfig const &config);
 
     auto write(void *data, size_t size) -> GvoxResult;
-    auto seek(long offset, GvoxSeekOrigin origin) -> GvoxResult;
-    auto tell() -> long;
+    auto seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult;
+    auto tell() -> int64_t;
 };
 
 GvoxByteBufferOutputStream::GvoxByteBufferOutputStream(GvoxByteBufferOutputStreamConfig const &config) {
@@ -31,7 +31,7 @@ auto GvoxByteBufferOutputStream::write(void *data, size_t size) -> GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-auto GvoxByteBufferOutputStream::seek(long offset, GvoxSeekOrigin origin) -> GvoxResult {
+auto GvoxByteBufferOutputStream::seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult {
     switch (origin) {
     case GVOX_SEEK_ORIGIN_BEG: current_read_head = 0 + offset; break;
     case GVOX_SEEK_ORIGIN_END: current_read_head = bytes.size() + offset; break;
@@ -41,7 +41,7 @@ auto GvoxByteBufferOutputStream::seek(long offset, GvoxSeekOrigin origin) -> Gvo
     return GVOX_SUCCESS;
 }
 
-auto GvoxByteBufferOutputStream::tell() -> long {
+auto GvoxByteBufferOutputStream::tell() -> int64_t {
     return current_read_head;
 }
 
@@ -60,10 +60,10 @@ auto gvox_output_stream_byte_buffer_description() GVOX_FUNC_ATTRIB->GvoxOutputSt
         .write = [](void *self, GvoxOutputStream next_handle, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxByteBufferOutputStream *>(self)->write(data, size);
         },
-        .seek = [](void *self, GvoxOutputStream next_handle, long offset, GvoxSeekOrigin origin) -> GvoxResult {
+        .seek = [](void *self, GvoxOutputStream next_handle, int64_t offset, GvoxSeekOrigin origin) -> GvoxResult {
             return static_cast<GvoxByteBufferOutputStream *>(self)->seek(offset, origin);
         },
-        .tell = [](void *self, GvoxOutputStream next_handle) -> long {
+        .tell = [](void *self, GvoxOutputStream next_handle) -> int64_t {
             return static_cast<GvoxByteBufferOutputStream *>(self)->tell();
         },
         .destroy = [](void *self) { delete static_cast<GvoxByteBufferOutputStream *>(self); },

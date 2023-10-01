@@ -140,30 +140,16 @@ GVOX_STRUCT(GvoxRangeMut) {
 
 GVOX_ENUM(GvoxIteratorValueType){
     GVOX_ITERATOR_VALUE_TYPE_NULL,
-    GVOX_ITERATOR_VALUE_TYPE_VOXEL,
-    GVOX_ITERATOR_VALUE_TYPE_ENTER_VOLUME,
-    GVOX_ITERATOR_VALUE_TYPE_SUB_VOLUME,
-    GVOX_ITERATOR_VALUE_TYPE_LEAVE_VOLUME,
-};
-
-GVOX_STRUCT(GvoxIteratorValueVoxel) {
-    GvoxOffset pos;
-    void *data;
-    GvoxVoxelDesc desc;
-};
-
-GVOX_STRUCT(GvoxIteratorValueVolume) {
-    GvoxRange range;
+    GVOX_ITERATOR_VALUE_TYPE_LEAF,
+    GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN,
+    GVOX_ITERATOR_VALUE_TYPE_NODE_END,
 };
 
 GVOX_STRUCT(GvoxIteratorValue) {
     GvoxIteratorValueType tag;
-    union {
-        GvoxIteratorValueVoxel voxel;
-        GvoxIteratorValueVolume enter_volume;
-        GvoxIteratorValueVolume sub_volume;
-        GvoxIteratorValueVolume leave_volume;
-    };
+    void const *voxel_data;
+    GvoxVoxelDesc voxel_desc;
+    GvoxRange range;
 };
 
 #ifdef __cplusplus

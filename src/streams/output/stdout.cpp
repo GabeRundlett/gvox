@@ -34,10 +34,10 @@ auto gvox_output_stream_stdout_description() GVOX_FUNC_ATTRIB->GvoxOutputStreamD
         .write = [](void *self, GvoxOutputStream /*unused*/, void *data, size_t size) -> GvoxResult {
             return static_cast<GvoxStdoutOutputStream *>(self)->write(data, size);
         },
-        .seek = [](void * /*unused*/, GvoxOutputStream /*unused*/, long /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
+        .seek = [](void * /*unused*/, GvoxOutputStream /*unused*/, int64_t /*unused*/, GvoxSeekOrigin /*unused*/) -> GvoxResult {
             return GVOX_ERROR_UNKNOWN;
         },
-        .tell = [](void * /*unused*/, GvoxOutputStream /*unused*/) -> long {
+        .tell = [](void * /*unused*/, GvoxOutputStream /*unused*/) -> int64_t {
             return GVOX_ERROR_UNKNOWN;
         },
         .destroy = [](void *self) { delete static_cast<GvoxStdoutOutputStream *>(self); },

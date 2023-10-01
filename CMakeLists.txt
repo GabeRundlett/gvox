@@ -194,10 +194,10 @@ target_include_directories(${PROJECT_NAME}
 )
 set_project_warnings(${PROJECT_NAME})
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/arch:AVX2>
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-ftree-vectorize -march=native -mtune=native -mavx2 -O3>
-)
+# target_compile_options(${PROJECT_NAME} PRIVATE
+#     $<$<CXX_COMPILER_ID:MSVC>:/arch:AVX2>
+#     $<$<CXX_COMPILER_ID:GNU,Clang>:-ftree-vectorize -march=native -mtune=native -mavx2 -O3>
+# )
 
 function(set_project_sanitizers TARGET_NAME)
     set(SANITIZER_FLAGS

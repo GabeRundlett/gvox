@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <new>
 #include <vector>
 #include <span>
 
@@ -38,7 +39,7 @@ namespace {
                 return gvox_input_seek(static_cast<GvoxInputStream>(handle), offset, static_cast<GvoxSeekOrigin>(origin));
             },
             .tell_proc = [](fi_handle handle) -> long {
-                return gvox_input_tell(static_cast<GvoxInputStream>(handle));
+                return static_cast<long>(gvox_input_tell(static_cast<GvoxInputStream>(handle)));
             },
         };
         auto fi_voxel_desc = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_stream), 0);
@@ -58,7 +59,7 @@ auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
     }
     size_x = FreeImage_GetWidth(fi_bitmap);
     size_y = FreeImage_GetHeight(fi_bitmap);
-    auto data = FreeImage_GetBits(fi_bitmap);
+    auto *data = FreeImage_GetBits(fi_bitmap);
     if (data == nullptr) {
         // Failed to load the image
         return GVOX_ERROR_UNKNOWN;
@@ -97,7 +98,7 @@ auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
             } else {
                 config = {};
             }
-            *self = new GvoxImageParser(config);
+            *self = new (std::nothrow) GvoxImageParser(config);
             auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_stream);
             if (load_res != GVOX_SUCCESS) {
                 return load_res;
@@ -113,8 +114,8 @@ auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
 
             auto parser_ci = GvoxParserCreateInfo{};
             parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
-            parser_ci.next = NULL;
-            parser_ci.cb_args.config = NULL;
+            parser_ci.next = nullptr;
+            parser_ci.cb_args.config = nullptr;
             parser_ci.cb_args.input_stream = input_stream;
             parser_ci.description = gvox_parser_image_description();
 
@@ -122,6 +123,6 @@ auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
         },
         .create_input_iterator = [](void *self_ptr, void **out_iterator_ptr) -> void {},
         .destroy_iterator = [](void *self_ptr, void *iterator_ptr) -> void {},
-        .iterator_next = [](void *self_ptr, void **iterator_ptr, GvoxIteratorValue *out) -> void {},
+        .iterator_next = [](void *self_ptr, void **iterator_ptr, GvoxInputStream input_stream, GvoxIteratorValue *out) -> void {},
     };
 }
