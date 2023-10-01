@@ -105,9 +105,6 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             // convert src data to be compatible with the dst_voxel_desc
             auto *converted_data = static_cast<void const *>(nullptr);
             // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
-            auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
-                return desc_a == desc_b;
-            };
             if (gvox_voxel_desc_compare(src_voxel_desc, self.voxel_desc) != 0) {
                 converted_data = single_voxel_data;
             } else {
