@@ -17,8 +17,12 @@
 struct MagicavoxelParser {
     MagicavoxelParserConfig config{};
     GvoxVoxelDesc desc{};
-    std::vector<magicavoxel::XyziModel> models = {};
+    std::vector<magicavoxel::TransformKeyframe> transform_keyframes{};
+    std::vector<magicavoxel::Model> models = {};
     magicavoxel::Palette palette = {};
+    magicavoxel::SceneInfo scene_info = {};
+    std::array<uint8_t, 256> index_map{};
+    bool has_index_map{};
 
     struct Iterator {
         size_t model_index{};
@@ -38,7 +42,7 @@ struct MagicavoxelParser {
     }
 };
 
-auto operator<<(std::ostream &out, magicavoxel::XyziModel const &m) -> std::ostream & {
+auto operator<<(std::ostream &out, magicavoxel::Model const &m) -> std::ostream & {
     out << "extent = {" << m.extent[0] << ", " << m.extent[1] << ", " << m.extent[2] << "}\n";
     out << "voxel_count = " << m.voxel_count << "\n";
     out << "input_offset = " << m.input_offset;
@@ -96,6 +100,13 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
 
             auto &models = self.models;
             auto &palette = self.palette;
+            auto &transform_keyframes = self.transform_keyframes;
+            auto &scene_info = self.scene_info;
+            std::vector<magicavoxel::ModelKeyframe> shape_keyframes{};
+            std::vector<magicavoxel::Layer> layers{};
+            magicavoxel::MaterialList materials{};
+
+            auto temp_dict = magicavoxel::Dictionary{};
 
             while (true) {
                 auto curr = gvox_input_tell(args->input_stream);
@@ -114,7 +125,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         return GVOX_ERROR_UNKNOWN;
                     }
 
-                    models.push_back(magicavoxel::XyziModel{});
+                    models.push_back(magicavoxel::Model{});
                     auto &model = models.back();
                     gvox_input_read(args->input_stream, &model.extent, sizeof(model.extent));
                 } break;
@@ -139,16 +150,234 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     }
                     gvox_input_read(args->input_stream, &palette, sizeof(palette));
                 } break;
+                case magicavoxel::CHUNK_ID_nTRN: {
+                    uint32_t node_id = 0;
+                    gvox_input_read(args->input_stream, &node_id, sizeof(node_id));
+                    if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nTRN dictionary");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    auto result_transform = magicavoxel::SceneTransformInfo{};
+                    const auto *name_str = temp_dict.get<char const *>("_name", nullptr);
+                    if (name_str != nullptr) {
+                        std::copy(name_str, name_str + std::min<size_t>(strlen(name_str) + 1, 65), result_transform.name.begin());
+                    }
+                    result_transform.hidden = temp_dict.get<bool>("_hidden", false);
+                    result_transform.loop = temp_dict.get<bool>("_loop", false);
+                    uint32_t reserved_id = 0;
+                    gvox_input_read(args->input_stream, &result_transform.child_node_id, sizeof(result_transform.child_node_id));
+                    gvox_input_read(args->input_stream, &reserved_id, sizeof(reserved_id));
+                    gvox_input_read(args->input_stream, &result_transform.layer_id, sizeof(result_transform.layer_id));
+                    gvox_input_read(args->input_stream, &result_transform.num_keyframes, sizeof(result_transform.num_keyframes));
+                    if (reserved_id != UINT32_MAX) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected values for reserved_id in nTRN chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    if (result_transform.num_keyframes == 0) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "must have at least 1 frame in nTRN chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    result_transform.keyframe_offset = transform_keyframes.size();
+                    transform_keyframes.resize(result_transform.keyframe_offset + result_transform.num_keyframes);
+                    for (uint32_t i = 0; i < result_transform.num_keyframes; i++) {
+                        if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
+                            // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nTRN keyframe dictionary");
+                            return GVOX_ERROR_UNKNOWN;
+                        }
+                        auto &trn = transform_keyframes[result_transform.keyframe_offset + i].transform;
+                        const auto *r_str = temp_dict.get<char const *>("_r", nullptr);
+                        if (r_str != nullptr) {
+                            magicavoxel::string_r_dict_entry(r_str, trn.rotation);
+                        }
+                        const auto *t_str = temp_dict.get<char const *>("_t", nullptr);
+                        if (t_str != nullptr) {
+                            magicavoxel::string_t_dict_entry(t_str, trn.offset);
+                        }
+                        transform_keyframes[result_transform.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
+                    }
+                    result_transform.transform = transform_keyframes[result_transform.keyframe_offset].transform;
+                    scene_info.node_infos.resize(std::max<size_t>(node_id + 1, scene_info.node_infos.size()));
+                    scene_info.node_infos[node_id] = result_transform;
+                } break;
+                case magicavoxel::CHUNK_ID_nGRP: {
+                    uint32_t node_id = 0;
+                    gvox_input_read(args->input_stream, &node_id, sizeof(node_id));
+                    // has dictionary, we don't care
+                    magicavoxel::read_dict(args->input_stream, temp_dict);
+                    auto result_group = magicavoxel::SceneGroupInfo{};
+                    uint32_t num_child_nodes = 0;
+                    gvox_input_read(args->input_stream, &num_child_nodes, sizeof(num_child_nodes));
+                    if (num_child_nodes != 0u) {
+                        size_t const prior_size = scene_info.group_children_ids.size();
+                        scene_info.group_children_ids.resize(prior_size + num_child_nodes);
+                        gvox_input_read(args->input_stream, &scene_info.group_children_ids[prior_size], sizeof(uint32_t) * num_child_nodes);
+                        result_group.first_child_node_id_index = (uint32_t)prior_size;
+                        result_group.num_child_nodes = num_child_nodes;
+                    }
+                    scene_info.node_infos.resize(std::max<size_t>(node_id + 1, scene_info.node_infos.size()));
+                    scene_info.node_infos[node_id] = result_group;
+                } break;
+                case magicavoxel::CHUNK_ID_nSHP: {
+                    uint32_t node_id = 0;
+                    gvox_input_read(args->input_stream, &node_id, sizeof(node_id));
+                    magicavoxel::read_dict(args->input_stream, temp_dict);
+                    auto result_shape = magicavoxel::SceneShapeInfo{};
+                    result_shape.loop = temp_dict.get<bool>("_loop", false);
+                    gvox_input_read(args->input_stream, &result_shape.num_keyframes, sizeof(result_shape.num_keyframes));
+                    if (result_shape.num_keyframes == 0) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "must have at least 1 frame in nSHP chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    result_shape.keyframe_offset = shape_keyframes.size();
+                    shape_keyframes.resize(result_shape.keyframe_offset + result_shape.num_keyframes);
+                    for (uint32_t i = 0; i < result_shape.num_keyframes; i++) {
+                        auto &model_index = shape_keyframes[result_shape.keyframe_offset + i].model_index;
+                        gvox_input_read(args->input_stream, &model_index, sizeof(model_index));
+                        if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
+                            // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nSHP keyframe dictionary");
+                            return GVOX_ERROR_UNKNOWN;
+                        }
+                        shape_keyframes[result_shape.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
+                    }
+                    result_shape.model_id = shape_keyframes[result_shape.keyframe_offset].model_index;
+                    scene_info.node_infos.resize(std::max<size_t>(node_id + 1, scene_info.node_infos.size()));
+                    scene_info.node_infos[node_id] = result_shape;
+                } break;
+                case magicavoxel::CHUNK_ID_IMAP: {
+                    if (chunk_header.size != 256) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for IMAP chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    gvox_input_read(args->input_stream, &self.index_map, sizeof(self.index_map));
+                    self.has_index_map = true;
+                } break;
+                case magicavoxel::CHUNK_ID_LAYR: {
+                    int32_t layer_id = 0;
+                    int32_t reserved_id = 0;
+                    gvox_input_read(args->input_stream, &layer_id, sizeof(layer_id));
+                    if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read dictionary in LAYR chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    gvox_input_read(args->input_stream, &reserved_id, sizeof(reserved_id));
+                    if (reserved_id != -1) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected value for reserved_id in LAYR chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    auto result_layer = magicavoxel::Layer{
+                        .name = temp_dict.get<char const *>("_name", ""),
+                        .color = {255, 255, 255, 255},
+                        .hidden = temp_dict.get<bool>("_hidden", false),
+                    };
+                    char const *color_string = temp_dict.get<char const *>("_color", nullptr);
+                    if (color_string != nullptr) {
+                        uint32_t r = 0;
+                        uint32_t g = 0;
+                        uint32_t b = 0;
+                        magicavoxel::string_color_dict_entry(color_string, r, g, b);
+                        result_layer.color.r = static_cast<uint8_t>(r);
+                        result_layer.color.g = static_cast<uint8_t>(g);
+                        result_layer.color.b = static_cast<uint8_t>(b);
+                    }
+                    layers.resize(std::max<size_t>(static_cast<size_t>(layer_id + 1), layers.size()));
+                    layers[static_cast<size_t>(layer_id)] = result_layer;
+                } break;
+                case magicavoxel::CHUNK_ID_MATL: {
+                    int32_t material_id = 0;
+                    gvox_input_read(args->input_stream, &material_id, sizeof(material_id));
+                    material_id = (material_id - 1) & 0xFF; // incoming material 256 is material 0
+                    if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read dictionary in MATL chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    char const *type_string = temp_dict.get<char const *>("_type", nullptr);
+                    if (type_string != nullptr) {
+                        if (0 == strcmp(type_string, "_diffuse")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::DIFFUSE;
+                        } else if (0 == strcmp(type_string, "_metal")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::METAL;
+                        } else if (0 == strcmp(type_string, "_glass")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::GLASS;
+                        } else if (0 == strcmp(type_string, "_emit")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::EMIT;
+                        } else if (0 == strcmp(type_string, "_blend")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::BLEND;
+                        } else if (0 == strcmp(type_string, "_media")) {
+                            materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::MEDIA;
+                        }
+                    }
+                    constexpr auto material_property_ids = std::array{
+                        std::pair<char const *, uint32_t>{"_metal", magicavoxel::MATERIAL_METAL_BIT},
+                        std::pair<char const *, uint32_t>{"_rough", magicavoxel::MATERIAL_ROUGH_BIT},
+                        std::pair<char const *, uint32_t>{"_spec", magicavoxel::MATERIAL_SPEC_BIT},
+                        std::pair<char const *, uint32_t>{"_ior", magicavoxel::MATERIAL_IOR_BIT},
+                        std::pair<char const *, uint32_t>{"_att", magicavoxel::MATERIAL_ATT_BIT},
+                        std::pair<char const *, uint32_t>{"_flux", magicavoxel::MATERIAL_FLUX_BIT},
+                        std::pair<char const *, uint32_t>{"_emit", magicavoxel::MATERIAL_EMIT_BIT},
+                        std::pair<char const *, uint32_t>{"_ldr", magicavoxel::MATERIAL_LDR_BIT},
+                        std::pair<char const *, uint32_t>{"_trans", magicavoxel::MATERIAL_TRANS_BIT},
+                        std::pair<char const *, uint32_t>{"_alpha", magicavoxel::MATERIAL_ALPHA_BIT},
+                        std::pair<char const *, uint32_t>{"_d", magicavoxel::MATERIAL_D_BIT},
+                        std::pair<char const *, uint32_t>{"_sp", magicavoxel::MATERIAL_SP_BIT},
+                        std::pair<char const *, uint32_t>{"_g", magicavoxel::MATERIAL_G_BIT},
+                        std::pair<char const *, uint32_t>{"_media", magicavoxel::MATERIAL_MEDIA_BIT},
+                    };
+                    size_t field_offset = 0;
+                    for (auto const &[mat_str, mat_bit] : material_property_ids) {
+                        char const *prop_str = temp_dict.get<char const *>(mat_str, NULL);
+                        if (prop_str != nullptr) {
+                            materials[static_cast<size_t>(material_id)].content_flags |= mat_bit;
+                            *(&materials[static_cast<size_t>(material_id)].metal + field_offset) = static_cast<float>(atof(prop_str));
+                        }
+                        ++field_offset;
+                    }
+                } break;
+                case magicavoxel::CHUNK_ID_MATT: {
+                    if (chunk_header.size < 16u) {
+                        // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for MATT chunk");
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    int32_t material_id = 0;
+                    gvox_input_read(args->input_stream, &material_id, sizeof(material_id));
+                    material_id = material_id & 0xFF;
+                    int32_t material_type = 0;
+                    gvox_input_read(args->input_stream, &material_type, sizeof(material_type));
+                    float material_weight = 0.0f;
+                    gvox_input_read(args->input_stream, &material_weight, sizeof(material_weight));
+                    uint32_t property_bits = 0u;
+                    gvox_input_read(args->input_stream, &property_bits, sizeof(property_bits));
+                    switch (material_type) {
+                    case 0:
+                        materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::DIFFUSE;
+                        break;
+                    case 1:
+                        materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::METAL;
+                        materials[static_cast<size_t>(material_id)].content_flags |= magicavoxel::MATERIAL_METAL_BIT;
+                        materials[static_cast<size_t>(material_id)].metal = material_weight;
+                        break;
+                    case 2:
+                        materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::GLASS;
+                        materials[static_cast<size_t>(material_id)].content_flags |= magicavoxel::MATERIAL_TRANS_BIT;
+                        materials[static_cast<size_t>(material_id)].trans = material_weight;
+                        break;
+                    case 3:
+                        materials[static_cast<size_t>(material_id)].type = magicavoxel::MaterialType::EMIT;
+                        materials[static_cast<size_t>(material_id)].content_flags |= magicavoxel::MATERIAL_EMIT_BIT;
+                        materials[static_cast<size_t>(material_id)].emit = material_weight;
+                        break;
+                    default:
+                        // This should never happen.
+                        break;
+                    }
+                    if (chunk_header.size > 16) {
+                        gvox_input_seek(args->input_stream, static_cast<int64_t>(chunk_header.size) - 16, GVOX_SEEK_ORIGIN_CUR);
+                    }
+                } break;
                 default: {
                     gvox_input_seek(args->input_stream, static_cast<int64_t>(chunk_header.size), GVOX_SEEK_ORIGIN_CUR);
                 } break;
                 }
             }
-
-            // for (auto const &model : models) {
-            //     std::cout << model << "\n\n";
-            // }
-            // std::cout << std::flush;
 
             return GVOX_SUCCESS;
         },

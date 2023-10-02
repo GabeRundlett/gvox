@@ -125,7 +125,7 @@ auto main() -> int {
         HANDLE_RES(gvox_create_voxel_desc(&voxel_desc_info, &rgb_voxel_desc), "Failed to create voxel desc")
     }
 
-    auto image = Image{.extent = GvoxExtent2D{320, 240}};
+    auto image = Image{.extent = GvoxExtent2D{1536, 1024}};
 
     auto *raw_container = GvoxContainer{};
     {
@@ -200,7 +200,8 @@ auto main() -> int {
         HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
     }
 
-    {
+    for (uint32_t i = 0; i < 1; ++i) {
+        gvox_input_seek(file_input, 0, GVOX_SEEK_ORIGIN_BEG);
         using Clock = std::chrono::high_resolution_clock;
         auto t0 = Clock::now();
         auto *input_iterator = GvoxIterator{};
@@ -256,8 +257,8 @@ auto main() -> int {
                 //                          indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
                 fill_info.src_data = iter_value.voxel_data;
                 fill_info.src_desc = iter_value.voxel_desc;
-                offset.x = (iter_value.range.offset.axis[0] * 1 - 20);
-                offset.y = 240 - 1 - (iter_value.range.offset.axis[2] * 1 + 10);
+                offset.x = (iter_value.range.offset.axis[0] * 1 - 0);
+                offset.y = static_cast<int64_t>(image.extent.y) - 1 - (iter_value.range.offset.axis[2] * 1 + 0);
                 extent.x = iter_value.range.extent.axis[0] * 1;
                 extent.y = iter_value.range.extent.axis[2] * 1;
                 HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
@@ -293,7 +294,7 @@ auto main() -> int {
 
     auto const N_ITER = uint64_t{20000};
     bool test_rect_speed = false;
-    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 3), static_cast<uint32_t>(image.extent.y * 3));
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 1), static_cast<uint32_t>(image.extent.y * 1));
     while (true) {
         if (test_rect_speed) {
             uint64_t voxel_n = 0;
@@ -301,10 +302,10 @@ auto main() -> int {
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N_ITER; i++) {
                 voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
-                offset.x = fast_random() % 320;
-                offset.y = fast_random() % 240;
-                extent.x = std::min(static_cast<uint64_t>(fast_random() % (320 / 5)), static_cast<uint64_t>(320 - offset.x));
-                extent.y = std::min(static_cast<uint64_t>(fast_random() % (240 / 5)), static_cast<uint64_t>(240 - offset.y));
+                offset.x = fast_random() % static_cast<uint32_t>(image.extent.x);
+                offset.y = fast_random() % static_cast<uint32_t>(image.extent.y);
+                extent.x = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.x) / 5)), image.extent.x - static_cast<uint64_t>(offset.x));
+                extent.y = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.y) / 5)), image.extent.x - static_cast<uint64_t>(offset.y));
                 voxel_n += extent.x * extent.y;
                 // rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), static_cast<int32_t>(extent.x), static_cast<int32_t>(extent.y), voxel_data);
                 HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
@@ -320,6 +321,7 @@ auto main() -> int {
         if (!mfb_wait_sync(window)) {
             break;
         }
+        // break;
     }
 
     gvox_destroy_input_stream(file_input);

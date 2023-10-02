@@ -120,9 +120,13 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
                 return GVOX_SUCCESS;
             }
 
+            bool is_single_voxel = true;
             for (uint32_t i = 0; i < dim; ++i) {
                 if (range.extent.axis[i] == 0) {
                     return GVOX_SUCCESS;
+                }
+                if (range.extent.axis[i] != 1) {
+                    is_single_voxel = false;
                 }
             }
 
@@ -168,7 +172,11 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
                 }
             }
 
-            fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
+            if (is_single_voxel) {
+                set(voxel_ptr, in_voxel);
+            } else {
+                fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
+            }
 
             return GVOX_SUCCESS;
         },

@@ -11,6 +11,27 @@ struct Voxel {
 };
 
 namespace {
+    inline void set(uint8_t *&voxel_ptr, Voxel in_voxel) {
+        auto max_b = in_voxel.size;
+        auto const *in_word_ptr = reinterpret_cast<Word const *>(in_voxel.ptr);
+        auto *out_word_ptr = reinterpret_cast<Word *>(voxel_ptr);
+        if (max_b == sizeof(Word)) {
+            auto in_word = *in_word_ptr;
+            *out_word_ptr++ = in_word;
+        } else if ((max_b % sizeof(Word)) == 0) {
+            auto word_n = (max_b + sizeof(Word) - 1) / sizeof(Word);
+            for (uint32_t vi = 0; vi < word_n; ++vi) {
+                auto *line_begin = out_word_ptr + vi;
+                auto in_word = in_word_ptr[vi];
+                *line_begin = in_word;
+            }
+        } else {
+            for (uint32_t i = 0; i < max_b; i++) {
+                *voxel_ptr++ = in_voxel.ptr[i];
+            }
+        }
+    }
+
     inline void fill_1d(uint8_t *&voxel_ptr, Voxel in_voxel, GvoxExtentMut voxel_range_extent) {
         for (uint32_t xi = 0; xi < voxel_range_extent.axis[0]; xi++) {
             for (uint32_t i = 0; i < in_voxel.size; i++) {

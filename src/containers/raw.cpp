@@ -215,9 +215,13 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
             auto offset_buffer = std::vector<int64_t>(static_cast<size_t>(dim) * 16);
             auto chunk_coord_buffer = std::vector<int64_t>(static_cast<size_t>(dim));
 
+            bool is_single_voxel = true;
             for (uint32_t i = 0; i < dim; ++i) {
                 if (range.extent.axis[i] == 0) {
                     return GVOX_SUCCESS;
+                }
+                if (range.extent.axis[i] != 1) {
+                    is_single_voxel = false;
                 }
             }
 
@@ -295,8 +299,12 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
                     }
                 }
 
-                // NOTE: Currently breaks with N > 4 because the chunk alloc would be too big
-                fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
+                if (is_single_voxel) {
+                    set(voxel_ptr, in_voxel);
+                } else {
+                    // NOTE: Currently breaks with N > 4 because the chunk alloc would be too big
+                    fill_Nd(dim, voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
+                }
             }
 
             return GVOX_SUCCESS;
