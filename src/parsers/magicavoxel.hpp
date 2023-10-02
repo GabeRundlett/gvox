@@ -7,14 +7,10 @@
 #include <string>
 #include <variant>
 
-#define MAGICAVOXEL_USE_WASM_FIX 1
+#define MAGICAVOXEL_ENABLE_BVH 0
 
-#if MAGICAVOXEL_USE_WASM_FIX
 #include <cstdlib>
 #include <cstring>
-#else
-#include <sstream>
-#endif
 
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});
@@ -154,12 +150,18 @@ namespace magicavoxel {
     struct ModelInstance {
         int8_t rotation{1 << 2};
 
+#if MAGICAVOXEL_ENABLE_BVH
         GvoxOffset3D aabb_min{};
         GvoxOffset3D aabb_max{};
+#else
+        GvoxOffset3D offset{};
+        GvoxExtent3D extent{};
+#endif
 
         uint32_t index{};
     };
 
+#if MAGICAVOXEL_ENABLE_BVH
     struct BvhNode {
         struct Children {
             uint32_t offset;
@@ -182,6 +184,7 @@ namespace magicavoxel {
             return range.count > 2;
         }
     };
+#endif
 
     struct Scene {
         std::vector<Model> models{};
@@ -189,7 +192,9 @@ namespace magicavoxel {
 
         Transform transform;
 
+#if MAGICAVOXEL_ENABLE_BVH
         std::vector<BvhNode> bvh_nodes;
+#endif
     };
 
     static constexpr uint32_t MAX_DICT_SIZE = 4096;
