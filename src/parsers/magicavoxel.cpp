@@ -22,7 +22,6 @@ struct MagicavoxelParser {
     std::vector<magicavoxel::TransformKeyframe> transform_keyframes{};
     magicavoxel::Palette palette = {};
     magicavoxel::MaterialList materials{};
-    magicavoxel::SceneInfo scene_info{};
     magicavoxel::Scene scene{};
     std::array<uint8_t, 256> index_map{};
     bool has_index_map{};
@@ -245,6 +244,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             };
             auto res = gvox_create_voxel_desc(&voxel_desc_info, &self.desc);
             if (res != GVOX_SUCCESS) {
+                delete &self;
                 return res;
             }
 
@@ -256,6 +256,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
 
                 if (header.file_header != magicavoxel::CHUNK_ID_VOX_ ||
                     (header.file_version != 150 && header.file_version != 200)) {
+                    delete &self;
                     return GVOX_ERROR_UNPARSABLE_INPUT;
                 }
             }
@@ -270,7 +271,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             auto &palette = self.palette;
             auto &transform_keyframes = self.transform_keyframes;
             auto &materials = self.materials;
-            auto &scene_info = self.scene_info;
+            magicavoxel::SceneInfo scene_info{};
             std::vector<magicavoxel::ModelKeyframe> shape_keyframes{};
             std::vector<magicavoxel::Layer> layers{};
 
@@ -290,6 +291,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 case magicavoxel::CHUNK_ID_SIZE: {
                     if (chunk_header.size != 12 || chunk_header.child_size != 0) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for SIZE chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
 
@@ -304,6 +306,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         models.back().extent[2] == 0 ||
                         models.back().valid()) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "expected a SIZE chunk before XYZI chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     auto &model = models.back();
@@ -314,6 +317,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 case magicavoxel::CHUNK_ID_RGBA: {
                     if (chunk_header.size != sizeof(palette)) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for RGBA chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     gvox_input_read(args->input_stream, &palette, sizeof(palette));
@@ -323,6 +327,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     gvox_input_read(args->input_stream, &node_id, sizeof(node_id));
                     if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nTRN dictionary");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     auto result_transform = magicavoxel::SceneTransformInfo{};
@@ -339,10 +344,12 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     gvox_input_read(args->input_stream, &result_transform.num_keyframes, sizeof(result_transform.num_keyframes));
                     if (reserved_id != UINT32_MAX) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected values for reserved_id in nTRN chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     if (result_transform.num_keyframes == 0) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "must have at least 1 frame in nTRN chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     result_transform.keyframe_offset = transform_keyframes.size();
@@ -350,6 +357,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     for (uint32_t i = 0; i < result_transform.num_keyframes; i++) {
                         if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
                             // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nTRN keyframe dictionary");
+                            delete &self;
                             return GVOX_ERROR_UNKNOWN;
                         }
                         auto &trn = transform_keyframes[result_transform.keyframe_offset + i].transform;
@@ -394,6 +402,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     gvox_input_read(args->input_stream, &result_shape.num_keyframes, sizeof(result_shape.num_keyframes));
                     if (result_shape.num_keyframes == 0) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "must have at least 1 frame in nSHP chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     result_shape.keyframe_offset = shape_keyframes.size();
@@ -403,6 +412,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         gvox_input_read(args->input_stream, &model_index, sizeof(model_index));
                         if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
                             // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read nSHP keyframe dictionary");
+                            delete &self;
                             return GVOX_ERROR_UNKNOWN;
                         }
                         shape_keyframes[result_shape.keyframe_offset + i].frame_index = temp_dict.get<uint32_t>("_f", 0);
@@ -414,6 +424,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 case magicavoxel::CHUNK_ID_IMAP: {
                     if (chunk_header.size != 256) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for IMAP chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     gvox_input_read(args->input_stream, &self.index_map, sizeof(self.index_map));
@@ -425,11 +436,13 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     gvox_input_read(args->input_stream, &layer_id, sizeof(layer_id));
                     if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read dictionary in LAYR chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     gvox_input_read(args->input_stream, &reserved_id, sizeof(reserved_id));
                     if (reserved_id != -1) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected value for reserved_id in LAYR chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     auto result_layer = magicavoxel::Layer{
@@ -456,6 +469,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     material_id = (material_id - 1) & 0xFF; // incoming material 256 is material 0
                     if (!magicavoxel::read_dict(args->input_stream, temp_dict)) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "failed to read dictionary in MATL chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     char const *type_string = temp_dict.get<char const *>("_type", nullptr);
@@ -503,6 +517,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 case magicavoxel::CHUNK_ID_MATT: {
                     if (chunk_header.size < 16u) {
                         // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for MATT chunk");
+                        delete &self;
                         return GVOX_ERROR_UNKNOWN;
                     }
                     int32_t material_id = 0;
@@ -658,7 +673,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 gvox_input_seek(input_stream, model.input_offset + static_cast<int64_t>(iter.voxel_index * sizeof(voxel)), GVOX_SEEK_ORIGIN_BEG);
                 gvox_input_read(input_stream, &voxel, sizeof(voxel));
 
-                auto offset = magicavoxel::rotate(/*magicavoxel::inverse*/(model_instance.rotation), GvoxExtent3D{static_cast<uint64_t>(voxel[0]), static_cast<uint64_t>(voxel[1]), static_cast<uint64_t>(voxel[2])}, model_instance.extent);
+                auto offset = magicavoxel::rotate(model_instance.rotation, GvoxExtent3D{static_cast<uint64_t>(voxel[0]), static_cast<uint64_t>(voxel[1]), static_cast<uint64_t>(voxel[2])}, model_instance.extent);
                 iter.offset.x = offset.x + model_instance.offset.x;
                 iter.offset.y = offset.y + model_instance.offset.y;
                 iter.offset.z = offset.z + model_instance.offset.z;

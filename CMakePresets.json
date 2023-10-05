@@ -16,6 +16,7 @@
                 "GVOX_FEATURE_IO_FILE": true,
                 "GVOX_FEATURE_IO_IMAGE": true,
                 "GVOX_FEATURE_IO_ADAPT_ZIP": true,
+                "GVOX_FEATURE_CONTAINER_OPENVDB": true,
                 "GVOX_ENABLE_TESTS": true,
                 "GVOX_ENABLE_TRACY": false,
                 "GVOX_ENABLE_ASAN": false,

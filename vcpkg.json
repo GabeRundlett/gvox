@@ -22,6 +22,12 @@
         "gzip-hpp"
       ]
     },
+    "container-openvdb": {
+      "description": "OpenVDB Container",
+      "dependencies": [
+        "openvdb"
+      ]
+    },
     "tracy": {
       "description": "Tracy profiler support",
       "dependencies": [

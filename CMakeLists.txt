@@ -14,6 +14,9 @@ endif()
 if(GVOX_FEATURE_IO_ADAPT_ZIP)
     list(APPEND VCPKG_MANIFEST_FEATURES "io-adapt-zip")
 endif()
+if(GVOX_FEATURE_CONTAINER_OPENVDB)
+    list(APPEND VCPKG_MANIFEST_FEATURES "container-openvdb")
+endif()
 if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
@@ -22,6 +25,35 @@ if(GVOX_ENABLE_TRACY)
 endif()
 
 project(gvox VERSION 2.0.0)
+
+if(GVOX_FEATURE_IO_IMAGE)
+    find_package(freeimage CONFIG REQUIRED)
+
+    # FreeImage links OpenEXR, which adds /EHsc for its targets, even if we're using Clang
+    function(FIXUP_TARGET TGT_NAME)
+        if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
+            get_property(A_OPTIONS TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS)
+            string(REPLACE "/EHsc" "-Wl,/EHsc" A_OPTIONS "")
+            set_property(TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS "${A_OPTIONS}")
+        endif()
+    endfunction()
+
+    FIXUP_TARGET(Imath::Imath)
+    FIXUP_TARGET(OpenEXR::Iex)
+    FIXUP_TARGET(OpenEXR::IlmThread)
+    FIXUP_TARGET(OpenEXR::OpenEXRCore)
+    FIXUP_TARGET(OpenEXR::OpenEXR)
+    FIXUP_TARGET(OpenEXR::OpenEXRUtil)
+endif()
+if(GVOX_FEATURE_IO_ADAPT_ZIP)
+    find_package(ZLIB REQUIRED)
+    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
+endif()
+if(GVOX_FEATURE_CONTAINER_OPENVDB)
+    set(PREV_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+    find_package(OpenVDB CONFIG REQUIRED)
+    set(BUILD_SHARED_LIBS ${PREV_BUILD_SHARED_LIBS})
+endif()
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -107,23 +139,7 @@ if(GVOX_FEATURE_IO_FILE)
 endif()
 
 if(GVOX_FEATURE_IO_IMAGE)
-    find_package(freeimage CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE freeimage::FreeImage freeimage::FreeImagePlus)
-
-    function(FIXUP_TARGET TGT_NAME)
-        if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
-            get_property(A_OPTIONS TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS)
-            string(REPLACE "/EHsc" "" A_OPTIONS "")
-            set_property(TARGET ${TGT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS "${A_OPTIONS}")
-        endif()
-    endfunction()
-
-    FIXUP_TARGET(Imath::Imath)
-    FIXUP_TARGET(OpenEXR::Iex)
-    FIXUP_TARGET(OpenEXR::IlmThread)
-    FIXUP_TARGET(OpenEXR::OpenEXRCore)
-    FIXUP_TARGET(OpenEXR::OpenEXR)
-    FIXUP_TARGET(OpenEXR::OpenEXRUtil)
 
     list(APPEND GVOX_PARSERS
         "image"
@@ -134,11 +150,17 @@ if(GVOX_FEATURE_IO_ADAPT_ZIP)
     list(APPEND GVOX_INPUT_STREAMS
         "gzip"
     )
-    find_package(ZLIB REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
-    find_path(GZIP_HPP_INCLUDE_DIRS "gzip/compress.hpp")
     target_include_directories(${PROJECT_NAME} PRIVATE ${GZIP_HPP_INCLUDE_DIRS})
 endif()
+
+if(GVOX_FEATURE_CONTAINER_OPENVDB)
+    list(APPEND GVOX_CONTAINERS
+        "openvdb"
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE OpenVDB::openvdb)
+endif()
+
 if(GVOX_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)

@@ -4,7 +4,9 @@
 #include <gvox/gvox.h>
 
 #include <gvox/containers/bounded_raw.h>
+#include <gvox/containers/openvdb.h>
 #include <gvox/streams/input/file.h>
+#include <gvox/streams/input/byte_buffer.h>
 #include <gvox/parsers/magicavoxel.h>
 
 #include <iostream>
@@ -17,7 +19,6 @@
 #include <fstream>
 #include <limits>
 #include <vector>
-#include <gvox/streams/input/byte_buffer.h>
 
 #define HANDLE_RES(x, message)             \
     if (x != GVOX_SUCCESS) {               \
@@ -159,7 +160,6 @@ auto main() -> int {
             .extent = {2, &image.extent.x},
             .pre_allocated_buffer = image.pixels.data(),
         };
-
         auto cont_info = GvoxContainerCreateInfo{
             .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
             .next = nullptr,
@@ -170,7 +170,6 @@ auto main() -> int {
                 .config = &raw_container_conf,
             },
         };
-
         HANDLE_RES(gvox_create_container(&cont_info, &raw_container), "Failed to create raw container")
     }
 
@@ -181,7 +180,6 @@ auto main() -> int {
             .extent = {2, &depth_image.extent.x},
             .pre_allocated_buffer = depth_image.pixels.data(),
         };
-
         auto cont_info = GvoxContainerCreateInfo{
             .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
             .next = nullptr,
@@ -192,9 +190,23 @@ auto main() -> int {
                 .config = &raw_container_conf,
             },
         };
-
         HANDLE_RES(gvox_create_container(&cont_info, &depth_container), "Failed to create raw container")
     }
+
+    // auto *vdb_container = GvoxContainer{};
+    // {
+    //     auto cont_info = GvoxContainerCreateInfo{
+    //         .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
+    //         .next = nullptr,
+    //         .description = gvox_container_openvdb_description(),
+    //         .cb_args = {
+    //             .struct_type = {}, // ?
+    //             .next = nullptr,
+    //             .config = nullptr,
+    //         },
+    //     };
+    //     HANDLE_RES(gvox_create_container(&cont_info, &vdb_container), "Failed to create vdb container")
+    // }
 
     uint32_t voxel_data{};
     GvoxOffset2D offset{};
@@ -311,8 +323,8 @@ auto main() -> int {
                 // std::array<uint8_t, 4> const &col = *static_cast<std::array<uint8_t, 4> const *>(iter_value.voxel_data);
                 // std::cout << std::format("{}VOXEL: pos={}, data={} (\033[48;2;{:0>3};{:0>3};{:0>3}m  \033[0m), desc={}\n",
                 //                          indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
-                offset.x = (iter_value.range.offset.axis[0] * 1 + 600);
-                offset.y = static_cast<int64_t>(image.extent.y) - 1 - (iter_value.range.offset.axis[2] * 1 + 0);
+                offset.x = ((iter_value.range.offset.axis[0] + 0) * 1 + 768);
+                offset.y = static_cast<int64_t>(image.extent.y) - ((iter_value.range.offset.axis[2] + 1) * 1 + 0);
                 extent.x = iter_value.range.extent.axis[0] * 1;
                 extent.y = iter_value.range.extent.axis[2] * 1;
 
@@ -322,7 +334,7 @@ auto main() -> int {
                 sample_info.dst = &current_depth;
 
                 HANDLE_RES(gvox_sample(&sample_info), "Failed to sample depth image");
-                auto const &new_depth = iter_value.range.offset.axis[1];
+                auto const &new_depth = -iter_value.range.offset.axis[1];
                 if (new_depth < current_depth) {
                     fill_info.src_data = iter_value.voxel_data;
                     fill_info.src_desc = iter_value.voxel_desc;
@@ -334,6 +346,11 @@ auto main() -> int {
                     fill_info.dst = depth_container;
                     HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
                 }
+
+                // fill_info.src_data = iter_value.voxel_data;
+                // fill_info.src_desc = iter_value.voxel_desc;
+                // fill_info.dst = vdb_container;
+                // HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
 
                 ++voxel_count;
             } break;
@@ -399,6 +416,7 @@ auto main() -> int {
 
     gvox_destroy_input_stream(file_input);
     gvox_destroy_parser(file_parser);
+    // gvox_destroy_container(vdb_container);
     gvox_destroy_container(depth_container);
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(depth_voxel_desc);
