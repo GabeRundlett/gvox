@@ -47,7 +47,7 @@ struct IMPL_STRUCT_NAME(Iterator) {
     void *parent_self{};
     void *self{};
     void (*destroy_iterator)(void *, void *);
-    void (*iterator_next)(void *, void **, GvoxInputStream, GvoxIteratorValue *);
+    void (*iterator_advance)(void *, void **, GvoxIteratorAdvanceInfo const *, GvoxIteratorValue *);
     ~IMPL_STRUCT_NAME(Iterator)() {
         destroy_iterator(parent_self, self);
     }

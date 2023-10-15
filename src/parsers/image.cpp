@@ -123,6 +123,6 @@ auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
         },
         .create_input_iterator = [](void *self_ptr, void **out_iterator_ptr) -> void {},
         .destroy_iterator = [](void *self_ptr, void *iterator_ptr) -> void {},
-        .iterator_next = [](void *self_ptr, void **iterator_ptr, GvoxInputStream input_stream, GvoxIteratorValue *out) -> void {},
+        .iterator_advance = [](void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) -> void {},
     };
 }

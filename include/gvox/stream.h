@@ -9,6 +9,17 @@ GVOX_ENUM(GvoxSeekOrigin){
     GVOX_SEEK_ORIGIN_END,
 };
 
+GVOX_ENUM(GvoxIteratorAdvanceMode){
+    GVOX_ITERATOR_ADVANCE_MODE_NEXT,
+    GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH,
+};
+
+GVOX_STRUCT(GvoxIteratorAdvanceInfo) {
+    // TODO: Figure out if this makes sense
+    GvoxInputStream input_stream;
+    GvoxIteratorAdvanceMode mode;
+};
+
 GVOX_STRUCT(GvoxInputStreamCreateCbArgs) {
     GvoxStructType struct_type;
     void const *next;
@@ -64,7 +75,7 @@ GVOX_STRUCT(GvoxParserDescription) {
 
     void (*create_input_iterator)(void *, void **);
     void (*destroy_iterator)(void *, void *);
-    void (*iterator_next)(void *, void **, GvoxInputStream, GvoxIteratorValue *);
+    void (*iterator_advance)(void *, void **, GvoxIteratorAdvanceInfo const *, GvoxIteratorValue *);
 };
 
 GVOX_STRUCT(GvoxSerializerDescription) {
@@ -160,6 +171,6 @@ GVOX_EXPORT int64_t gvox_output_tell(GvoxOutputStream handle) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_enumerate_standard_parser_descriptions(GvoxParserDescription const **out_descriptions, uint32_t *description_n) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_create_parser_from_input(GvoxParserDescriptionCollection const *parsers, GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB;
 
-GVOX_EXPORT void gvox_iterator_next(GvoxIterator handle, GvoxInputStream input_stream, GvoxIteratorValue *value);
+GVOX_EXPORT void gvox_iterator_advance(GvoxIterator handle, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *value);
 
 #endif

@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <limits>
 #include <new>
+#include <variant>
 #include <vector>
 #include <span>
 #include <algorithm>
@@ -14,25 +15,52 @@
 #include "../utils/tracy.hpp"
 #include "gvox/core.h"
 #include "gvox/format.h"
+#include "gvox/gvox.h"
 #include "magicavoxel.hpp"
 
-struct MagicavoxelParser {
-    MagicavoxelParserConfig config{};
-    GvoxVoxelDesc desc{};
-    std::vector<magicavoxel::TransformKeyframe> transform_keyframes{};
-    magicavoxel::Palette palette = {};
-    magicavoxel::MaterialList materials{};
-    magicavoxel::Scene scene{};
-    std::array<uint8_t, 256> index_map{};
-    bool has_index_map{};
+struct ModelInstance {
+    size_t parent_group_begin_index{};
+    GvoxOffset3D offset{};
+    GvoxExtent3D extent{};
+    uint32_t index{};
+    int8_t rotation{1 << 2};
+};
 
+struct GroupInstanceBegin {
+    size_t parent_group_begin_index{};
+    GvoxOffset3D offset{};
+    GvoxExtent3D extent{};
+    size_t end_index{};
+};
+struct GroupInstanceEnd {
+    size_t parent_group_begin_index{};
+};
+
+using IteratorNode = std::variant<ModelInstance, GroupInstanceBegin, GroupInstanceEnd>;
+
+struct Scene {
+    std::vector<magicavoxel::Model> models{};
+    std::vector<IteratorNode> iterator_nodes{};
+    magicavoxel::Transform transform;
+};
+
+struct MagicavoxelParser {
     struct Iterator {
-        size_t model_index{};
+        size_t iterator_index{};
         size_t voxel_index{std::numeric_limits<size_t>::max()};
         GvoxOffset3D offset{};
         GvoxExtent3D extent{};
         magicavoxel::Color voxel{};
     };
+
+    MagicavoxelParserConfig config{};
+    GvoxVoxelDesc desc{};
+    std::vector<magicavoxel::TransformKeyframe> transform_keyframes{};
+    magicavoxel::Palette palette = {};
+    magicavoxel::MaterialList materials{};
+    Scene scene{};
+    std::array<uint8_t, 256> index_map{};
+    bool has_index_map{};
 
     explicit MagicavoxelParser(MagicavoxelParserConfig const &a_config) : config{a_config} {}
     MagicavoxelParser(MagicavoxelParser const &) = delete;
@@ -44,7 +72,7 @@ struct MagicavoxelParser {
     }
 };
 
-void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p, std::string const &indent = "") {
+void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, size_t parent_group_begin_index, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p) {
     auto const &node_info = scene_info.node_infos[node_index];
     if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
         auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
@@ -54,24 +82,47 @@ void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_in
         new_trn.offset.y += rotated_offset.y;
         new_trn.offset.z += rotated_offset.z;
         new_trn.rotation = magicavoxel::rotate(new_trn.rotation, t_node_info.transform.rotation);
-        // std::cout << indent << "transform\n";
-        construct_scene(scene, scene_info, t_node_info.child_node_id, depth + 1, new_trn, min_p, max_p, indent);
+        construct_scene(scene, scene_info, t_node_info.child_node_id, parent_group_begin_index, new_trn, min_p, max_p);
     } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
         auto const &g_node_info = std::get<magicavoxel::SceneGroupInfo>(node_info);
-        scene.model_instances.reserve(scene.model_instances.size() + g_node_info.num_child_nodes);
-        // std::cout << indent << "{\n";
+        scene.iterator_nodes.reserve(scene.iterator_nodes.size() + g_node_info.num_child_nodes + 2);
+        auto group_begin_index = scene.iterator_nodes.size();
+        scene.iterator_nodes.emplace_back(GroupInstanceBegin{.parent_group_begin_index = parent_group_begin_index});
+        GvoxOffset3D group_min_p{};
+        group_min_p.x = std::numeric_limits<int64_t>::max();
+        group_min_p.y = group_min_p.x;
+        group_min_p.z = group_min_p.x;
+        GvoxOffset3D group_max_p{};
+        group_max_p.x = std::numeric_limits<int64_t>::min();
+        group_max_p.y = group_max_p.x;
+        group_max_p.z = group_max_p.x;
         for (uint32_t child_i = 0; child_i < g_node_info.num_child_nodes; ++child_i) {
             construct_scene(
                 scene, scene_info,
                 scene_info.group_children_ids[g_node_info.first_child_node_id_index + child_i],
-                depth + 1, trn, min_p, max_p, indent + "  ");
+                group_begin_index, trn, group_min_p, group_max_p);
         }
-        // std::cout << indent << "}\n";
+        auto end_index = scene.iterator_nodes.size();
+        scene.iterator_nodes.emplace_back(GroupInstanceEnd{.parent_group_begin_index = group_begin_index});
+        auto &group_begin = std::get<GroupInstanceBegin>(scene.iterator_nodes[group_begin_index]);
+        group_begin.offset = group_min_p;
+        group_begin.extent = GvoxExtent3D{
+            static_cast<uint64_t>(group_max_p.x - group_min_p.x),
+            static_cast<uint64_t>(group_max_p.y - group_min_p.y),
+            static_cast<uint64_t>(group_max_p.z - group_min_p.z),
+        };
+        group_begin.end_index = end_index;
+        std::get<GroupInstanceBegin>(scene.iterator_nodes[group_begin_index]).end_index = end_index;
+        min_p.x = std::min(min_p.x, group_min_p.x);
+        min_p.y = std::min(min_p.y, group_min_p.y);
+        min_p.z = std::min(min_p.z, group_min_p.z);
+        max_p.x = std::max(max_p.x, group_max_p.x);
+        max_p.y = std::max(max_p.y, group_max_p.y);
+        max_p.z = std::max(max_p.z, group_max_p.z);
     } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node_info)) {
-        // std::cout << indent << "model\n";
         auto const &s_node_info = std::get<magicavoxel::SceneShapeInfo>(node_info);
-        scene.model_instances.push_back({});
-        auto &s_current_node = scene.model_instances.back();
+        scene.iterator_nodes.emplace_back(ModelInstance{});
+        auto &s_current_node = std::get<ModelInstance>(scene.iterator_nodes.back());
         s_current_node.rotation = magicavoxel::inverse(trn.rotation);
         s_current_node.index = s_node_info.model_id;
         auto &model = scene.models[s_current_node.index];
@@ -82,132 +133,25 @@ void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_in
                 model.extent[1],
                 model.extent[2],
             });
-        auto extent_offset =
-            GvoxExtent3D{
-                static_cast<uint32_t>((trn.rotation >> 4) & 1),
-                static_cast<uint32_t>((trn.rotation >> 5) & 1),
-                static_cast<uint32_t>((trn.rotation >> 6) & 1),
-            };
+        auto extent_offset = GvoxExtent3D{
+            static_cast<uint32_t>((trn.rotation >> 4) & 1),
+            static_cast<uint32_t>((trn.rotation >> 5) & 1),
+            static_cast<uint32_t>((trn.rotation >> 6) & 1),
+        };
         s_current_node.offset = {
             trn.offset.x - static_cast<int32_t>(extent.x + extent_offset.x) / 2,
             trn.offset.y - static_cast<int32_t>(extent.y + extent_offset.y) / 2,
             trn.offset.z - static_cast<int32_t>(extent.z + extent_offset.z) / 2,
         };
         s_current_node.extent = extent;
-        // s_current_node.aabb_min = {
-        //     trn.offset.x - static_cast<int32_t>(extent.x + extent_offset.x) / 2,
-        //     trn.offset.y - static_cast<int32_t>(extent.y + extent_offset.y) / 2,
-        //     trn.offset.z - static_cast<int32_t>(extent.z + extent_offset.z) / 2,
-        // };
-        // s_current_node.aabb_max = {
-        //     s_current_node.aabb_min.x + static_cast<int32_t>(extent.x),
-        //     s_current_node.aabb_min.y + static_cast<int32_t>(extent.y),
-        //     s_current_node.aabb_min.z + static_cast<int32_t>(extent.z),
-        // };
-        // min_p.x = std::min(min_p.x, s_current_node.aabb_min.x);
-        // min_p.y = std::min(min_p.y, s_current_node.aabb_min.y);
-        // min_p.z = std::min(min_p.z, s_current_node.aabb_min.z);
-        // max_p.x = std::max(max_p.x, s_current_node.aabb_max.x);
-        // max_p.y = std::max(max_p.y, s_current_node.aabb_max.y);
-        // max_p.z = std::max(max_p.z, s_current_node.aabb_max.z);
+        min_p.x = std::min(min_p.x, s_current_node.offset.x);
+        min_p.y = std::min(min_p.y, s_current_node.offset.y);
+        min_p.z = std::min(min_p.z, s_current_node.offset.z);
+        max_p.x = std::max(max_p.x, s_current_node.offset.x + static_cast<int64_t>(s_current_node.extent.x));
+        max_p.y = std::max(max_p.y, s_current_node.offset.y + static_cast<int64_t>(s_current_node.extent.y));
+        max_p.z = std::max(max_p.z, s_current_node.offset.z + static_cast<int64_t>(s_current_node.extent.z));
     }
 }
-
-#if MAGICAVOXEL_ENABLE_BVH
-void calc_bvh_node_range(std::vector<magicavoxel::ModelInstance> const &model_instances, magicavoxel::BvhNode &node) {
-    node.aabb_min = {
-        std::numeric_limits<int32_t>::max(),
-        std::numeric_limits<int32_t>::max(),
-        std::numeric_limits<int32_t>::max(),
-    };
-    node.aabb_max = {
-        std::numeric_limits<int32_t>::min(),
-        std::numeric_limits<int32_t>::min(),
-        std::numeric_limits<int32_t>::min(),
-    };
-    if (auto *node_data = std::get_if<magicavoxel::BvhNode::Range>(&node.data)) {
-        for (uint32_t node_i = 0; node_i < node_data->count; node_i++) {
-            auto const &s_current_node = model_instances[node_data->first + node_i];
-            node.aabb_min.x = std::min(node.aabb_min.x, s_current_node.aabb_min.x);
-            node.aabb_min.y = std::min(node.aabb_min.y, s_current_node.aabb_min.y);
-            node.aabb_min.z = std::min(node.aabb_min.z, s_current_node.aabb_min.z);
-            node.aabb_max.x = std::max(node.aabb_max.x, s_current_node.aabb_max.x);
-            node.aabb_max.y = std::max(node.aabb_max.y, s_current_node.aabb_max.y);
-            node.aabb_max.z = std::max(node.aabb_max.z, s_current_node.aabb_max.z);
-        }
-    }
-}
-
-void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instances, std::vector<magicavoxel::BvhNode> &bvh_nodes, magicavoxel::BvhNode &node) {
-    if (!node.needs_subdivide()) {
-        return;
-    }
-    auto const &node_range = std::get<magicavoxel::BvhNode::Range>(node.data);
-    GvoxOffset3D const extent = {
-        node.aabb_max.x - node.aabb_min.x,
-        node.aabb_max.y - node.aabb_min.y,
-        node.aabb_max.z - node.aabb_min.z,
-    };
-    int32_t axis = 0;
-    int64_t split_p = 0;
-    if (extent.y > extent.x) {
-        if (extent.z > extent.y) {
-            axis = 2;
-        } else {
-            axis = 1;
-        }
-    } else {
-        if (extent.z > extent.x) {
-            axis = 2;
-        } else {
-            axis = 0;
-        }
-    }
-    switch (axis) {
-    default:
-    case 0: split_p = node.aabb_min.x + static_cast<int64_t>(extent.x / 2); break;
-    case 1: split_p = node.aabb_min.y + static_cast<int64_t>(extent.y / 2); break;
-    case 2: split_p = node.aabb_min.z + static_cast<int64_t>(extent.z / 2); break;
-    }
-    using IterDiff = std::vector<magicavoxel::ModelInstance>::difference_type;
-    auto first_iter = model_instances.begin() + static_cast<IterDiff>(node_range.first);
-    auto split_iter = std::partition(
-        first_iter,
-        first_iter + static_cast<IterDiff>(node_range.count),
-        [axis, split_p](auto const &i) -> bool {
-            switch (axis) {
-            default:
-            case 0: return std::midpoint(i.aabb_min.x, i.aabb_max.x) < split_p;
-            case 1: return std::midpoint(i.aabb_min.y, i.aabb_max.y) < split_p;
-            case 2: return std::midpoint(i.aabb_min.z, i.aabb_max.z) < split_p;
-            }
-        });
-    auto a_count = static_cast<uint32_t>(std::distance(first_iter, split_iter));
-    if (a_count == 0 || a_count == node_range.count) {
-        return;
-    }
-    auto insert_offset = bvh_nodes.size();
-    bvh_nodes.push_back({});
-    bvh_nodes.push_back({});
-    auto &node_a = bvh_nodes[insert_offset + 0];
-    auto &node_b = bvh_nodes[insert_offset + 1];
-    node_a.data = magicavoxel::BvhNode::Range{.first = node_range.first, .count = a_count};
-    node_b.data = magicavoxel::BvhNode::Range{.first = node_range.first + a_count, .count = node_range.count - a_count};
-    node.data = magicavoxel::BvhNode::Children{.offset = static_cast<uint32_t>(insert_offset)};
-    calc_bvh_node_range(model_instances, node_a);
-    calc_bvh_node_range(model_instances, node_b);
-    subdivide_scene_bvh(model_instances, bvh_nodes, node_a);
-    subdivide_scene_bvh(model_instances, bvh_nodes, node_b);
-}
-
-void construct_scene_bvh(magicavoxel::Scene &scene) {
-    scene.bvh_nodes.reserve(scene.model_instances.size() * 2 - 1);
-    uint32_t const root_node_i = 0;
-    auto &root = scene.bvh_nodes[root_node_i];
-    root.data = magicavoxel::BvhNode::Range{0, static_cast<uint32_t>(scene.model_instances.size())};
-    subdivide_scene_bvh(scene.model_instances, scene.bvh_nodes, root);
-}
-#endif
 
 auto operator<<(std::ostream &out, magicavoxel::Model const &m) -> std::ostream & {
     out << "extent = {" << m.extent[0] << ", " << m.extent[1] << ", " << m.extent[2] << "}\n";
@@ -227,7 +171,6 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             }
             auto &self = *(new (std::nothrow) MagicavoxelParser(config));
             *out_self = &self;
-
             auto const attribs = std::array{
                 GvoxAttribute{
                     .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
@@ -247,26 +190,20 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 delete &self;
                 return res;
             }
-
             // Load Magicavoxel skeleton
-
             {
                 auto header = magicavoxel::Header{};
                 gvox_input_read(args->input_stream, &header, sizeof(header));
-
                 if (header.file_header != magicavoxel::CHUNK_ID_VOX_ ||
                     (header.file_version != 150 && header.file_version != 200)) {
                     delete &self;
                     return GVOX_ERROR_UNPARSABLE_INPUT;
                 }
             }
-
             auto main_chunk_header = magicavoxel::ChunkHeader{};
             gvox_input_read(args->input_stream, &main_chunk_header, sizeof(main_chunk_header));
-
             auto stream_end = static_cast<int64_t>(gvox_input_tell(args->input_stream) + main_chunk_header.child_size);
             // std::cout << "end: " << stream_end << std::endl;
-
             auto &models = self.scene.models;
             auto &palette = self.palette;
             auto &transform_keyframes = self.transform_keyframes;
@@ -274,9 +211,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             magicavoxel::SceneInfo scene_info{};
             std::vector<magicavoxel::ModelKeyframe> shape_keyframes{};
             std::vector<magicavoxel::Layer> layers{};
-
             auto temp_dict = magicavoxel::Dictionary{};
-
             while (true) {
                 auto curr = gvox_input_tell(args->input_stream);
                 if (curr >= stream_end) {
@@ -561,7 +496,6 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 } break;
                 }
             }
-
             if (scene_info.node_infos.empty()) {
                 for (size_t model_i = 0; model_i < models.size(); ++model_i) {
                     scene_info.node_infos.emplace_back(magicavoxel::SceneShapeInfo{
@@ -572,122 +506,142 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     });
                 }
             }
-
             if (!scene_info.node_infos.empty()) {
-#if MAGICAVOXEL_ENABLE_BVH
-                self.scene.bvh_nodes.push_back({});
-                auto &root_node = self.scene.bvh_nodes[0];
-                root_node.aabb_min = {
-                    std::numeric_limits<int32_t>::max(),
-                    std::numeric_limits<int32_t>::max(),
-                    std::numeric_limits<int32_t>::max(),
-                };
-                root_node.aabb_max = {
-                    std::numeric_limits<int32_t>::min(),
-                    std::numeric_limits<int32_t>::min(),
-                    std::numeric_limits<int32_t>::min(),
-                };
-                GvoxOffset3D &aabb_min = root_node.aabb_min;
-                GvoxOffset3D &aabb_max = root_node.aabb_max;
-#else
-                GvoxOffset3D aabb_min{};
-                GvoxOffset3D aabb_max{};
-#endif
-                construct_scene(self.scene, scene_info, 0, 0, {}, aabb_min, aabb_max);
-#if MAGICAVOXEL_ENABLE_BVH
-                construct_scene_bvh(self.scene);
-#endif
+                GvoxOffset3D min_p{};
+                min_p.x = std::numeric_limits<int64_t>::max();
+                min_p.y = min_p.x;
+                min_p.z = min_p.x;
+                GvoxOffset3D max_p{};
+                max_p.x = std::numeric_limits<int64_t>::min();
+                max_p.y = max_p.x;
+                max_p.z = max_p.x;
+                construct_scene(self.scene, scene_info, 0, 0, {}, min_p, max_p);
             } else {
                 // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER, "Somehow there were no scene nodes parsed from this model. Please let us know in the gvox GitHub issues what to do to reproduce this bug");
                 return GVOX_ERROR_UNKNOWN;
             }
-
             return GVOX_SUCCESS;
         },
         .destroy = [](void *self) { delete static_cast<MagicavoxelParser *>(self); },
         .create_from_input = [](GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
             auto header = magicavoxel::Header{};
             gvox_input_read(input_stream, &header, sizeof(header));
-
             if (header.file_header != magicavoxel::CHUNK_ID_VOX_ || (header.file_version != 150 && header.file_version != 200)) {
                 return GVOX_ERROR_UNPARSABLE_INPUT;
             }
-
             auto parser_ci = GvoxParserCreateInfo{};
             parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
             parser_ci.next = nullptr;
             parser_ci.cb_args.config = nullptr;
             parser_ci.cb_args.input_stream = input_stream;
             parser_ci.description = gvox_parser_magicavoxel_description();
-
             gvox_input_seek(input_stream, -static_cast<int64_t>(sizeof(header)), GVOX_SEEK_ORIGIN_CUR);
             return gvox_create_parser(&parser_ci, user_parser);
         },
-        .create_input_iterator = [](void *self_ptr, void **out_iterator_ptr) -> void {
+        .create_input_iterator = [](void * /*self_ptr*/, void **out_iterator_ptr) -> void {
             *out_iterator_ptr = new (std::nothrow) MagicavoxelParser::Iterator();
         },
-        .destroy_iterator = [](void *self_ptr, void *iterator_ptr) -> void {
-        },
-        .iterator_next = [](void *self_ptr, void **iterator_ptr, GvoxInputStream input_stream, GvoxIteratorValue *out) -> void {
+        .destroy_iterator = [](void * /*self_ptr*/, void *iterator_ptr) -> void { delete static_cast<MagicavoxelParser::Iterator *>(iterator_ptr); },
+        .iterator_advance = [](void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) -> void {
             auto &self = *static_cast<MagicavoxelParser *>(self_ptr);
             auto &iter = *static_cast<MagicavoxelParser::Iterator *>(*iterator_ptr);
-
-            if (iter.model_index >= self.scene.model_instances.size()) {
-                out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
-                return;
-            }
-
-            auto &model_instance = self.scene.model_instances[iter.model_index];
-            auto &model = self.scene.models[model_instance.index];
-
-            if (iter.voxel_index == std::numeric_limits<size_t>::max()) {
-                // Enter node
-                iter.offset = model_instance.offset;
-                iter.extent = model_instance.extent;
-                out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
-                out->range = GvoxRange{
-                    .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                    .extent = {.axis_n = 3, .axis = &iter.extent.x},
-                };
-                iter.voxel_index = 0;
-                return;
-            }
-
-            if (iter.voxel_index >= model.voxel_count) {
-                // Exit node
-                iter.offset = model_instance.offset;
-                iter.extent = model_instance.extent;
-                iter.voxel_index = std::numeric_limits<size_t>::max();
-                out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
-                out->range = GvoxRange{
-                    .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                    .extent = {.axis_n = 3, .axis = &iter.extent.x},
-                };
-                ++iter.model_index;
-                return;
-            }
-
-            {
-                // Next voxel
-                auto voxel = std::array<uint8_t, 4>{};
-                gvox_input_seek(input_stream, model.input_offset + static_cast<int64_t>(iter.voxel_index * sizeof(voxel)), GVOX_SEEK_ORIGIN_BEG);
-                gvox_input_read(input_stream, &voxel, sizeof(voxel));
-
-                auto offset = magicavoxel::rotate(model_instance.rotation, GvoxExtent3D{static_cast<uint64_t>(voxel[0]), static_cast<uint64_t>(voxel[1]), static_cast<uint64_t>(voxel[2])}, model_instance.extent);
-                iter.offset.x = offset.x + model_instance.offset.x;
-                iter.offset.y = offset.y + model_instance.offset.y;
-                iter.offset.z = offset.z + model_instance.offset.z;
-                iter.extent = GvoxExtent3D{1, 1, 1};
-                iter.voxel = self.palette[voxel[3] - 1];
-                std::swap(iter.voxel.r, iter.voxel.b);
-                out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
-                out->range = GvoxRange{
-                    .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                    .extent = {.axis_n = 3, .axis = &iter.extent.x},
-                };
-                out->voxel_data = static_cast<void *>(&iter.voxel);
-                out->voxel_desc = self.desc;
-                ++iter.voxel_index;
+            auto mode = info->mode;
+            while (true) {
+                if (iter.iterator_index >= self.scene.iterator_nodes.size()) {
+                    out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
+                    return;
+                }
+                auto &node = self.scene.iterator_nodes[iter.iterator_index];
+                if (std::holds_alternative<ModelInstance>(node)) {
+                    auto &model_instance = std::get<ModelInstance>(node);
+                    auto &model = self.scene.models[model_instance.index];
+                    if (iter.voxel_index == std::numeric_limits<size_t>::max()) {
+                        if (info->mode == GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH) {
+                            auto &parent_group_begin = std::get<GroupInstanceBegin>(self.scene.iterator_nodes[model_instance.parent_group_begin_index]);
+                            iter.iterator_index = parent_group_begin.end_index;
+                            mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                            continue;
+                        } else {
+                            // Enter node
+                            iter.offset = model_instance.offset;
+                            iter.extent = model_instance.extent;
+                            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
+                            out->range = GvoxRange{
+                                .offset = {.axis_n = 3, .axis = &iter.offset.x},
+                                .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                            };
+                            iter.voxel_index = 0;
+                            return;
+                        }
+                    }
+                    if (iter.voxel_index >= model.voxel_count || info->mode == GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH) {
+                        // Exit node
+                        iter.offset = model_instance.offset;
+                        iter.extent = model_instance.extent;
+                        iter.voxel_index = std::numeric_limits<size_t>::max();
+                        out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
+                        out->range = GvoxRange{
+                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
+                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                        };
+                        ++iter.iterator_index;
+                        return;
+                    }
+                    {
+                        // Next voxel
+                        auto voxel = std::array<uint8_t, 4>{};
+                        gvox_input_seek(info->input_stream, model.input_offset + static_cast<int64_t>(iter.voxel_index * sizeof(voxel)), GVOX_SEEK_ORIGIN_BEG);
+                        gvox_input_read(info->input_stream, &voxel, sizeof(voxel));
+                        auto offset = magicavoxel::rotate(model_instance.rotation, GvoxExtent3D{static_cast<uint64_t>(voxel[0]), static_cast<uint64_t>(voxel[1]), static_cast<uint64_t>(voxel[2])}, model_instance.extent);
+                        iter.offset.x = static_cast<int64_t>(offset.x) + model_instance.offset.x;
+                        iter.offset.y = static_cast<int64_t>(offset.y) + model_instance.offset.y;
+                        iter.offset.z = static_cast<int64_t>(offset.z) + model_instance.offset.z;
+                        iter.extent = GvoxExtent3D{1, 1, 1};
+                        iter.voxel = self.palette[voxel[3] - 1];
+                        std::swap(iter.voxel.r, iter.voxel.b);
+                        out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
+                        out->range = GvoxRange{
+                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
+                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                        };
+                        out->voxel_data = static_cast<void *>(&iter.voxel);
+                        out->voxel_desc = self.desc;
+                        ++iter.voxel_index;
+                        return;
+                    }
+                } else if (std::holds_alternative<GroupInstanceBegin>(node)) {
+                    // Enter node
+                    auto &group_begin = std::get<GroupInstanceBegin>(node);
+                    if (info->mode == GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH) {
+                        auto &parent_group_begin = std::get<GroupInstanceBegin>(self.scene.iterator_nodes[group_begin.parent_group_begin_index]);
+                        iter.iterator_index = parent_group_begin.end_index;
+                        mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                        continue;
+                    } else {
+                        iter.offset = group_begin.offset;
+                        iter.extent = group_begin.extent;
+                        out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
+                        out->range = GvoxRange{
+                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
+                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                        };
+                        ++iter.iterator_index;
+                        return;
+                    }
+                } else if (std::holds_alternative<GroupInstanceEnd>(node)) {
+                    // Exit node
+                    auto &group_end = std::get<GroupInstanceEnd>(node);
+                    auto &group_begin = std::get<GroupInstanceBegin>(self.scene.iterator_nodes[group_end.parent_group_begin_index]);
+                    iter.offset = group_begin.offset;
+                    iter.extent = group_begin.extent;
+                    out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
+                    out->range = GvoxRange{
+                        .offset = {.axis_n = 3, .axis = &iter.offset.x},
+                        .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                    };
+                    ++iter.iterator_index;
+                    return;
+                }
             }
         },
     };

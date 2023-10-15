@@ -56,11 +56,11 @@ auto gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
 
 namespace float_conv {
     constexpr auto from_unorm(uint32_t bit_n, uint32_t data) -> float {
-        uint32_t mask = (1 << bit_n) - 1;
+        uint32_t const mask = (1 << bit_n) - 1;
         return static_cast<float>(data & mask) / static_cast<float>(mask);
     }
     constexpr auto to_unorm(uint32_t bit_n, float data) -> uint32_t {
-        uint32_t mask = (1 << bit_n) - 1;
+        uint32_t const mask = (1 << bit_n) - 1;
         return static_cast<uint32_t>(data * static_cast<float>(mask)) & mask;
     }
 
@@ -157,21 +157,28 @@ auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *ds
     //     return GVOX_ERROR_INVALID_ARGUMENT;
     // }
 
-    auto temp_out_data0 = std::array<uint8_t, 16>{};
-    auto const *begin = static_cast<uint8_t const *>(src_data) + src_attrib_offset;
-    auto const *end = begin + 4;
+    GvoxResult res = GVOX_ERROR_UNKNOWN;
 
-    std::copy(begin, end, temp_out_data0.data());
-
-    if (dst_desc->attributes.size() == 1) {
-        return convert_formats(
-            temp_out_data0.data(), src_desc->attributes.at(src_attrib_i).format_desc,
-            dst_data, dst_desc->attributes.at(dst_attrib_i).format_desc);
+    for (auto const &dst_attrib : dst_desc->attributes) {
+        // TODO: get src_attrib_offset from either input or find best?
+        if (src_attrib_offset == 0) {
+            res = convert_formats(
+                src_data, src_desc->attributes.at(src_attrib_i).format_desc,
+                dst_data, dst_desc->attributes.at(dst_attrib_i).format_desc);
+            if (res != GVOX_SUCCESS) {
+                break;
+            }
+        } else {
+            // auto temp_out_data0 = std::array<uint8_t, 16>{};
+            // auto const *begin = static_cast<uint8_t const *>(src_data) + src_attrib_offset;
+            // auto const *end = begin + 4;
+            // std::copy(begin, end, temp_out_data0.data());
+            // auto temp_out_data1 = std::array<uint8_t, 16>{};
+            break;
+        }
     }
 
-    // auto temp_out_data1 = std::array<uint8_t, 16>{};
-
-    return GVOX_ERROR_UNKNOWN;
+    return res;
 }
 
 auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {

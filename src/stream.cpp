@@ -21,7 +21,7 @@
 auto gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle) GVOX_FUNC_ATTRIB->GvoxResult {
     HANDLE_CREATE(InputStream, INPUT_STREAM)
 
-    if (!info->stream_chain) {
+    if (info->stream_chain == nullptr) {
         return GVOX_SUCCESS;
     }
 
@@ -47,7 +47,7 @@ auto gvox_create_iterator(GvoxIteratorCreateInfo const *info, GvoxIterator *hand
     HANDLE_NEW(Iterator, ITERATOR)
 
     (*handle)->destroy_iterator = info->parser->desc.destroy_iterator;
-    (*handle)->iterator_next = info->parser->desc.iterator_next;
+    (*handle)->iterator_advance = info->parser->desc.iterator_advance;
     (*handle)->parent_self = info->parser->self;
 
     info->parser->desc.create_input_iterator((*handle)->parent_self, &(*handle)->self);
@@ -128,6 +128,6 @@ auto gvox_create_parser_from_input(GvoxParserDescriptionCollection const *parser
     return GVOX_ERROR_UNKNOWN_STANDARD_PARSER;
 }
 
-void gvox_iterator_next(GvoxIterator handle, GvoxInputStream input_stream, GvoxIteratorValue *value) {
-    handle->iterator_next(handle->parent_self, &handle->self, input_stream, value);
+void gvox_iterator_advance(GvoxIterator handle, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *value) {
+    handle->iterator_advance(handle->parent_self, &handle->self, info, value);
 }

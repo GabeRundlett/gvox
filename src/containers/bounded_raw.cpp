@@ -59,7 +59,7 @@ void gvox_container_raw_create_input_iterator(void *self_ptr, void **out_iterato
     (*out_iterator_ptr) = &iter;
 }
 
-void gvox_container_raw_iterator_next(void *self_ptr, void *iterator_ptr, GvoxIteratorValue *out) {
+void gvox_container_raw_iterator_advance(void *self_ptr, void *iterator_ptr, GvoxIteratorValue *out) {
     auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
     auto &iter_self = *static_cast<GvoxBoundedRawContainer::Iterator *>(iterator_ptr);
     if (iter_self.index == ~uint64_t{0}) {
@@ -103,7 +103,7 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
 
             // convert src data to be compatible with the dst_voxel_desc
-            auto *converted_data = static_cast<void const *>(nullptr);
+            const auto *converted_data = static_cast<void const *>(nullptr);
             // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
             if (gvox_voxel_desc_compare(src_voxel_desc, self.voxel_desc) != 0) {
                 converted_data = single_voxel_data;
@@ -130,7 +130,7 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
                 }
             }
 
-            Voxel in_voxel = {
+            Voxel const in_voxel = {
                 .ptr = static_cast<uint8_t const *>(converted_data),
                 .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
             };

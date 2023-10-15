@@ -179,7 +179,7 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
             auto &self = *static_cast<GvoxRawContainer *>(self_ptr);
 
             // convert src data to be compatible with the dst_voxel_desc
-            auto *converted_data = static_cast<void const *>(nullptr);
+            const auto *converted_data = static_cast<void const *>(nullptr);
             // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
             auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
                 return desc_a == desc_b;
@@ -205,7 +205,7 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
                 }
             }
 
-            Voxel in_voxel = {
+            Voxel const in_voxel = {
                 .ptr = static_cast<uint8_t const *>(converted_data),
                 .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
             };

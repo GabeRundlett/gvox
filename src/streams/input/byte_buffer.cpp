@@ -12,7 +12,7 @@ struct GvoxByteBufferInputStream {
 
     auto read(void *data, size_t size) -> GvoxResult;
     auto seek(int64_t offset, GvoxSeekOrigin origin) -> GvoxResult;
-    auto tell() -> int64_t;
+    [[nodiscard]] auto tell() const -> int64_t;
 };
 
 GvoxByteBufferInputStream::GvoxByteBufferInputStream(GvoxByteBufferInputStreamConfig const &config) {
@@ -40,7 +40,7 @@ auto GvoxByteBufferInputStream::seek(int64_t offset, GvoxSeekOrigin origin) -> G
     return GVOX_SUCCESS;
 }
 
-auto GvoxByteBufferInputStream::tell() -> int64_t {
+auto GvoxByteBufferInputStream::tell() const -> int64_t {
     return current_read_head;
 }
 

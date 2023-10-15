@@ -19,7 +19,7 @@ struct GzipInputStream {
     auto make_prepared(GvoxInputStream next_handle) -> GvoxResult;
 };
 
-GzipInputStream::GzipInputStream(GzipInputStreamConfig const &) {
+GzipInputStream::GzipInputStream(GzipInputStreamConfig const & /*unused*/) {
 }
 
 auto GzipInputStream::read(GvoxInputStream next_handle, void *data, size_t size) -> GvoxResult {

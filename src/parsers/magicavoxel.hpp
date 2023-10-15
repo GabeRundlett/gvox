@@ -7,8 +7,6 @@
 #include <string>
 #include <variant>
 
-#define MAGICAVOXEL_ENABLE_BVH 0
-
 #include <cstdlib>
 #include <cstring>
 
@@ -145,56 +143,6 @@ namespace magicavoxel {
     struct ModelKeyframe {
         uint32_t frame_index;
         uint32_t model_index;
-    };
-
-    struct ModelInstance {
-        int8_t rotation{1 << 2};
-
-#if MAGICAVOXEL_ENABLE_BVH
-        GvoxOffset3D aabb_min{};
-        GvoxOffset3D aabb_max{};
-#else
-        GvoxOffset3D offset{};
-        GvoxExtent3D extent{};
-#endif
-
-        uint32_t index{};
-    };
-
-#if MAGICAVOXEL_ENABLE_BVH
-    struct BvhNode {
-        struct Children {
-            uint32_t offset;
-        };
-        struct Range {
-            uint32_t first;
-            uint32_t count;
-        };
-        GvoxOffset3D aabb_min;
-        GvoxOffset3D aabb_max;
-        std::variant<Children, Range> data;
-        [[nodiscard]] auto is_leaf() const -> bool {
-            return std::holds_alternative<Range>(data);
-        }
-        [[nodiscard]] auto needs_subdivide() const -> bool {
-            if (std::holds_alternative<Children>(data)) {
-                return true;
-            }
-            auto const &range = std::get<Range>(data);
-            return range.count > 2;
-        }
-    };
-#endif
-
-    struct Scene {
-        std::vector<Model> models{};
-        std::vector<ModelInstance> model_instances{};
-
-        Transform transform;
-
-#if MAGICAVOXEL_ENABLE_BVH
-        std::vector<BvhNode> bvh_nodes;
-#endif
     };
 
     static constexpr uint32_t MAX_DICT_SIZE = 4096;

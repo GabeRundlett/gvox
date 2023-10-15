@@ -10,6 +10,7 @@
 #include <new>
 
 #include <openvdb/openvdb.h>
+#include <openvdb/tools/LevelSetUtil.h>
 #include <openvdb/io/Stream.h>
 
 struct OpenVDBContainer {
@@ -73,8 +74,20 @@ auto gvox_container_openvdb_description() GVOX_FUNC_ATTRIB->GvoxContainerDescrip
             }
 
             auto uint_data = *static_cast<uint32_t const *>(converted_data);
-            auto min_coord = openvdb::Coord(range.offset.axis[0], range.offset.axis[1], range.offset.axis[2]);
-            auto max_coord = openvdb::Coord(range.offset.axis[0] + range.extent.axis[0], range.offset.axis[1] + range.extent.axis[1], range.offset.axis[2] + range.extent.axis[2]);
+            auto min_coord = openvdb::Coord(0, 0, 0);
+            auto max_coord = openvdb::Coord(1, 1, 1);
+
+            auto dim = std::min<uint32_t>(range.extent.axis_n, 3);
+
+            // uint64_t total_voxel_i = 1;
+            for (uint32_t i = 0; i < dim; ++i) {
+                auto offset_i = static_cast<int32_t>(range.offset.axis[i]);
+                auto extent_i = static_cast<int32_t>(range.extent.axis[i]);
+                // total_voxel_i *= range.extent.axis[i];
+                min_coord.asPointer()[i] = offset_i;
+                max_coord.asPointer()[i] = offset_i + extent_i;
+            }
+
             auto iter_coord = min_coord;
 
             // TODO: Investigate whether this access pattern is bad for openvdb

@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+#define CRT_SECURE_NO_WARNINGS
 
 #include "gvox/core.h"
 #include <gvox/stream.h>
