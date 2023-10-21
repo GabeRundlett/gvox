@@ -102,6 +102,13 @@ GVOX_CREATE_SAMPLE(
 )
 
 GVOX_CREATE_SAMPLE(
+    FOLDER validation
+    FILE main
+    LANG cpp
+    LIBS
+)
+
+GVOX_CREATE_SAMPLE(
     FOLDER viewer
     FILE main
     LANG cpp

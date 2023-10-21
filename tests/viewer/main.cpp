@@ -1,4 +1,3 @@
-#include "gvox/core.h"
 #include <gvox/stream.h>
 #include <gvox/format.h>
 #include <gvox/gvox.h>
