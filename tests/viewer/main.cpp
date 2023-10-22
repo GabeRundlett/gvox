@@ -114,8 +114,14 @@ auto main() -> int {
             GvoxAttribute{
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                .format = GVOX_STANDARD_FORMAT_B8G8R8_SRGB,
+            },
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
             },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -134,7 +140,7 @@ auto main() -> int {
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
                 .type = GVOX_ATTRIBUTE_TYPE_UNKNOWN,
-                .format = GVOX_FORMAT_R16_UINT,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, 16),
             },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -245,7 +251,7 @@ auto main() -> int {
             auto file = std::ifstream{"assets/nuke.vox", std::ios::binary};
             auto size = std::filesystem::file_size("assets/nuke.vox");
             auto bytes = std::vector<uint8_t>(size);
-            file.read(reinterpret_cast<char *>(bytes.data()), size);
+            file.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(size));
             auto config = GvoxByteBufferInputStreamConfig{.data = bytes.data(), .size = bytes.size()};
             auto input_ci = GvoxInputStreamCreateInfo{};
             input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;

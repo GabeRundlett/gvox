@@ -1,7 +1,7 @@
 #pragma once
 
-#include <gvox/format.h>
-#include <gvox/stream.h>
+#include "gvox/format.h"
+#include <gvox/gvox.h>
 #include <vector>
 
 #define IMPL_STRUCT_NAME(Name) Gvox##Name##_ImplT
@@ -63,15 +63,27 @@ struct IMPL_STRUCT_NAME(Iterator) {
 
 // Format
 
-struct FormatDescriptor {
-    uint32_t encoding : 10;
-    uint32_t component_count : 2;
-    uint32_t c0_bit_count : 5;
-    uint32_t c1_bit_count : 5;
-    uint32_t c2_bit_count : 5;
-    uint32_t c3_bit_count : 5;
-    uint32_t _pad : 32;
+union FormatDescriptor {
+    struct PackedMultiChannel {
+        uint32_t _encoding : 10;
+        uint32_t component_count : 2;
+        uint32_t swizzle_mode : 1;
+        uint32_t d0_bit_count : 6;
+        uint32_t d1_bit_count : 6;
+        uint32_t d2_bit_count : 6;
+        uint32_t _pad1 : 1;
+    };
+    struct SingleChannel {
+        uint32_t _encoding : 10;
+        uint32_t bit_count : 6;
+    };
+
+    GvoxFormatEncoding encoding;
+    PackedMultiChannel packed;
+    SingleChannel single;
 };
+
+static_assert(sizeof(FormatDescriptor) == sizeof(GvoxFormat));
 
 struct Attribute {
     uint32_t bit_count{};

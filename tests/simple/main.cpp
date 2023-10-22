@@ -23,14 +23,14 @@ auto main() -> int {
             GvoxAttribute{
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
             },
             // GvoxAttribute{
             //     .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
             //     .next = nullptr,
             //     .type = GVOX_ATTRIBUTE_TYPE_NORMAL,
-            //     .format = GVOX_FORMAT_R12G12B12_OCT_UNIT,
+            //     .format = GVOX_STANDARD_FORMAT_R12G12B12_OCT_UNIT,
             // },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -48,8 +48,8 @@ auto main() -> int {
             GvoxAttribute{
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
             },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{

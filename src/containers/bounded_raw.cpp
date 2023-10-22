@@ -105,10 +105,19 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             // convert src data to be compatible with the dst_voxel_desc
             const auto *converted_data = static_cast<void const *>(nullptr);
             // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
+            auto converted_temp_storage = std::vector<uint8_t>{};
+            auto self_voxel_size = (gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3;
             if (gvox_voxel_desc_compare(src_voxel_desc, self.voxel_desc) != 0) {
                 converted_data = single_voxel_data;
             } else {
-                // converted_data = convert_data(converted_data_stack);
+                converted_temp_storage.resize(self_voxel_size);
+                // TODO: create standard mapping?
+                auto mapping = GvoxAttributeMapping{.dst_index = 0, .src_index = 0};
+                auto res = gvox_translate_voxel(single_voxel_data, src_voxel_desc, converted_temp_storage.data(), self.voxel_desc, &mapping, 1);
+                if (res != GVOX_SUCCESS) {
+                    return res;
+                }
+                converted_data = converted_temp_storage.data();
             }
 
             if (range.offset.axis_n < range.extent.axis_n) {
@@ -132,7 +141,7 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
 
             Voxel const in_voxel = {
                 .ptr = static_cast<uint8_t const *>(converted_data),
-                .size = static_cast<uint32_t>((gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3),
+                .size = static_cast<uint32_t>(self_voxel_size),
             };
 
             auto &offset_buffer = self.pre_alloc_offset_buffer;
@@ -198,7 +207,10 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             }
 
             auto *data = static_cast<uint8_t *>(self.pre_allocated_buffer);
-            return gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc);
+            // TODO: Actually fix this
+            auto mapping = GvoxAttributeMapping{.dst_index = 0, .src_index = 0};
+            auto res = gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc, &mapping, 1);
+            return res;
         },
     };
 }

@@ -175,8 +175,8 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                 GvoxAttribute{
                     .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                     .next = nullptr,
-                    .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                    .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                    .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                    .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
                 },
             };
             auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -598,7 +598,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         iter.offset.z = static_cast<int64_t>(offset.z) + model_instance.offset.z;
                         iter.extent = GvoxExtent3D{1, 1, 1};
                         iter.voxel = self.palette[voxel[3] - 1];
-                        std::swap(iter.voxel.r, iter.voxel.b);
+                        // std::swap(iter.voxel.r, iter.voxel.b);
                         out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
                         out->range = GvoxRange{
                             .offset = {.axis_n = 3, .axis = &iter.offset.x},

@@ -2,15 +2,12 @@
 
 #include <vector>
 #include <array>
-#include <cmath>
 #include <bit>
 
 #include "gvox/core.h"
 #include "gvox/format.h"
 #include "types.hpp"
 #include "utils/handle.hpp"
-
-#include <gcem.hpp>
 
 struct GvoxChainStruct {
     GvoxStructType struct_type;
@@ -54,133 +51,6 @@ auto gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     return GVOX_ERROR_UNKNOWN;
 }
 
-namespace float_conv {
-    constexpr auto from_unorm(uint32_t bit_n, uint32_t data) -> float {
-        uint32_t const mask = (1 << bit_n) - 1;
-        return static_cast<float>(data & mask) / static_cast<float>(mask);
-    }
-    constexpr auto to_unorm(uint32_t bit_n, float data) -> uint32_t {
-        uint32_t const mask = (1 << bit_n) - 1;
-        return static_cast<uint32_t>(data * static_cast<float>(mask)) & mask;
-    }
-
-    constexpr auto from_snorm(uint32_t bit_n, uint32_t data) -> float {
-        return from_unorm(bit_n, data) * 2.0f - 1.0f;
-    }
-    constexpr auto to_snorm(uint32_t bit_n, float data) -> uint32_t {
-        return to_unorm(bit_n, data * 0.5f + 0.5f);
-    }
-
-    constexpr auto from_srgb(uint32_t bit_n, uint32_t data) -> float {
-        if (std::is_constant_evaluated()) {
-            return gcem::pow(from_unorm(bit_n, data), 2.2f);
-        } else {
-            return std::pow(from_unorm(bit_n, data), 2.2f);
-        }
-    }
-    constexpr auto to_srgb(uint32_t bit_n, float data) -> uint32_t {
-        if (std::is_constant_evaluated()) {
-            return to_unorm(bit_n, gcem::pow(data, 2.2f));
-        } else {
-            return to_unorm(bit_n, std::pow(data, 2.2f));
-        }
-    }
-} // namespace float_conv
-
-namespace {
-    auto convert_formats(void const *src_data, FormatDescriptor src_format, void *dst_data, FormatDescriptor dst_format) -> GvoxResult {
-        if (src_format.component_count != dst_format.component_count) {
-            return GVOX_ERROR_INVALID_ARGUMENT;
-        }
-
-        if (std::bit_cast<uint64_t>(src_format) == std::bit_cast<uint64_t>(dst_format)) {
-            auto size = static_cast<size_t>(src_format.c0_bit_count + src_format.c1_bit_count + src_format.c2_bit_count + src_format.c3_bit_count + 7) / 8;
-            std::memcpy(dst_data, src_data, size);
-            return GVOX_SUCCESS;
-        }
-
-        return GVOX_ERROR_UNKNOWN;
-
-        // TODO: Finish impl
-        // auto component_count = src_format.component_count + 1;
-        // auto component_src_bit_counts = std::array<uint32_t, 4>{
-        //     src_format.c0_bit_count,
-        //     src_format.c1_bit_count,
-        //     src_format.c2_bit_count,
-        //     src_format.c3_bit_count,
-        // };
-        // auto component_dst_bit_counts = std::array<uint32_t, 4>{
-        //     src_format.c0_bit_count,
-        //     src_format.c1_bit_count,
-        //     src_format.c2_bit_count,
-        //     src_format.c3_bit_count,
-        // };
-        // auto current_src_bit_offset = uint32_t{0};
-        // auto current_dst_bit_offset = uint32_t{0};
-        // for (uint32_t i = 0; i < component_count; ++i) {
-        //     uint32_t component_data{};
-        //     // read in component data
-        //     uint32_t src_component_data{};
-        //     switch (src_format.encoding) {
-        //     case GVOX_FORMAT_ENCODING_UNORM: component_data = std::bit_cast<uint32_t>(float_conv::from_unorm(component_src_bit_counts.at(i), src_component_data)); break;
-        //     case GVOX_FORMAT_ENCODING_SNORM: component_data = std::bit_cast<uint32_t>(float_conv::from_snorm(component_src_bit_counts.at(i), src_component_data)); break;
-        //     case GVOX_FORMAT_ENCODING_SRGB: component_data = std::bit_cast<uint32_t>(float_conv::from_srgb(component_src_bit_counts.at(i), src_component_data)); break;
-        //     default: return GVOX_ERROR_INVALID_ARGUMENT;
-        //     }
-        //     uint32_t dst_component_data{};
-        //     switch (dst_format.encoding) {
-        //     case GVOX_FORMAT_ENCODING_UNORM: dst_component_data = float_conv::to_unorm(component_dst_bit_counts.at(i), std::bit_cast<float>(component_data)); break;
-        //     case GVOX_FORMAT_ENCODING_SNORM: dst_component_data = float_conv::to_snorm(component_dst_bit_counts.at(i), std::bit_cast<float>(component_data)); break;
-        //     case GVOX_FORMAT_ENCODING_SRGB: dst_component_data = float_conv::to_srgb(component_dst_bit_counts.at(i), std::bit_cast<float>(component_data)); break;
-        //     default: return GVOX_ERROR_INVALID_ARGUMENT;
-        //     }
-        //     // write out component data
-        //     current_src_bit_offset += component_src_bit_counts.at(i);
-        //     current_dst_bit_offset += component_dst_bit_counts.at(i);
-        // }
-        // return GVOX_SUCCESS;
-    }
-} // namespace
-
-auto gvox_translate_format(void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format) GVOX_FUNC_ATTRIB->GvoxResult {
-    return convert_formats(src_data, std::bit_cast<FormatDescriptor>(src_format), dst_data, std::bit_cast<FormatDescriptor>(dst_format));
-}
-
-auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc) GVOX_FUNC_ATTRIB->GvoxResult {
-    // TODO: ...
-    auto src_attrib_i = size_t{0};
-    auto dst_attrib_i = size_t{0};
-
-    auto src_attrib_offset = size_t{0};
-
-    // if (info->src_channel_index >= src_voxel_desc->attributes.size()) {
-    //     return GVOX_ERROR_INVALID_ARGUMENT;
-    // }
-
-    GvoxResult res = GVOX_ERROR_UNKNOWN;
-
-    for (auto const &dst_attrib : dst_desc->attributes) {
-        // TODO: get src_attrib_offset from either input or find best?
-        if (src_attrib_offset == 0) {
-            res = convert_formats(
-                src_data, src_desc->attributes.at(src_attrib_i).format_desc,
-                dst_data, dst_desc->attributes.at(dst_attrib_i).format_desc);
-            if (res != GVOX_SUCCESS) {
-                break;
-            }
-        } else {
-            // auto temp_out_data0 = std::array<uint8_t, 16>{};
-            // auto const *begin = static_cast<uint8_t const *>(src_data) + src_attrib_offset;
-            // auto const *end = begin + 4;
-            // std::copy(begin, end, temp_out_data0.data());
-            // auto temp_out_data1 = std::array<uint8_t, 16>{};
-            break;
-        }
-    }
-
-    return res;
-}
-
 auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
 
@@ -200,3 +70,153 @@ auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
 }
 
 // Stream API
+
+// R4G4_UNORM_PACK8 = 1,
+// R4G4B4A4_UNORM_PACK16 = 2,
+// B4G4R4A4_UNORM_PACK16 = 3,
+// R5G6B5_UNORM_PACK16 = 4,
+// B5G6R5_UNORM_PACK16 = 5,
+// R5G5B5A1_UNORM_PACK16 = 6,
+// B5G5R5A1_UNORM_PACK16 = 7,
+// A1R5G5B5_UNORM_PACK16 = 8,
+// R8_UNORM = 9,
+// R8_SNORM = 10,
+// R8_USCALED = 11,
+// R8_SSCALED = 12,
+// R8_UINT = 13,
+// R8_SINT = 14,
+// R8_SRGB = 15,
+// R8G8_UNORM = 16,
+// R8G8_SNORM = 17,
+// R8G8_USCALED = 18,
+// R8G8_SSCALED = 19,
+// R8G8_UINT = 20,
+// R8G8_SINT = 21,
+// R8G8_SRGB = 22,
+// R8G8B8_UNORM = 23,
+// R8G8B8_SNORM = 24,
+// R8G8B8_USCALED = 25,
+// R8G8B8_SSCALED = 26,
+// R8G8B8_UINT = 27,
+// R8G8B8_SINT = 28,
+// R8G8B8_SRGB = 29,
+// B8G8R8_UNORM = 30,
+// B8G8R8_SNORM = 31,
+// B8G8R8_USCALED = 32,
+// B8G8R8_SSCALED = 33,
+// B8G8R8_UINT = 34,
+// B8G8R8_SINT = 35,
+// B8G8R8_SRGB = 36,
+// R8G8B8A8_UNORM = 37,
+// R8G8B8A8_SNORM = 38,
+// R8G8B8A8_USCALED = 39,
+// R8G8B8A8_SSCALED = 40,
+// R8G8B8A8_UINT = 41,
+// R8G8B8A8_SINT = 42,
+// R8G8B8A8_SRGB = 43,
+// B8G8R8A8_UNORM = 44,
+// B8G8R8A8_SNORM = 45,
+// B8G8R8A8_USCALED = 46,
+// B8G8R8A8_SSCALED = 47,
+// B8G8R8A8_UINT = 48,
+// B8G8R8A8_SINT = 49,
+// B8G8R8A8_SRGB = 50,
+// A8B8G8R8_UNORM_PACK32 = 51,
+// A8B8G8R8_SNORM_PACK32 = 52,
+// A8B8G8R8_USCALED_PACK32 = 53,
+// A8B8G8R8_SSCALED_PACK32 = 54,
+// A8B8G8R8_UINT_PACK32 = 55,
+// A8B8G8R8_SINT_PACK32 = 56,
+// A8B8G8R8_SRGB_PACK32 = 57,
+// A2R10G10B10_UNORM_PACK32 = 58,
+// A2R10G10B10_SNORM_PACK32 = 59,
+// A2R10G10B10_USCALED_PACK32 = 60,
+// A2R10G10B10_SSCALED_PACK32 = 61,
+// A2R10G10B10_UINT_PACK32 = 62,
+// A2R10G10B10_SINT_PACK32 = 63,
+// A2B10G10R10_UNORM_PACK32 = 64,
+// A2B10G10R10_SNORM_PACK32 = 65,
+// A2B10G10R10_USCALED_PACK32 = 66,
+// A2B10G10R10_SSCALED_PACK32 = 67,
+// A2B10G10R10_UINT_PACK32 = 68,
+// A2B10G10R10_SINT_PACK32 = 69,
+// R16_UNORM = 70,
+// R16_SNORM = 71,
+// R16_USCALED = 72,
+// R16_SSCALED = 73,
+// R16_UINT = 74,
+// R16_SINT = 75,
+// R16_SFLOAT = 76,
+// R16G16_UNORM = 77,
+// R16G16_SNORM = 78,
+// R16G16_USCALED = 79,
+// R16G16_SSCALED = 80,
+// R16G16_UINT = 81,
+// R16G16_SINT = 82,
+// R16G16_SFLOAT = 83,
+// R16G16B16_UNORM = 84,
+// R16G16B16_SNORM = 85,
+// R16G16B16_USCALED = 86,
+// R16G16B16_SSCALED = 87,
+// R16G16B16_UINT = 88,
+// R16G16B16_SINT = 89,
+// R16G16B16_SFLOAT = 90,
+// R16G16B16A16_UNORM = 91,
+// R16G16B16A16_SNORM = 92,
+// R16G16B16A16_USCALED = 93,
+// R16G16B16A16_SSCALED = 94,
+// R16G16B16A16_UINT = 95,
+// R16G16B16A16_SINT = 96,
+// R16G16B16A16_SFLOAT = 97,
+// R32_UINT = 98,
+// R32_SINT = 99,
+// R32_SFLOAT = 100,
+// R32G32_UINT = 101,
+// R32G32_SINT = 102,
+// R32G32_SFLOAT = 103,
+// R32G32B32_UINT = 104,
+// R32G32B32_SINT = 105,
+// R32G32B32_SFLOAT = 106,
+// R32G32B32A32_UINT = 107,
+// R32G32B32A32_SINT = 108,
+// R32G32B32A32_SFLOAT = 109,
+// R64_UINT = 110,
+// R64_SINT = 111,
+// R64_SFLOAT = 112,
+// R64G64_UINT = 113,
+// R64G64_SINT = 114,
+// R64G64_SFLOAT = 115,
+// R64G64B64_UINT = 116,
+// R64G64B64_SINT = 117,
+// R64G64B64_SFLOAT = 118,
+// R64G64B64A64_UINT = 119,
+// R64G64B64A64_SINT = 120,
+// R64G64B64A64_SFLOAT = 121,
+// B10G11R11_UFLOAT_PACK32 = 122,
+// E5B9G9R9_UFLOAT_PACK32 = 123,
+// D16_UNORM = 124,
+// X8_D24_UNORM_PACK32 = 125,
+// D32_SFLOAT = 126,
+// S8_UINT = 127,
+// D16_UNORM_S8_UINT = 128,
+// D24_UNORM_S8_UINT = 129,
+// D32_SFLOAT_S8_UINT = 130,
+// G8B8G8R8_422_UNORM = 1000156000,
+// B8G8R8G8_422_UNORM = 1000156001,
+// R10X6_UNORM_PACK16 = 1000156007,
+// R10X6G10X6_UNORM_2PACK16 = 1000156008,
+// R10X6G10X6B10X6A10X6_UNORM_4PACK16 = 1000156009,
+// G10X6B10X6G10X6R10X6_422_UNORM_4PACK16 = 1000156010,
+// B10X6G10X6R10X6G10X6_422_UNORM_4PACK16 = 1000156011,
+// R12X4_UNORM_PACK16 = 1000156017,
+// R12X4G12X4_UNORM_2PACK16 = 1000156018,
+// R12X4G12X4B12X4A12X4_UNORM_4PACK16 = 1000156019,
+// G12X4B12X4G12X4R12X4_422_UNORM_4PACK16 = 1000156020,
+// B12X4G12X4R12X4G12X4_422_UNORM_4PACK16 = 1000156021,
+// G16B16G16R16_422_UNORM = 1000156027,
+// B16G16R16G16_422_UNORM = 1000156028,
+// A4R4G4B4_UNORM_PACK16 = 1000340000,
+// A4B4G4R4_UNORM_PACK16 = 1000340001,
+// R16G16_S10_5_NV = 1000464000,
+// A1B5G5R5_UNORM_PACK16_KHR = 1000470000,
+// A8_UNORM_KHR = 1000470001,

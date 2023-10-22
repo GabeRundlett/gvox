@@ -3,6 +3,7 @@
 
 #include "../utils/tracy.hpp"
 #include "gvox/core.h"
+#include "gvox/format.h"
 
 #include <cstdlib>
 #include <cstdint>
@@ -34,8 +35,8 @@ auto gvox_container_openvdb_description() GVOX_FUNC_ATTRIB->GvoxContainerDescrip
                 GvoxAttribute{
                     .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                     .next = nullptr,
-                    .type = GVOX_ATTRIBUTE_TYPE_ALBEDO,
-                    .format = GVOX_FORMAT_R8G8B8A8_SRGB,
+                    .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                    .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
                 },
             };
             auto voxel_desc_info = GvoxVoxelDescCreateInfo{

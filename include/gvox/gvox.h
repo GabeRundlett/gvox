@@ -56,7 +56,4 @@ GVOX_EXPORT GvoxResult gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB;
 
-GVOX_EXPORT GvoxResult gvox_translate_format(void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc) GVOX_FUNC_ATTRIB;
-
 #endif

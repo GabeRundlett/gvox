@@ -334,7 +334,10 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
 
             auto &chunk = chunk_iter->second;
             auto *data = chunk.data.data();
-            return gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc);
+
+            // TODO: Actually fix this
+            auto res = gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc, nullptr, 0);
+            return res;
         },
     };
 }
