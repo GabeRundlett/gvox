@@ -22,6 +22,8 @@ if(GVOX_ENABLE_TESTS)
 endif()
 if(GVOX_ENABLE_TRACY)
     list(APPEND VCPKG_MANIFEST_FEATURES "tracy")
+else()
+    set(GVOX_ENABLE_TRACY false)
 endif()
 
 project(gvox VERSION 2.0.0)
