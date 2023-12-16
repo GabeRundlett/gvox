@@ -3,6 +3,7 @@
 `.gvox` is a meta-format that allows for several voxel data structures to co-exist within a single file.
 
 GVOX is the library that ties it all together, supplying parsing, conversion and serialization mechanisms to the consumer.
+Gvox 
 
 ## Goals
  * I want GVOX to be accessible to everyone making a voxel engine, including but not limited to
@@ -20,7 +21,8 @@ For now, you must have the following things installed to build the repository
  * A C++ compiler
  * CMake (3.21 or higher)
  * Ninja build
- * vcpkg (plus the VCPKG_ROOT environment variable)
+and optionally
+ * vcpkg (plus the VCPKG_ROOT environment variable. If it doesn't exist, it's automatically downloaded)
 
 Once you have these things installed, you should be able to build just by running these commands in the root directory of the repository
 

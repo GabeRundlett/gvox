@@ -20,6 +20,12 @@ GVOX_STRUCT(GvoxIteratorAdvanceInfo) {
     GvoxIteratorAdvanceMode mode;
 };
 
+GVOX_STRUCT(GvoxSample) {
+    GvoxOffset offset;
+    void *dst_voxel_data;
+    GvoxVoxelDesc dst_voxel_desc;
+};
+
 GVOX_STRUCT(GvoxInputStreamCreateCbArgs) {
     GvoxStructType struct_type;
     void const *next;
@@ -87,7 +93,8 @@ GVOX_STRUCT(GvoxContainerDescription) {
     GvoxResult (*create)(void **, GvoxContainerCreateCbArgs const *);
     void (*destroy)(void *);
     GvoxResult (*fill)(void *, void const *, GvoxVoxelDesc, GvoxRange);
-    GvoxResult (*sample)(void *, void *, GvoxVoxelDesc, GvoxOffset);
+    GvoxResult (*move)(void *, GvoxContainer *, GvoxRange *, GvoxOffset *, uint32_t);
+    GvoxResult (*sample)(void *, GvoxSample const *, uint32_t);
 };
 
 GVOX_STRUCT(GvoxInputStreamCreateInfo) {

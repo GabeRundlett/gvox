@@ -34,6 +34,16 @@ GVOX_STRUCT(GvoxFillInfo) {
     GvoxRange range;
 };
 
+GVOX_STRUCT(GvoxMoveInfo) {
+    GvoxStructType struct_type;
+    void const *next;
+    GvoxContainer *src_containers;
+    GvoxRange *src_container_ranges;
+    GvoxOffset *src_dst_offsets;
+    uint32_t src_container_n;
+    GvoxContainer dst;
+};
+
 GVOX_STRUCT(GvoxBlitInfo) {
     GvoxStructType struct_type;
     void const *next;
@@ -45,14 +55,14 @@ GVOX_STRUCT(GvoxSampleInfo) {
     GvoxStructType struct_type;
     void const *next;
     GvoxContainer src;
-    GvoxOffset offset;
-    void *dst;
-    GvoxVoxelDesc dst_voxel_desc;
+    GvoxSample const *samples;
+    uint32_t sample_n;
 };
 
 // Consumer API
 
 GVOX_EXPORT GvoxResult gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB;
+GVOX_EXPORT GvoxResult gvox_move(GvoxMoveInfo const *info) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB;
 GVOX_EXPORT GvoxResult gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB;
 

@@ -189,28 +189,40 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
 
             return GVOX_SUCCESS;
         },
-        .sample = [](void *self_ptr, void *out_voxel_data, GvoxVoxelDesc out_voxel_desc, GvoxOffset offset) -> GvoxResult {
-            auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
-            auto const dim = std::min(offset.axis_n, self.extent.axis_n);
+        .move = [](void *, GvoxContainer *, GvoxRange *, GvoxOffset *, uint32_t) -> GvoxResult {
+            return GVOX_ERROR_UNKNOWN;
+        },
+        .sample = [](void *self_ptr, GvoxSample const *samples, uint32_t sample_n) -> GvoxResult {
+            for (uint32_t sample_i = 0; sample_i < sample_n; ++sample_i) {
+                auto const &out_voxel_data = samples[sample_i].dst_voxel_data;
+                auto const &out_voxel_desc = samples[sample_i].dst_voxel_desc;
+                auto const &offset = samples[sample_i].offset;
 
-            auto voxel_offset = uint64_t{0};
-            auto voxel_size_bytes = (gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3;
-            auto stride = uint64_t{voxel_size_bytes};
+                auto &self = *static_cast<GvoxBoundedRawContainer *>(self_ptr);
+                auto const dim = std::min(offset.axis_n, self.extent.axis_n);
 
-            for (size_t i = 0; i < dim; ++i) {
-                if (offset.axis[i] < 0 || offset.axis[i] >= static_cast<int64_t>(self.extent.axis[i])) {
-                    return GVOX_SUCCESS;
+                auto voxel_offset = uint64_t{0};
+                auto voxel_size_bytes = (gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3;
+                auto stride = uint64_t{voxel_size_bytes};
+
+                for (size_t i = 0; i < dim; ++i) {
+                    if (offset.axis[i] < 0 || offset.axis[i] >= static_cast<int64_t>(self.extent.axis[i])) {
+                        return GVOX_SUCCESS;
+                    }
+                    auto axis_p = static_cast<uint64_t>(offset.axis[i]);
+                    voxel_offset += axis_p * stride;
+                    stride *= self.extent.axis[i];
                 }
-                auto axis_p = static_cast<uint64_t>(offset.axis[i]);
-                voxel_offset += axis_p * stride;
-                stride *= self.extent.axis[i];
-            }
 
-            auto *data = static_cast<uint8_t *>(self.pre_allocated_buffer);
-            // TODO: Actually fix this
-            auto mapping = GvoxAttributeMapping{.dst_index = 0, .src_index = 0};
-            auto res = gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc, &mapping, 1);
-            return res;
+                auto *data = static_cast<uint8_t *>(self.pre_allocated_buffer);
+                // TODO: Actually fix this
+                auto mapping = GvoxAttributeMapping{.dst_index = 0, .src_index = 0};
+                auto res = gvox_translate_voxel(data + voxel_offset, self.voxel_desc, out_voxel_data, out_voxel_desc, &mapping, 1);
+                if (res != GVOX_SUCCESS) {
+                    return res;
+                }
+            }
+            return GVOX_SUCCESS;
         },
     };
 }

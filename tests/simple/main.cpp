@@ -198,13 +198,17 @@ auto main() -> int {
                                     static_cast<int32_t>(ui),
                                 };
                                 auto sampled_voxel_data = std::array<uint8_t, 4>{};
+                                auto sample = GvoxSample{
+                                    .offset = {6, &sample_offset.x},
+                                    .dst_voxel_data = &sampled_voxel_data,
+                                    .dst_voxel_desc = u32_color_voxel_desc,
+                                };
                                 auto sample_info = GvoxSampleInfo{
                                     .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
                                     .next = nullptr,
                                     .src = raw_container,
-                                    .offset = {6, &sample_offset.x},
-                                    .dst = &sampled_voxel_data,
-                                    .dst_voxel_desc = u32_color_voxel_desc,
+                                    .samples = &sample,
+                                    .sample_n = 1,
                                 };
                                 HANDLE_RES(gvox_sample(&sample_info));
                                 auto r = static_cast<uint32_t>(sampled_voxel_data[0]);

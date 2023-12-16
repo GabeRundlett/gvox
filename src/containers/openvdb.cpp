@@ -104,11 +104,24 @@ auto gvox_container_openvdb_description() GVOX_FUNC_ATTRIB->GvoxContainerDescrip
             }
             return GVOX_SUCCESS;
         },
-        .sample = [](void *self_ptr, void *out_voxel_data, GvoxVoxelDesc out_voxel_desc, GvoxOffset offset) -> GvoxResult {
-            auto &self = *static_cast<OpenVDBContainer *>(self_ptr);
-            auto coord = openvdb::Coord(offset.axis[0], offset.axis[1], offset.axis[2]);
-            auto accessor = self.grid_ptr->getAccessor();
-            return gvox_translate_voxel(&accessor.getValue(coord), self.voxel_desc, out_voxel_data, out_voxel_desc);
+        .move = [](void *, GvoxContainer *, GvoxRange *, GvoxOffset *, uint32_t) -> GvoxResult {
+            return GVOX_ERROR_UNKNOWN;
+        },
+        .sample = [](void *self_ptr, GvoxSample const *samples, uint32_t sample_n) -> GvoxResult {
+            for (uint32_t sample_i = 0; sample_i < sample_n; ++sample_i) {
+                auto const &out_voxel_data = samples[sample_i].dst_voxel_data;
+                auto const &out_voxel_desc = samples[sample_i].dst_voxel_desc;
+                auto const &offset = samples[sample_i].offset;
+
+                auto &self = *static_cast<OpenVDBContainer *>(self_ptr);
+                auto coord = openvdb::Coord(offset.axis[0], offset.axis[1], offset.axis[2]);
+                auto accessor = self.grid_ptr->getAccessor();
+                auto res = gvox_translate_voxel(&accessor.getValue(coord), self.voxel_desc, out_voxel_data, out_voxel_desc);
+                if (res != GVOX_SUCCESS) {
+                    return res;
+                }
+            }
+            return GVOX_SUCCESS;
         },
     };
 }

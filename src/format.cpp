@@ -17,38 +17,36 @@ namespace {
         return static_cast<uint32_t>(type) > static_cast<uint32_t>(GVOX_ATTRIBUTE_TYPE_UNKNOWN_PACKED);
     }
 
-    namespace float_conv {
-        constexpr auto from_unorm(uint32_t bit_n, uint32_t data) -> float {
-            uint32_t const mask = (1 << bit_n) - 1;
-            return static_cast<float>(data & mask) / static_cast<float>(mask);
-        }
-        constexpr auto to_unorm(uint32_t bit_n, float data) -> uint32_t {
-            uint32_t const mask = (1 << bit_n) - 1;
-            return static_cast<uint32_t>(data * static_cast<float>(mask)) & mask;
-        }
-
-        constexpr auto from_snorm(uint32_t bit_n, uint32_t data) -> float {
-            return from_unorm(bit_n, data) * 2.0f - 1.0f;
-        }
-        constexpr auto to_snorm(uint32_t bit_n, float data) -> uint32_t {
-            return to_unorm(bit_n, data * 0.5f + 0.5f);
-        }
-
-        constexpr auto from_srgb(uint32_t bit_n, uint32_t data) -> float {
-            if (std::is_constant_evaluated()) {
-                return gcem::pow(from_unorm(bit_n, data), 2.2f);
-            } else {
-                return std::pow(from_unorm(bit_n, data), 2.2f);
-            }
-        }
-        constexpr auto to_srgb(uint32_t bit_n, float data) -> uint32_t {
-            if (std::is_constant_evaluated()) {
-                return to_unorm(bit_n, gcem::pow(data, 2.2f));
-            } else {
-                return to_unorm(bit_n, std::pow(data, 2.2f));
-            }
-        }
-    } // namespace float_conv
+    // namespace float_conv {
+    //     constexpr auto from_unorm(uint32_t bit_n, uint32_t data) -> float {
+    //         uint32_t const mask = (1 << bit_n) - 1;
+    //         return static_cast<float>(data & mask) / static_cast<float>(mask);
+    //     }
+    //     constexpr auto to_unorm(uint32_t bit_n, float data) -> uint32_t {
+    //         uint32_t const mask = (1 << bit_n) - 1;
+    //         return static_cast<uint32_t>(data * static_cast<float>(mask)) & mask;
+    //     }
+    //     constexpr auto from_snorm(uint32_t bit_n, uint32_t data) -> float {
+    //         return from_unorm(bit_n, data) * 2.0f - 1.0f;
+    //     }
+    //     constexpr auto to_snorm(uint32_t bit_n, float data) -> uint32_t {
+    //         return to_unorm(bit_n, data * 0.5f + 0.5f);
+    //     }
+    //     constexpr auto from_srgb(uint32_t bit_n, uint32_t data) -> float {
+    //         if (std::is_constant_evaluated()) {
+    //             return gcem::pow(from_unorm(bit_n, data), 2.2f);
+    //         } else {
+    //             return std::pow(from_unorm(bit_n, data), 2.2f);
+    //         }
+    //     }
+    //     constexpr auto to_srgb(uint32_t bit_n, float data) -> uint32_t {
+    //         if (std::is_constant_evaluated()) {
+    //             return to_unorm(bit_n, gcem::pow(data, 2.2f));
+    //         } else {
+    //             return to_unorm(bit_n, std::pow(data, 2.2f));
+    //         }
+    //     }
+    // } // namespace float_conv
 } // namespace
 
 auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB->GvoxResult {
@@ -136,7 +134,7 @@ auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *ds
         // NOTE: Attributes can't be larger than 64 bits, but they could be on non-byte
         // boundaries, and so we'll want to copy them into temp storage before shifting
         // them around to the desired output attribute description.
-        auto temp_attrib_storage = std::array<uint8_t, 10>{};
+        // auto temp_attrib_storage = std::array<uint8_t, 10>{};
 
         if (is_packed_multi_channel_attribute(dst_attrib.type)) {
             if (is_packed_multi_channel_attribute(src_attrib.type)) {
@@ -147,12 +145,12 @@ auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *ds
                 auto src_begin_bit = src_attrib.bit_offset;
                 auto src_end_bit = src_begin_bit + src_attrib.bit_count;
                 auto src_real_byte_begin = static_cast<uint8_t const *>(src_data) + src_begin_bit / 8;
-                auto src_real_byte_end = static_cast<uint8_t const *>(src_data) + (src_end_bit + 7) / 8;
+                // auto src_real_byte_end = static_cast<uint8_t const *>(src_data) + (src_end_bit + 7) / 8;
                 auto src_full_byte_begin = static_cast<uint8_t const *>(src_data) + (src_begin_bit + 7) / 8;
                 auto src_full_byte_end = static_cast<uint8_t const *>(src_data) + src_end_bit / 8;
 
                 auto dst_begin_bit = dst_attrib.bit_offset;
-                auto dst_end_bit = dst_begin_bit + dst_attrib.bit_count;
+                // auto dst_end_bit = dst_begin_bit + dst_attrib.bit_count;
                 auto dst_real_byte_begin = static_cast<uint8_t *>(dst_data) + dst_begin_bit / 8;
                 auto dst_full_byte_begin = static_cast<uint8_t *>(dst_data) + (dst_begin_bit + 7) / 8;
 

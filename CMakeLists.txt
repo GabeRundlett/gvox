@@ -110,6 +110,7 @@ set(GVOX_SERIALIZERS
 
 set(GVOX_CONTAINERS
     "raw"
+    "raw3d"
     "bounded_raw"
 )
 

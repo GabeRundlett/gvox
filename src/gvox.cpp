@@ -28,6 +28,20 @@ auto gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     return info->dst->desc.fill(info->dst->self, info->src_data, info->src_desc, info->range);
 }
 
+auto gvox_move(GvoxMoveInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
+    ZoneScoped;
+
+    if (info == nullptr) {
+        return GVOX_ERROR_INVALID_ARGUMENT;
+    }
+    if (info->struct_type != GVOX_STRUCT_TYPE_MOVE_INFO) {
+        return GVOX_ERROR_BAD_STRUCT_TYPE;
+    }
+
+    // issue the fill call
+    return info->dst->desc.move(info->dst->self, info->src_containers, info->src_container_ranges, info->src_dst_offsets, info->src_container_n);
+}
+
 auto gvox_blit_prepare(GvoxParser parser) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
 
@@ -61,7 +75,7 @@ auto gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
         return GVOX_ERROR_BAD_STRUCT_TYPE;
     }
 
-    auto result = info->src->desc.sample(info->src->self, info->dst, info->dst_voxel_desc, info->offset);
+    auto result = info->src->desc.sample(info->src->self, info->samples, info->sample_n);
     if (result != GVOX_SUCCESS) {
         return result;
     }
