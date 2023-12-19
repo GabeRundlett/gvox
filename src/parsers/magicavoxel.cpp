@@ -1,18 +1,19 @@
-#include <bit>
 #include <gvox/stream.h>
 #include <gvox/parsers/magicavoxel.h>
 
 #include <iostream>
-#include <iomanip>
 #include <limits>
 #include <new>
 #include <variant>
 #include <vector>
-#include <span>
 #include <algorithm>
-#include <numeric>
+#include <utility>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <cstdlib>
 
-#include "../utils/tracy.hpp"
 #include "gvox/core.h"
 #include "gvox/format.h"
 #include "gvox/gvox.h"

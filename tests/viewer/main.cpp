@@ -1,24 +1,27 @@
+
 #include <gvox/stream.h>
 #include <gvox/format.h>
 #include <gvox/gvox.h>
 
 #include <gvox/containers/bounded_raw.h>
-#include <gvox/containers/openvdb.h>
 #include <gvox/streams/input/file.h>
 #include <gvox/streams/input/byte_buffer.h>
-#include <gvox/parsers/magicavoxel.h>
+
+#include "../common/window.hpp"
 
 #include <iostream>
 #include <array>
 #include <chrono>
 #include <format>
 #include <filesystem>
-
-#include "../common/window.hpp"
-
 #include <fstream>
 #include <limits>
 #include <vector>
+#include <string>
+#include <algorithm>
+#include <cstdint>
+#include <bit>
+#include <cstddef>
 
 #define HANDLE_RES(x, message)               \
     if ((x) != GVOX_SUCCESS) {               \
@@ -219,7 +222,7 @@ auto main() -> int {
         auto t1 = Clock::now();
         auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
 
-        std::cout << elapsed_s << " s to open file" << std::endl;
+        std::cout << elapsed_s << " s to open file" << '\n';
     }
 
     auto *file_parser = GvoxParser{};
@@ -358,7 +361,7 @@ auto main() -> int {
         auto t1 = Clock::now();
         auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
 
-        std::cout << elapsed_s << " s (" << (static_cast<float>(voxel_count) / (elapsed_s * 1'000'000.0f)) << " MVx/s)" << std::endl;
+        std::cout << elapsed_s << " s (" << (static_cast<float>(voxel_count) / (elapsed_s * 1'000'000.0f)) << " MVx/s)" << '\n';
     }
 
     // return 0;
@@ -390,7 +393,7 @@ auto main() -> int {
             auto t1 = Clock::now();
             auto seconds = std::chrono::duration<double>(t1 - t0).count();
             auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
-            std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
+            std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << '\n';
         }
         if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.data[0]), static_cast<uint32_t>(image.extent.data[1])) < 0) {
             break;

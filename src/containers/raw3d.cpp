@@ -1,3 +1,5 @@
+#include <gvox/format.h>
+#include <gvox/stream.h>
 #include <gvox/gvox.h>
 #include <gvox/containers/raw3d.h>
 
@@ -5,11 +7,12 @@
 #include <cstdint>
 #include <cstring>
 
+#include <new>
 #include <vector>
 #include <unordered_map>
+#include <functional>
+#include <algorithm>
 
-#include "gvox/core.h"
-#include "gvox/format.h"
 #include "raw_helper.hpp"
 
 static constexpr auto LOG2_CHUNK_SIZE = size_t{6};
@@ -58,7 +61,7 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
             } else {
                 config = {};
             }
-            (*out_self) = new GvoxRaw3dContainer({
+            (*out_self) = new (std::nothrow) GvoxRaw3dContainer({
                 .voxel_desc = config.voxel_desc,
             });
             return GVOX_SUCCESS;

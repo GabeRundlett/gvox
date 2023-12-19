@@ -1,8 +1,7 @@
 #include "gvox/core.h"
-#include <gvox/gvox.h>
-#include <gvox/stream.h>
 #include <gvox/format.h>
 
+#include <cstdint>
 #include <array>
 #include <iostream>
 
@@ -96,5 +95,5 @@ namespace tests {
 auto main() -> int {
     HANDLE_RES(tests::voxel_conversion(), "Failed the voxel conversion test")
 
-    std::cout << "Success!" << std::endl;
+    std::cout << "Success!" << '\n';
 }

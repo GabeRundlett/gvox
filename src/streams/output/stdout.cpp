@@ -3,6 +3,9 @@
 
 #include <iostream>
 #include <string_view>
+#include <new>
+#include <cstddef>
+#include <cstdint>
 
 struct GvoxStdoutOutputStream {
     explicit GvoxStdoutOutputStream(GvoxStdoutOutputStreamConfig const &config);
@@ -28,7 +31,7 @@ auto gvox_output_stream_stdout_description() GVOX_FUNC_ATTRIB->GvoxOutputStreamD
             } else {
                 config = {};
             }
-            *self = new GvoxStdoutOutputStream(config);
+            *self = new (std::nothrow) GvoxStdoutOutputStream(config);
             return GVOX_SUCCESS;
         },
         .write = [](void *self, GvoxOutputStream /*unused*/, void *data, size_t size) -> GvoxResult {

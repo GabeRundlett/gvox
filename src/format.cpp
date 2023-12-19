@@ -1,16 +1,12 @@
-#include "gvox/format.h"
-#include "gvox/core.h"
+#include <gvox/format.h>
 #include "types.hpp"
 #include "utils/tracy.hpp"
 #include "utils/handle.hpp"
 
 #include <bit>
-#include <cmath>
 #include <algorithm>
-#include <array>
+#include <cstdint>
 #include <cstring>
-
-#include <gcem.hpp>
 
 namespace {
     constexpr auto is_packed_multi_channel_attribute(GvoxAttributeType type) -> bool {
@@ -144,15 +140,15 @@ auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *ds
 
                 auto src_begin_bit = src_attrib.bit_offset;
                 auto src_end_bit = src_begin_bit + src_attrib.bit_count;
-                auto src_real_byte_begin = static_cast<uint8_t const *>(src_data) + src_begin_bit / 8;
+                const auto *src_real_byte_begin = static_cast<uint8_t const *>(src_data) + src_begin_bit / 8;
                 // auto src_real_byte_end = static_cast<uint8_t const *>(src_data) + (src_end_bit + 7) / 8;
-                auto src_full_byte_begin = static_cast<uint8_t const *>(src_data) + (src_begin_bit + 7) / 8;
-                auto src_full_byte_end = static_cast<uint8_t const *>(src_data) + src_end_bit / 8;
+                const auto *src_full_byte_begin = static_cast<uint8_t const *>(src_data) + (src_begin_bit + 7) / 8;
+                const auto *src_full_byte_end = static_cast<uint8_t const *>(src_data) + src_end_bit / 8;
 
                 auto dst_begin_bit = dst_attrib.bit_offset;
                 // auto dst_end_bit = dst_begin_bit + dst_attrib.bit_count;
-                auto dst_real_byte_begin = static_cast<uint8_t *>(dst_data) + dst_begin_bit / 8;
-                auto dst_full_byte_begin = static_cast<uint8_t *>(dst_data) + (dst_begin_bit + 7) / 8;
+                auto *dst_real_byte_begin = static_cast<uint8_t *>(dst_data) + dst_begin_bit / 8;
+                auto *dst_full_byte_begin = static_cast<uint8_t *>(dst_data) + (dst_begin_bit + 7) / 8;
 
                 if (std::bit_cast<uint32_t>(src_format) == std::bit_cast<uint32_t>(dst_format)) {
                     // same format-format copy.

@@ -1,21 +1,21 @@
-#include <gvox/gvox.h>
+#include <gvox/stream.h>
+#include <gvox/format.h>
 #include <gvox/containers/raw.h>
-
-#include "../utils/tracy.hpp"
 
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
 
-#include <array>
+#include <functional>
+#include <algorithm>
+#include <cstddef>
+#include <new>
+#include <utility>
 #include <vector>
 #include <span>
-#include <new>
-#include <bit>
 #include <unordered_map>
 
 #include <iostream>
-#include <iomanip>
 
 #include "raw_helper.hpp"
 
@@ -170,7 +170,7 @@ auto gvox_container_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDescription
             } else {
                 config = {};
             }
-            (*out_self) = new GvoxRawContainer({
+            (*out_self) = new (std::nothrow) GvoxRawContainer({
                 .voxel_desc = config.voxel_desc,
             });
             return GVOX_SUCCESS;

@@ -1,22 +1,14 @@
-#include <gvox/gvox.h>
 #include <gvox/containers/bounded_raw.h>
-
-#include "../utils/tracy.hpp"
-#include "gvox/core.h"
+#include <gvox/stream.h>
+#include <gvox/format.h>
 
 #include <cstdlib>
 #include <cstdint>
 
-#include <array>
-#include <vector>
-#include <span>
 #include <new>
-#include <bit>
-#include <unordered_map>
-#include <concepts>
-
-#include <iostream>
-#include <iomanip>
+#include <vector>
+#include <cstddef>
+#include <algorithm>
 
 #include "raw_helper.hpp"
 
@@ -90,7 +82,7 @@ auto gvox_container_bounded_raw_description() GVOX_FUNC_ATTRIB->GvoxContainerDes
             } else {
                 config = {};
             }
-            (*out_self) = new GvoxBoundedRawContainer({
+            (*out_self) = new (std::nothrow) GvoxBoundedRawContainer({
                 .voxel_desc = config.voxel_desc,
                 .extent = config.extent,
                 .pre_allocated_buffer = config.pre_allocated_buffer,

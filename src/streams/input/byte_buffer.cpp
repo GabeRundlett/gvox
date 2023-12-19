@@ -1,6 +1,8 @@
 #include <gvox/stream.h>
 #include <gvox/streams/input/byte_buffer.h>
 
+#include <cstdint>
+#include <cstddef>
 #include <vector>
 #include <algorithm>
 

@@ -1,21 +1,24 @@
-#include <string_view>
+#include <gvox/stream.h>
+
+#include <cstddef>
+#include <cstdint>
 #include <span>
 #include <array>
 
-#include "gvox/core.h"
 #include "types.hpp"
 #include "utils/handle.hpp"
+#include "utils/tracy.hpp"
 
-#define HANDLE_CREATE(Type, TYPE)                                                      \
-    ZoneScoped;                                                                        \
-    HANDLE_NEW(Type, TYPE)                                                             \
-    (*handle)->desc = info->description;                                               \
-    {                                                                                  \
-        auto create_result = (*handle)->desc.create(&(*handle)->self, &info->cb_args); \
-        if (create_result != GVOX_SUCCESS) {                                           \
-            delete *handle;                                                            \
-            return create_result;                                                      \
-        }                                                                              \
+#define HANDLE_CREATE(Type, TYPE)                                                        \
+    ZoneScoped;                                                                          \
+    HANDLE_NEW(Type, TYPE)                                                               \
+    (*handle)->desc = info->description;                                                 \
+    {                                                                                    \
+        auto create_result = (*handle) -> desc.create(&(*handle)->self, &info->cb_args); \
+        if (create_result != GVOX_SUCCESS) {                                             \
+            delete *handle;                                                              \
+            return create_result;                                                        \
+        }                                                                                \
     }
 
 auto gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle) GVOX_FUNC_ATTRIB->GvoxResult {
@@ -87,7 +90,7 @@ auto gvox_output_seek(GvoxOutputStream handle) -> int64_t {
     return handle->desc.tell(handle->self, handle->next);
 }
 
-#include <gvox/parsers/image.h>
+// #include <gvox/parsers/image.h>
 #include <gvox/parsers/magicavoxel.h>
 
 namespace {

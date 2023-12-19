@@ -1,8 +1,12 @@
 #include <gvox/stream.h>
 #include <gvox/streams/input/gzip.h>
 
+#include <new>
 #include <vector>
 #include <algorithm>
+#include <cstdint>
+#include <cstddef>
+#include <cstring>
 
 #include <gzip/decompress.hpp>
 
@@ -96,7 +100,7 @@ auto gvox_input_stream_gzip_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescr
             } else {
                 config = {};
             }
-            *self = new GzipInputStream(config);
+            *self = new (std::nothrow) GzipInputStream(config);
             return GVOX_SUCCESS;
         },
         .read = [](void *self, GvoxInputStream next_handle, void *data, size_t size) -> GvoxResult {

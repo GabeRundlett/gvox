@@ -4,7 +4,10 @@
 #include <gvox/stream.h>
 #include <gvox/streams/input/file.h>
 
-#include <fstream>
+#include <cstdio>
+#include <cstddef>
+#include <cstdint>
+#include <new>
 
 struct GvoxFileInputStream {
     GvoxFileInputStreamConfig config{};
@@ -72,6 +75,7 @@ auto gvox_input_stream_file_description() GVOX_FUNC_ATTRIB->GvoxInputStreamDescr
             //     return GVOX_ERROR_UNKNOWN;
             // }
             if (result->file_handle != nullptr) {
+                delete result;
                 return GVOX_ERROR_UNKNOWN;
             }
             *self = result;

@@ -1,13 +1,8 @@
 #include <gvox/gvox.h>
 
-#include <vector>
-#include <array>
-#include <bit>
-
 #include "gvox/core.h"
-#include "gvox/format.h"
 #include "types.hpp"
-#include "utils/handle.hpp"
+#include "utils/tracy.hpp"
 
 struct GvoxChainStruct {
     GvoxStructType struct_type;

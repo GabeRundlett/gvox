@@ -1,4 +1,3 @@
-#include "gvox/format.h"
 #include <gvox/gvox.h>
 
 #include <gvox/containers/raw.h>
@@ -6,12 +5,15 @@
 #include <iostream>
 #include <array>
 #include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <iomanip>
 
 #define R96_ARGB(alpha, red, green, blue) (uint32_t)(((uint8_t)(alpha) << 24) | ((uint8_t)(blue) << 0) | ((uint8_t)(green) << 8) | (uint8_t)(red))
 
-#define HANDLE_RES(x)        \
-    if (x != GVOX_SUCCESS) { \
-        return -1;           \
+#define HANDLE_RES(x)          \
+    if ((x) != GVOX_SUCCESS) { \
+        return -1;             \
     }
 auto main() -> int {
     using namespace std::literals;
@@ -119,7 +121,7 @@ auto main() -> int {
         auto seconds = std::chrono::duration<double>(t1 - t0).count();
         auto voxel_n = N_ITER * extent.data[0] * extent.data[1] * extent.data[2];
         auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
-        std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
+        std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << '\n';
 
         return 0;
     };
@@ -176,12 +178,12 @@ auto main() -> int {
         extent = GvoxExtent6D{1, 1, 1, 1, 1, 2};
         HANDLE_RES(gvox_fill(&fill_info));
 
-        uint32_t size_x = 3;
-        uint32_t size_y = 3;
-        uint32_t size_z = 3;
-        uint32_t size_w = 3;
-        uint32_t size_v = 3;
-        uint32_t size_u = 3;
+        uint32_t const size_x = 3;
+        uint32_t const size_y = 3;
+        uint32_t const size_z = 3;
+        uint32_t const size_w = 3;
+        uint32_t const size_v = 3;
+        uint32_t const size_u = 3;
         std::cout.fill('0');
         for (uint32_t vi = 0; vi < size_v; ++vi) {
             for (uint32_t zi = 0; zi < size_z; ++zi) {

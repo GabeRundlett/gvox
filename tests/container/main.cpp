@@ -1,5 +1,3 @@
-#include "gvox/core.h"
-#include "gvox/stream.h"
 #include <gvox/gvox.h>
 #include <gvox/containers/raw3d.h>
 
@@ -7,6 +5,8 @@
 #include <span>
 #include <thread>
 #include <iostream>
+#include <cstdint>
+#include <memory>
 
 #include "../common/window.hpp"
 
@@ -108,6 +108,7 @@ auto main() -> int {
                 .range = {{3, offset.data}, {3, extent.data}},
             };
             HANDLE_RES(gvox_fill(&fill_info), "Failed to fill a");
+            return 0;
         });
         auto thread_b = std::thread([&]() {
             // process chunk B
@@ -130,6 +131,7 @@ auto main() -> int {
                 voxel_data = (voxel_data & ~0x00ff00ffu) | ((i * 23) << 0) | ((i * 31) << 16);
                 HANDLE_RES(gvox_fill(&fill_info), "Failed to fill b");
             }
+            return 0;
         });
 
         thread_a.join();

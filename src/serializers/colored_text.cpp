@@ -2,15 +2,10 @@
 
 #include <gvox/serializers/colored_text.h>
 
-#include <cstdlib>
-
-#include <bit>
+#include <new>
+#include <cstdint>
 #include <vector>
 #include <array>
-#include <new>
-
-#include <iostream>
-#include <iomanip>
 
 // static constexpr auto pixel = std::to_array("\033[48;2;000;000;000m  ");
 // static constexpr auto newline_terminator = std::to_array("\033[0m\n");
@@ -35,7 +30,7 @@ auto gvox_serializer_colored_text_description() GVOX_FUNC_ATTRIB->GvoxSerializer
             } else {
                 config = {};
             }
-            *self = new GvoxColoredTextSerializer(config);
+            *self = new (std::nothrow) GvoxColoredTextSerializer(config);
             return GVOX_SUCCESS;
         },
         .destroy = [](void *self) { delete static_cast<GvoxColoredTextSerializer *>(self); },

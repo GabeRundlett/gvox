@@ -1,3 +1,4 @@
+
 #include <gvox/stream.h>
 #include <gvox/parsers/image.h>
 
@@ -7,9 +8,10 @@
 #include <iomanip>
 #include <new>
 #include <vector>
-#include <span>
-
-#include "../utils/tracy.hpp"
+#include <utility>
+#include <cstdint>
+#include <cstddef>
+#include <algorithm>
 
 struct Pixel {
     uint8_t b, g, r, a;
