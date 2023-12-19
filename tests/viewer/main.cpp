@@ -117,7 +117,7 @@ auto main() -> int {
     {
         auto raw_container_conf = GvoxBoundedRawContainerConfig{
             .voxel_desc = rgb_voxel_desc,
-            .extent = {2, &image.extent.x},
+            .extent = {2, image.extent.data},
             .pre_allocated_buffer = image.pixels.data(),
         };
         auto cont_info = GvoxContainerCreateInfo{
@@ -137,7 +137,7 @@ auto main() -> int {
     {
         auto raw_container_conf = GvoxBoundedRawContainerConfig{
             .voxel_desc = depth_voxel_desc,
-            .extent = {2, &depth_image.extent.x},
+            .extent = {2, depth_image.extent.data},
             .pre_allocated_buffer = depth_image.pixels.data(),
         };
         auto cont_info = GvoxContainerCreateInfo{
@@ -178,8 +178,8 @@ auto main() -> int {
         .src_desc = rgb_voxel_desc,
         .dst = raw_container,
         .range = {
-            {2, &offset.x},
-            {2, &extent.x},
+            {2, offset.data},
+            {2, extent.data},
         },
     };
 
@@ -238,11 +238,11 @@ auto main() -> int {
         auto *input_iterator = GvoxIterator{};
 
         auto temp_offset = GvoxOffset2D{};
-        auto temp_extent = GvoxExtent2D{.x = 1, .y = 1};
+        auto temp_extent = GvoxExtent2D{.data = {1, 1}};
         auto temp_fill_info = fill_info;
         temp_fill_info.range = {
-            {2, &temp_offset.x},
-            {2, &temp_extent.x},
+            {2, temp_offset.data},
+            {2, temp_extent.data},
         };
 
         auto iter_ci = GvoxIteratorCreateInfo{
@@ -303,14 +303,14 @@ auto main() -> int {
                 if (iter_value.range.offset.axis[0] > 0) {
                     continue;
                 }
-                offset.x = ((iter_value.range.offset.axis[0] + 0) * 1 + 768);
-                offset.y = static_cast<int64_t>(image.extent.y) - ((iter_value.range.offset.axis[2] + 1) * 1 + 0);
-                extent.x = iter_value.range.extent.axis[0] * 1;
-                extent.y = iter_value.range.extent.axis[2] * 1;
+                offset.data[0] = ((iter_value.range.offset.axis[0] + 0) * 1 + 768);
+                offset.data[1] = static_cast<int64_t>(image.extent.data[1]) - ((iter_value.range.offset.axis[2] + 1) * 1 + 0);
+                extent.data[0] = iter_value.range.extent.axis[0] * 1;
+                extent.data[1] = iter_value.range.extent.axis[2] * 1;
 
                 int16_t current_depth = 0;
                 sample_info.src = depth_container;
-                sample.offset = {.axis_n = 2, .axis = &offset.x};
+                sample.offset = {.axis_n = 2, .axis = offset.data};
                 sample.dst_voxel_data = &current_depth;
 
                 HANDLE_RES(gvox_sample(&sample_info), "Failed to sample depth image");
@@ -366,25 +366,25 @@ auto main() -> int {
     fill_info.src_data = &voxel_data;
     fill_info.src_desc = rgb_voxel_desc;
     fill_info.range = {
-        {2, &offset.x},
-        {2, &extent.x},
+        {2, offset.data},
+        {2, extent.data},
     };
 
     auto const N_ITER = uint64_t{20000};
     bool const test_rect_speed = false;
-    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 1), static_cast<uint32_t>(image.extent.y * 1));
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.data[0] * 1), static_cast<uint32_t>(image.extent.data[1] * 1));
     while (true) {
         if (test_rect_speed) {
             uint64_t voxel_n = 0;
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N_ITER; i++) {
                 voxel_data = MAKE_COLOR_RGBA(fast_random() % 255, fast_random() % 255, fast_random() % 255, 255);
-                offset.x = fast_random() % static_cast<uint32_t>(image.extent.x);
-                offset.y = fast_random() % static_cast<uint32_t>(image.extent.y);
-                extent.x = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.x) / 5)), image.extent.x - static_cast<uint64_t>(offset.x));
-                extent.y = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.y) / 5)), image.extent.x - static_cast<uint64_t>(offset.y));
-                voxel_n += extent.x * extent.y;
-                // rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), static_cast<int32_t>(extent.x), static_cast<int32_t>(extent.y), voxel_data);
+                offset.data[0] = fast_random() % static_cast<uint32_t>(image.extent.data[0]);
+                offset.data[1] = fast_random() % static_cast<uint32_t>(image.extent.data[1]);
+                extent.data[0] = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.data[0]) / 5)), image.extent.data[0] - static_cast<uint64_t>(offset.data[0]));
+                extent.data[1] = std::min(static_cast<uint64_t>(fast_random() % (static_cast<uint32_t>(image.extent.data[1]) / 5)), image.extent.data[0] - static_cast<uint64_t>(offset.data[1]));
+                voxel_n += extent.data[0] * extent.data[1];
+                // rect_opt(&image, static_cast<int32_t>(offset.data[0]), static_cast<int32_t>(offset.data[1]), static_cast<int32_t>(extent.data[0]), static_cast<int32_t>(extent.data[1]), voxel_data);
                 HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
             }
             auto t1 = Clock::now();
@@ -392,7 +392,7 @@ auto main() -> int {
             auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
             std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
         }
-        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.x), static_cast<uint32_t>(image.extent.y)) < 0) {
+        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.data[0]), static_cast<uint32_t>(image.extent.data[1])) < 0) {
             break;
         }
         if (!mfb_wait_sync(window)) {

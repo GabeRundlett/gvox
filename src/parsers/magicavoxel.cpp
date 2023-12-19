@@ -78,9 +78,9 @@ void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t 
         auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
         auto new_trn = trn;
         auto rotated_offset = magicavoxel::rotate(trn.rotation, t_node_info.transform.offset);
-        new_trn.offset.x += rotated_offset.x;
-        new_trn.offset.y += rotated_offset.y;
-        new_trn.offset.z += rotated_offset.z;
+        new_trn.offset.data[0] += rotated_offset.data[0];
+        new_trn.offset.data[1] += rotated_offset.data[1];
+        new_trn.offset.data[2] += rotated_offset.data[2];
         new_trn.rotation = magicavoxel::rotate(new_trn.rotation, t_node_info.transform.rotation);
         construct_scene(scene, scene_info, t_node_info.child_node_id, parent_group_begin_index, new_trn, min_p, max_p);
     } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
@@ -89,13 +89,13 @@ void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t 
         auto group_begin_index = scene.iterator_nodes.size();
         scene.iterator_nodes.emplace_back(GroupInstanceBegin{.parent_group_begin_index = parent_group_begin_index});
         GvoxOffset3D group_min_p{};
-        group_min_p.x = std::numeric_limits<int64_t>::max();
-        group_min_p.y = group_min_p.x;
-        group_min_p.z = group_min_p.x;
+        group_min_p.data[0] = std::numeric_limits<int64_t>::max();
+        group_min_p.data[1] = group_min_p.data[0];
+        group_min_p.data[2] = group_min_p.data[0];
         GvoxOffset3D group_max_p{};
-        group_max_p.x = std::numeric_limits<int64_t>::min();
-        group_max_p.y = group_max_p.x;
-        group_max_p.z = group_max_p.x;
+        group_max_p.data[0] = std::numeric_limits<int64_t>::min();
+        group_max_p.data[1] = group_max_p.data[0];
+        group_max_p.data[2] = group_max_p.data[0];
         for (uint32_t child_i = 0; child_i < g_node_info.num_child_nodes; ++child_i) {
             construct_scene(
                 scene, scene_info,
@@ -107,18 +107,18 @@ void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t 
         auto &group_begin = std::get<GroupInstanceBegin>(scene.iterator_nodes[group_begin_index]);
         group_begin.offset = group_min_p;
         group_begin.extent = GvoxExtent3D{
-            static_cast<uint64_t>(group_max_p.x - group_min_p.x),
-            static_cast<uint64_t>(group_max_p.y - group_min_p.y),
-            static_cast<uint64_t>(group_max_p.z - group_min_p.z),
+            static_cast<uint64_t>(group_max_p.data[0] - group_min_p.data[0]),
+            static_cast<uint64_t>(group_max_p.data[1] - group_min_p.data[1]),
+            static_cast<uint64_t>(group_max_p.data[2] - group_min_p.data[2]),
         };
         group_begin.end_index = end_index;
         std::get<GroupInstanceBegin>(scene.iterator_nodes[group_begin_index]).end_index = end_index;
-        min_p.x = std::min(min_p.x, group_min_p.x);
-        min_p.y = std::min(min_p.y, group_min_p.y);
-        min_p.z = std::min(min_p.z, group_min_p.z);
-        max_p.x = std::max(max_p.x, group_max_p.x);
-        max_p.y = std::max(max_p.y, group_max_p.y);
-        max_p.z = std::max(max_p.z, group_max_p.z);
+        min_p.data[0] = std::min(min_p.data[0], group_min_p.data[0]);
+        min_p.data[1] = std::min(min_p.data[1], group_min_p.data[1]);
+        min_p.data[2] = std::min(min_p.data[2], group_min_p.data[2]);
+        max_p.data[0] = std::max(max_p.data[0], group_max_p.data[0]);
+        max_p.data[1] = std::max(max_p.data[1], group_max_p.data[1]);
+        max_p.data[2] = std::max(max_p.data[2], group_max_p.data[2]);
     } else if (std::holds_alternative<magicavoxel::SceneShapeInfo>(node_info)) {
         auto const &s_node_info = std::get<magicavoxel::SceneShapeInfo>(node_info);
         scene.iterator_nodes.emplace_back(ModelInstance{});
@@ -139,17 +139,17 @@ void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t 
             static_cast<uint32_t>((trn.rotation >> 6) & 1),
         };
         s_current_node.offset = {
-            trn.offset.x - static_cast<int32_t>(extent.x + extent_offset.x) / 2,
-            trn.offset.y - static_cast<int32_t>(extent.y + extent_offset.y) / 2,
-            trn.offset.z - static_cast<int32_t>(extent.z + extent_offset.z) / 2,
+            trn.offset.data[0] - static_cast<int32_t>(extent.data[0] + extent_offset.data[0]) / 2,
+            trn.offset.data[1] - static_cast<int32_t>(extent.data[1] + extent_offset.data[1]) / 2,
+            trn.offset.data[2] - static_cast<int32_t>(extent.data[2] + extent_offset.data[2]) / 2,
         };
         s_current_node.extent = extent;
-        min_p.x = std::min(min_p.x, s_current_node.offset.x);
-        min_p.y = std::min(min_p.y, s_current_node.offset.y);
-        min_p.z = std::min(min_p.z, s_current_node.offset.z);
-        max_p.x = std::max(max_p.x, s_current_node.offset.x + static_cast<int64_t>(s_current_node.extent.x));
-        max_p.y = std::max(max_p.y, s_current_node.offset.y + static_cast<int64_t>(s_current_node.extent.y));
-        max_p.z = std::max(max_p.z, s_current_node.offset.z + static_cast<int64_t>(s_current_node.extent.z));
+        min_p.data[0] = std::min(min_p.data[0], s_current_node.offset.data[0]);
+        min_p.data[1] = std::min(min_p.data[1], s_current_node.offset.data[1]);
+        min_p.data[2] = std::min(min_p.data[2], s_current_node.offset.data[2]);
+        max_p.data[0] = std::max(max_p.data[0], s_current_node.offset.data[0] + static_cast<int64_t>(s_current_node.extent.data[0]));
+        max_p.data[1] = std::max(max_p.data[1], s_current_node.offset.data[1] + static_cast<int64_t>(s_current_node.extent.data[1]));
+        max_p.data[2] = std::max(max_p.data[2], s_current_node.offset.data[2] + static_cast<int64_t>(s_current_node.extent.data[2]));
     }
 }
 
@@ -508,13 +508,13 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
             }
             if (!scene_info.node_infos.empty()) {
                 GvoxOffset3D min_p{};
-                min_p.x = std::numeric_limits<int64_t>::max();
-                min_p.y = min_p.x;
-                min_p.z = min_p.x;
+                min_p.data[0] = std::numeric_limits<int64_t>::max();
+                min_p.data[1] = min_p.data[0];
+                min_p.data[2] = min_p.data[0];
                 GvoxOffset3D max_p{};
-                max_p.x = std::numeric_limits<int64_t>::min();
-                max_p.y = max_p.x;
-                max_p.z = max_p.x;
+                max_p.data[0] = std::numeric_limits<int64_t>::min();
+                max_p.data[1] = max_p.data[0];
+                max_p.data[2] = max_p.data[0];
                 construct_scene(self.scene, scene_info, 0, 0, {}, min_p, max_p);
             } else {
                 // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER, "Somehow there were no scene nodes parsed from this model. Please let us know in the gvox GitHub issues what to do to reproduce this bug");
@@ -567,8 +567,8 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                             iter.extent = model_instance.extent;
                             out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
                             out->range = GvoxRange{
-                                .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                                .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                                .offset = {.axis_n = 3, .axis = iter.offset.data},
+                                .extent = {.axis_n = 3, .axis = iter.extent.data},
                             };
                             iter.voxel_index = 0;
                             return;
@@ -581,8 +581,8 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         iter.voxel_index = std::numeric_limits<size_t>::max();
                         out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
                         out->range = GvoxRange{
-                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                            .offset = {.axis_n = 3, .axis = iter.offset.data},
+                            .extent = {.axis_n = 3, .axis = iter.extent.data},
                         };
                         ++iter.iterator_index;
                         return;
@@ -593,16 +593,16 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         gvox_input_seek(info->input_stream, model.input_offset + static_cast<int64_t>(iter.voxel_index * sizeof(voxel)), GVOX_SEEK_ORIGIN_BEG);
                         gvox_input_read(info->input_stream, &voxel, sizeof(voxel));
                         auto offset = magicavoxel::rotate(model_instance.rotation, GvoxExtent3D{static_cast<uint64_t>(voxel[0]), static_cast<uint64_t>(voxel[1]), static_cast<uint64_t>(voxel[2])}, model_instance.extent);
-                        iter.offset.x = static_cast<int64_t>(offset.x) + model_instance.offset.x;
-                        iter.offset.y = static_cast<int64_t>(offset.y) + model_instance.offset.y;
-                        iter.offset.z = static_cast<int64_t>(offset.z) + model_instance.offset.z;
+                        iter.offset.data[0] = static_cast<int64_t>(offset.data[0]) + model_instance.offset.data[0];
+                        iter.offset.data[1] = static_cast<int64_t>(offset.data[1]) + model_instance.offset.data[1];
+                        iter.offset.data[2] = static_cast<int64_t>(offset.data[2]) + model_instance.offset.data[2];
                         iter.extent = GvoxExtent3D{1, 1, 1};
                         iter.voxel = self.palette[voxel[3] - 1];
                         // std::swap(iter.voxel.r, iter.voxel.b);
                         out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
                         out->range = GvoxRange{
-                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                            .offset = {.axis_n = 3, .axis = iter.offset.data},
+                            .extent = {.axis_n = 3, .axis = iter.extent.data},
                         };
                         out->voxel_data = static_cast<void *>(&iter.voxel);
                         out->voxel_desc = self.desc;
@@ -622,8 +622,8 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                         iter.extent = group_begin.extent;
                         out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
                         out->range = GvoxRange{
-                            .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                            .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                            .offset = {.axis_n = 3, .axis = iter.offset.data},
+                            .extent = {.axis_n = 3, .axis = iter.extent.data},
                         };
                         ++iter.iterator_index;
                         return;
@@ -636,8 +636,8 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
                     iter.extent = group_begin.extent;
                     out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
                     out->range = GvoxRange{
-                        .offset = {.axis_n = 3, .axis = &iter.offset.x},
-                        .extent = {.axis_n = 3, .axis = &iter.extent.x},
+                        .offset = {.axis_n = 3, .axis = iter.offset.data},
+                        .extent = {.axis_n = 3, .axis = iter.extent.data},
                     };
                     ++iter.iterator_index;
                     return;

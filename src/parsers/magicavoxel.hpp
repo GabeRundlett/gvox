@@ -212,9 +212,9 @@ namespace magicavoxel {
             auto pos = s.find(' ');
             auto token = s.substr(0, pos);
             switch (count) {
-            case 0: offset.x = atoi(token.c_str()); break;
-            case 1: offset.y = atoi(token.c_str()); break;
-            case 2: offset.z = atoi(token.c_str()); break;
+            case 0: offset.data[0] = atoi(token.c_str()); break;
+            case 1: offset.data[1] = atoi(token.c_str()); break;
+            case 2: offset.data[2] = atoi(token.c_str()); break;
             }
             s.erase(0, pos + 1);
         }
@@ -240,9 +240,9 @@ namespace magicavoxel {
         uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
         uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
         uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
-        result[row0_vec_index] = offset.x;
-        result[row1_vec_index] = offset.y;
-        result[row2_vec_index] = offset.z;
+        result[row0_vec_index] = offset.data[0];
+        result[row1_vec_index] = offset.data[1];
+        result[row2_vec_index] = offset.data[2];
         if ((packed_rotation_bits & (1 << 4)) != 0) {
             result[0] *= -1;
         }
@@ -260,9 +260,9 @@ namespace magicavoxel {
         uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
         uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
         uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
-        result[row0_vec_index] = extent.x;
-        result[row1_vec_index] = extent.y;
-        result[row2_vec_index] = extent.z;
+        result[row0_vec_index] = extent.data[0];
+        result[row1_vec_index] = extent.data[1];
+        result[row2_vec_index] = extent.data[2];
         return std::bit_cast<GvoxExtent3D>(result);
     }
     constexpr auto rotate(int8_t packed_rotation_bits, GvoxExtent3D p, GvoxExtent3D extent) {
@@ -271,9 +271,9 @@ namespace magicavoxel {
         uint32_t const row0_vec_index = (packed_rotation_bits >> 0) & 3;
         uint32_t const row1_vec_index = (packed_rotation_bits >> 2) & 3;
         uint32_t const row2_vec_index = row2_index[((1 << row0_vec_index) | (1 << row1_vec_index)) - 3];
-        result[row0_vec_index] = p.x;
-        result[row1_vec_index] = p.y;
-        result[row2_vec_index] = p.z;
+        result[row0_vec_index] = p.data[0];
+        result[row1_vec_index] = p.data[1];
+        result[row2_vec_index] = p.data[2];
         auto extent_arr = std::bit_cast<std::array<uint64_t, 3>>(extent);
         if ((packed_rotation_bits & (1 << 4)) != 0) {
             result[row0_vec_index] = extent_arr[row0_vec_index] - 1 - result[row0_vec_index];

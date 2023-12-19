@@ -6,13 +6,17 @@
 #include <array>
 #include <span>
 #include <thread>
+#include <iostream>
 
 #include "../common/window.hpp"
 
-#define HANDLE_RES(x, message)               \
-    if ((x) != GVOX_SUCCESS) {               \
-        std::cerr << (message) << std::endl; \
-        return -1;                           \
+#define HANDLE_RES(x, message)                                         \
+    {                                                                  \
+        auto res = (x);                                                \
+        if (res != GVOX_SUCCESS) {                                     \
+            std::cerr << "(" << res << ") " << (message) << std::endl; \
+            return -1;                                                 \
+        }                                                              \
     }
 
 namespace gvox {
@@ -82,12 +86,12 @@ auto main() -> int {
         auto offset_a = GvoxOffset3D{0, 0, 0};
         auto offset_b = GvoxOffset3D{64, 0, 0};
         auto offsets = std::array{
-            GvoxOffset{3, &offset_a.x},
-            GvoxOffset{3, &offset_b.x},
+            GvoxOffset{3, offset_a.data},
+            GvoxOffset{3, offset_b.data},
         };
         auto ranges = std::array{
-            GvoxRange{{3, &base_offset.x}, {3, &base_extent.x}},
-            GvoxRange{{3, &base_offset.x}, {3, &base_extent.x}},
+            GvoxRange{{3, base_offset.data}, {3, base_extent.data}},
+            GvoxRange{{3, base_offset.data}, {3, base_extent.data}},
         };
 
         auto thread_a = std::thread([&]() {
@@ -101,11 +105,10 @@ auto main() -> int {
                 .src_data = &voxel_data,
                 .src_desc = rgb_voxel_desc.get(),
                 .dst = raw_container_chunk_a.get(),
-                .range = {{3, &offset.x}, {3, &extent.x}},
+                .range = {{3, offset.data}, {3, extent.data}},
             };
-            gvox_fill(&fill_info);
+            HANDLE_RES(gvox_fill(&fill_info), "Failed to fill a");
         });
-
         auto thread_b = std::thread([&]() {
             // process chunk B
             uint32_t voxel_data{0xffff4090};
@@ -117,15 +120,15 @@ auto main() -> int {
                 .src_data = &voxel_data,
                 .src_desc = rgb_voxel_desc.get(),
                 .dst = raw_container_chunk_b.get(),
-                .range = {{3, &offset.x}, {3, &extent.x}},
+                .range = {{3, offset.data}, {3, extent.data}},
             };
-            for (uint32_t i = 0; extent.x > 1; ++i) {
-                offset.x = i;
-                extent.x = 64 - i * 2;
-                offset.y = i;
-                extent.y = 64 - i * 2;
+            for (uint32_t i = 0; extent.data[0] > 1; ++i) {
+                offset.data[0] = i;
+                extent.data[0] = 64 - i * 2;
+                offset.data[1] = i;
+                extent.data[1] = 64 - i * 2;
                 voxel_data = (voxel_data & ~0x00ff00ffu) | ((i * 23) << 0) | ((i * 31) << 16);
-                gvox_fill(&fill_info);
+                HANDLE_RES(gvox_fill(&fill_info), "Failed to fill b");
             }
         });
 
@@ -141,14 +144,14 @@ auto main() -> int {
             .src_container_n = child_containers.size(),
             .dst = raw_container.get(),
         };
-        gvox_move(&move_info);
+        HANDLE_RES(gvox_move(&move_info), "Failed to move");
 
-        for (uint32_t yi = 0; yi < image.extent.y; ++yi) {
-            for (uint32_t xi = 0; xi < image.extent.x; ++xi) {
+        for (uint32_t yi = 0; yi < image.extent.data[1]; ++yi) {
+            for (uint32_t xi = 0; xi < image.extent.data[0]; ++xi) {
                 auto voxel_data = uint32_t{0};
-                auto offset = GvoxOffset3D{.x = xi, .y = yi, .z = 0};
+                auto offset = GvoxOffset3D{.data = {xi, yi, 0}};
                 auto sample = GvoxSample{
-                    .offset = {.axis_n = 3, .axis = &offset.x},
+                    .offset = {.axis_n = 3, .axis = offset.data},
                     .dst_voxel_data = &voxel_data,
                     .dst_voxel_desc = rgb_voxel_desc.get(),
                 };
@@ -159,15 +162,15 @@ auto main() -> int {
                     .samples = &sample,
                     .sample_n = 1,
                 };
-                gvox_sample(&sample_info);
-                rect_opt(&image, static_cast<int32_t>(offset.x), static_cast<int32_t>(offset.y), 1, 1, voxel_data);
+                HANDLE_RES(gvox_sample(&sample_info), "Failed to sample");
+                rect_opt(&image, static_cast<int32_t>(offset.data[0]), static_cast<int32_t>(offset.data[1]), 1, 1, voxel_data);
             }
         }
     }
 
-    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.x * 3), static_cast<uint32_t>(image.extent.y * 3));
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.data[0] * 3), static_cast<uint32_t>(image.extent.data[1] * 3));
     while (true) {
-        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.x), static_cast<uint32_t>(image.extent.y)) < 0) {
+        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.data[0]), static_cast<uint32_t>(image.extent.data[1])) < 0) {
             break;
         }
         if (!mfb_wait_sync(window)) {

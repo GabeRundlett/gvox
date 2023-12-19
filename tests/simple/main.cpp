@@ -92,8 +92,8 @@ auto main() -> int {
             .src_desc = rgb_voxel_desc,
             .dst = raw_container,
             .range = {
-                {3, &offset.x},
-                {3, &extent.x},
+                {3, offset.data},
+                {3, extent.data},
             },
         };
         voxel_data = 0x0000'0000'00ff'40aa;
@@ -107,17 +107,17 @@ auto main() -> int {
         auto t0 = Clock::now();
         for (uint64_t i = 0; i < N_ITER; i++) {
             voxel_data = R96_ARGB(255, rand() % 255, rand() % 255, rand() % 255);
-            // offset.x = rand() % 64;
-            // offset.y = rand() % 64;
-            // offset.z = rand() % 64;
-            // extent.x = std::min<uint64_t>(rand() % 16, 64 - offset.x);
-            // extent.y = std::min<uint64_t>(rand() % 16, 64 - offset.y);
-            // extent.z = std::min<uint64_t>(rand() % 16, 64 - offset.y);
+            // offset.data[0] = rand() % 64;
+            // offset.data[1] = rand() % 64;
+            // offset.data[2] = rand() % 64;
+            // extent.data[0] = std::min<uint64_t>(rand() % 16, 64 - offset.data[0]);
+            // extent.data[1] = std::min<uint64_t>(rand() % 16, 64 - offset.data[1]);
+            // extent.data[2] = std::min<uint64_t>(rand() % 16, 64 - offset.data[1]);
             HANDLE_RES(gvox_fill(&fill_info));
         }
         auto t1 = Clock::now();
         auto seconds = std::chrono::duration<double>(t1 - t0).count();
-        auto voxel_n = N_ITER * extent.x * extent.y * extent.z;
+        auto voxel_n = N_ITER * extent.data[0] * extent.data[1] * extent.data[2];
         auto voxel_size = (gvox_voxel_desc_size_in_bits(rgb_voxel_desc) + 7) / 8;
         std::cout << seconds << "s, aka about " << static_cast<double>(voxel_n) / 1'000'000'000.0 / seconds << " GVx/s, or about " << static_cast<double>(voxel_n * voxel_size / 1000) / 1'000'000.0 / seconds << " GB/s" << std::endl;
 
@@ -135,8 +135,8 @@ auto main() -> int {
             .src_desc = rgb_voxel_desc,
             .dst = raw_container,
             .range = {
-                {6, &offset.x},
-                {6, &extent.x},
+                {6, offset.data},
+                {6, extent.data},
             },
         };
 
@@ -199,7 +199,7 @@ auto main() -> int {
                                 };
                                 auto sampled_voxel_data = std::array<uint8_t, 4>{};
                                 auto sample = GvoxSample{
-                                    .offset = {6, &sample_offset.x},
+                                    .offset = {6, sample_offset.data},
                                     .dst_voxel_data = &sampled_voxel_data,
                                     .dst_voxel_desc = u32_color_voxel_desc,
                                 };

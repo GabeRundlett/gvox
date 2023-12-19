@@ -5,7 +5,7 @@
 
 struct Image {
     GvoxExtent2D extent{};
-    std::vector<uint32_t> pixels = std::vector<uint32_t>(static_cast<size_t>(extent.x * extent.y));
+    std::vector<uint32_t> pixels = std::vector<uint32_t>(static_cast<size_t>(extent.data[0] * extent.data[1]));
 };
 
 inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_t height, uint32_t color) {
@@ -16,8 +16,8 @@ inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_
     int32_t x2 = x1 + width - 1;
     int32_t y2 = y1 + height - 1;
 
-    auto image_size_x = static_cast<int32_t>(image->extent.x);
-    auto image_size_y = static_cast<int32_t>(image->extent.y);
+    auto image_size_x = static_cast<int32_t>(image->extent.data[0]);
+    auto image_size_y = static_cast<int32_t>(image->extent.data[1]);
 
     if (x1 >= image_size_x || x2 < 0 ||
         y1 >= image_size_y || y2 < 0) {

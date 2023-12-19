@@ -34,14 +34,14 @@ struct std::hash<GvoxOffset3D> {
     auto operator()(GvoxOffset3D const &k) const -> std::size_t {
         using std::hash;
         size_t result = 0;
-        result = result ^ (hash<int64_t>()(k.x) << 0);
-        result = result ^ (hash<int64_t>()(k.y) << 1);
-        result = result ^ (hash<int64_t>()(k.z) << 2);
+        result = result ^ (hash<int64_t>()(k.data[0]) << 0);
+        result = result ^ (hash<int64_t>()(k.data[1]) << 1);
+        result = result ^ (hash<int64_t>()(k.data[2]) << 2);
         return result;
     }
 };
 auto operator==(GvoxOffset3D const &a, GvoxOffset3D const &b) -> bool {
-    return a.x == b.x && a.y == b.y && a.z == b.z;
+    return a.data[0] == b.data[0] && a.data[1] == b.data[1] && a.data[2] == b.data[2];
 }
 
 struct GvoxRaw3dContainer {
@@ -121,20 +121,20 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
 
             for (size_t i = 0; i < dim; ++i) {
                 auto range_max_i = range.offset.axis[i] + static_cast<int64_t>(std::max<uint64_t>(range.extent.axis[i], 1)) - 1;
-                (&chunk_range_offset.x)[i] = range.offset.axis[i] >> LOG2_CHUNK_SIZE;
+                chunk_range_offset.data[i] = range.offset.axis[i] >> LOG2_CHUNK_SIZE;
                 auto max_chunk_origin_i = range_max_i >> LOG2_CHUNK_SIZE;
 
-                (&chunk_range_extent.x)[i] = static_cast<uint64_t>(max_chunk_origin_i - (&chunk_range_offset.x)[i] + 1);
+                chunk_range_extent.data[i] = static_cast<uint64_t>(max_chunk_origin_i - chunk_range_offset.data[i] + 1);
             }
 
             auto chunk_iter_coord = GvoxExtent3D{};
-            for (chunk_iter_coord.z = 0; chunk_iter_coord.z < chunk_range_extent.z; ++chunk_iter_coord.z) {
-                for (chunk_iter_coord.y = 0; chunk_iter_coord.y < chunk_range_extent.y; ++chunk_iter_coord.y) {
-                    for (chunk_iter_coord.x = 0; chunk_iter_coord.x < chunk_range_extent.x; ++chunk_iter_coord.x) {
+            for (chunk_iter_coord.data[2] = 0; chunk_iter_coord.data[2] < chunk_range_extent.data[2]; ++chunk_iter_coord.data[2]) {
+                for (chunk_iter_coord.data[1] = 0; chunk_iter_coord.data[1] < chunk_range_extent.data[1]; ++chunk_iter_coord.data[1]) {
+                    for (chunk_iter_coord.data[0] = 0; chunk_iter_coord.data[0] < chunk_range_extent.data[0]; ++chunk_iter_coord.data[0]) {
                         bool completely_clipped = false;
                         for (uint32_t i = 0; i < dim; ++i) {
-                            (&chunk_coord.x)[i] = (&chunk_range_offset.x)[i] + static_cast<int64_t>((&chunk_iter_coord.x)[i]);
-                            auto chunk_p0 = (&chunk_coord.x)[i] * static_cast<int64_t>(CHUNK_SIZE);
+                            chunk_coord.data[i] = chunk_range_offset.data[i] + static_cast<int64_t>(chunk_iter_coord.data[i]);
+                            auto chunk_p0 = chunk_coord.data[i] * static_cast<int64_t>(CHUNK_SIZE);
                             auto p0 = range.offset.axis[i] - chunk_p0;
                             auto p1 = p0 + static_cast<int64_t>(range.extent.axis[i]) - 1;
                             if (p0 >= static_cast<int64_t>(CHUNK_SIZE) || p1 < 0) {
@@ -148,8 +148,8 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                             if (p1 >= static_cast<int64_t>(CHUNK_SIZE)) {
                                 p1 = static_cast<int64_t>(CHUNK_SIZE) - 1;
                             }
-                            (&voxel_range_offset.x)[i] = p0;
-                            (&voxel_range_extent.x)[i] = static_cast<uint64_t>(p1 - p0 + 1);
+                            voxel_range_offset.data[i] = p0;
+                            voxel_range_extent.data[i] = static_cast<uint64_t>(p1 - p0 + 1);
                         }
 
                         if (completely_clipped) {
@@ -168,8 +168,8 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                         {
                             auto stride = size_t{in_voxel.size};
                             for (uint32_t i = 0; i < dim; ++i) {
-                                voxel_ptr += static_cast<size_t>((&voxel_range_offset.x)[i]) * stride;
-                                (&voxel_next.x)[i] = static_cast<int64_t>(static_cast<uint64_t>(stride) * (CHUNK_SIZE - (&voxel_range_extent.x)[i]));
+                                voxel_ptr += static_cast<size_t>(voxel_range_offset.data[i]) * stride;
+                                voxel_next.data[i] = static_cast<int64_t>(static_cast<uint64_t>(stride) * (CHUNK_SIZE - voxel_range_extent.data[i]));
                                 stride *= CHUNK_SIZE;
                             }
                         }
@@ -177,7 +177,7 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                         if (is_single_voxel) {
                             set(voxel_ptr, in_voxel);
                         } else {
-                            fill_3d(voxel_ptr, in_voxel, GvoxExtentMut{.axis_n = 3, .axis = &voxel_range_extent.x}, GvoxOffsetMut{.axis_n = 3, .axis = &voxel_next.x});
+                            fill_3d(voxel_ptr, in_voxel, GvoxExtentMut{.axis_n = 3, .axis = voxel_range_extent.data}, GvoxOffsetMut{.axis_n = 3, .axis = voxel_next.data});
                         }
                     }
                 }
@@ -213,7 +213,7 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                         auto min_chunk_i = src_range.offset.axis[axis_i] >> LOG2_CHUNK_SIZE;
                         auto extent_i = axis_i < src_range.extent.axis_n ? src_range.extent.axis[axis_i] : 1;
                         auto max_chunk_i = min_chunk_i + (static_cast<int64_t>(extent_i) >> LOG2_CHUNK_SIZE) - 1;
-                        auto coord_i = (&coord.x)[axis_i];
+                        auto coord_i = coord.data[axis_i];
                         if (coord_i < min_chunk_i || coord_i > max_chunk_i) {
                             in_range = false;
                             break;
@@ -224,7 +224,7 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                     }
                     auto dst_coord = coord;
                     for (size_t axis_i = 0; axis_i < 3; ++axis_i) {
-                        (&dst_coord.x)[axis_i] += offsets[src_i].axis[axis_i] >> LOG2_CHUNK_SIZE;
+                        dst_coord.data[axis_i] += offsets[src_i].axis[axis_i] >> LOG2_CHUNK_SIZE;
                     }
                     self.chunks[dst_coord] = std::move(chunk);
                 }
@@ -246,15 +246,15 @@ auto gvox_container_raw3d_description() GVOX_FUNC_ATTRIB->GvoxContainerDescripti
                 auto stride = uint64_t{voxel_size_bytes};
 
                 for (size_t i = 0; i < dim; ++i) {
-                    (&chunk_offset.x)[i] = offset.axis[i] >> LOG2_CHUNK_SIZE;
-                    auto axis_p = static_cast<uint64_t>(offset.axis[i] - ((&chunk_offset.x)[i] << LOG2_CHUNK_SIZE));
+                    chunk_offset.data[i] = offset.axis[i] >> LOG2_CHUNK_SIZE;
+                    auto axis_p = static_cast<uint64_t>(offset.axis[i] - (chunk_offset.data[i] << LOG2_CHUNK_SIZE));
                     voxel_offset += axis_p * stride;
                     stride *= CHUNK_SIZE;
                 }
 
                 auto chunk_iter = self.chunks.find(chunk_offset);
                 if (chunk_iter == self.chunks.end()) {
-                    return GVOX_SUCCESS;
+                    continue;
                 }
 
                 auto &chunk = chunk_iter->second;
