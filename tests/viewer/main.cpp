@@ -238,7 +238,6 @@ auto main() -> int {
     for (uint32_t i = 0; i < 1; ++i) {
         gvox_input_seek(file_input, 0, GVOX_SEEK_ORIGIN_BEG);
         auto t0 = Clock::now();
-        auto *input_iterator = GvoxIterator{};
 
         auto temp_offset = GvoxOffset2D{};
         auto temp_extent = GvoxExtent2D{.data = {1, 1}};
@@ -248,12 +247,16 @@ auto main() -> int {
             {2, temp_extent.data},
         };
 
-        auto iter_ci = GvoxIteratorCreateInfo{
-            .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
+        auto parse_iter_ci = GvoxParseIteratorCreateInfo{
+            .struct_type = GVOX_STRUCT_TYPE_PARSE_ITERATOR_CREATE_INFO,
             .next = nullptr,
             .parser = file_parser,
-            .iterator_type = GVOX_ITERATOR_TYPE_INPUT,
         };
+        auto iter_ci = GvoxIteratorCreateInfo{
+            .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
+            .next = &parse_iter_ci,
+        };
+        auto *input_iterator = GvoxIterator{};
         gvox_create_iterator(&iter_ci, &input_iterator);
 
         auto iter_value = GvoxIteratorValue{};

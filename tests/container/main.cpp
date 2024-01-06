@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cstdint>
 #include <memory>
+#include <chrono>
 
 #include "../common/window.hpp"
 
@@ -71,6 +72,7 @@ auto main() -> int {
 
     auto raw_container = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
 
+    // Construct the container from multiple containers via multi-threading
     {
         auto raw_container_chunk_a = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
         auto raw_container_chunk_b = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
@@ -148,27 +150,95 @@ auto main() -> int {
         };
         HANDLE_RES(gvox_move(&move_info), "Failed to move");
 
-        for (uint32_t yi = 0; yi < image.extent.data[1]; ++yi) {
-            for (uint32_t xi = 0; xi < image.extent.data[0]; ++xi) {
-                auto voxel_data = uint32_t{0};
-                auto offset = GvoxOffset3D{.data = {xi, yi, 0}};
-                auto sample = GvoxSample{
-                    .offset = {.axis_n = 3, .axis = offset.data},
-                    .dst_voxel_data = &voxel_data,
-                    .dst_voxel_desc = rgb_voxel_desc.get(),
-                };
-                auto sample_info = GvoxSampleInfo{
-                    .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
+        using Clock = std::chrono::steady_clock;
+        auto t0 = Clock::now();
+
+        auto timer_iter_n = uint32_t{20};
+        for (uint32_t timer_i = 0; timer_i < timer_iter_n; ++timer_i) {
+            if (true) {
+                auto cont_iter_ci = GvoxContainerIteratorCreateInfo{
+                    .struct_type = GVOX_STRUCT_TYPE_CONTAINER_ITERATOR_CREATE_INFO,
                     .next = nullptr,
-                    .src = raw_container.get(),
-                    .samples = &sample,
-                    .sample_n = 1,
+                    .container = raw_container.get(),
                 };
-                HANDLE_RES(gvox_sample(&sample_info), "Failed to sample");
-                rect_opt(&image, static_cast<int32_t>(offset.data[0]), static_cast<int32_t>(offset.data[1]), 1, 1, voxel_data);
+                auto iter_ci = GvoxIteratorCreateInfo{
+                    .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
+                    .next = &cont_iter_ci,
+                };
+                auto *iterator = GvoxIterator{};
+                gvox_create_iterator(&iter_ci, &iterator);
+
+                auto iter_value = GvoxIteratorValue{};
+                auto advance_info = GvoxIteratorAdvanceInfo{
+                    .mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT,
+                };
+
+                while (true) {
+                    gvox_iterator_advance(iterator, &advance_info, &iter_value);
+                    bool should_break = false;
+                    switch (iter_value.tag) {
+                    case GVOX_ITERATOR_VALUE_TYPE_NULL: {
+                        should_break = true;
+                    } break;
+                    case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
+                        auto xi = iter_value.range.offset.axis[0];
+                        auto yi = iter_value.range.offset.axis[1];
+                        auto zi = iter_value.range.offset.axis[2];
+
+                        if (xi < image.extent.data[0] && yi < image.extent.data[1] && zi == 0) {
+                            uint32_t voxel_data = *(uint32_t const *)iter_value.voxel_data;
+                            rect_opt(&image, static_cast<int32_t>(xi), static_cast<int32_t>(yi), 1, 1, voxel_data);
+                        }
+                    } break;
+                    case GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN: {
+                        auto should_skip = false;
+                        if (should_skip) {
+                            advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH;
+                        } else {
+                            advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                        }
+                    } break;
+                    case GVOX_ITERATOR_VALUE_TYPE_NODE_END: {
+                        advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                    } break;
+                    }
+
+                    if (should_break) {
+                        break;
+                    }
+                }
+
+                gvox_destroy_iterator(iterator);
+            } else {
+                for (uint32_t yi = 0; yi < image.extent.data[1]; ++yi) {
+                    for (uint32_t xi = 0; xi < image.extent.data[0]; ++xi) {
+                        auto voxel_data = uint32_t{0};
+                        auto offset = GvoxOffset3D{.data = {xi, yi, 0}};
+                        auto sample = GvoxSample{
+                            .offset = {.axis_n = 3, .axis = offset.data},
+                            .dst_voxel_data = &voxel_data,
+                            .dst_voxel_desc = rgb_voxel_desc.get(),
+                        };
+                        auto sample_info = GvoxSampleInfo{
+                            .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
+                            .next = nullptr,
+                            .src = raw_container.get(),
+                            .samples = &sample,
+                            .sample_n = 1,
+                        };
+                        HANDLE_RES(gvox_sample(&sample_info), "Failed to sample");
+                        rect_opt(&image, static_cast<int32_t>(offset.data[0]), static_cast<int32_t>(offset.data[1]), 1, 1, voxel_data);
+                    }
+                }
             }
         }
+        auto t1 = Clock::now();
+        auto elapsed_ms = std::chrono::duration<float, std::milli>(t1 - t0).count();
+
+        std::cout << elapsed_ms / timer_iter_n << " ms to iterate container" << '\n';
     }
+
+    // Try iterating over the container
 
     struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.data[0] * 3), static_cast<uint32_t>(image.extent.data[1] * 3));
     while (true) {

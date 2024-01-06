@@ -13,21 +13,21 @@
 #include <cstddef>
 #include <algorithm>
 
-struct Pixel {
-    uint8_t b, g, r, a;
-};
-
-struct GvoxImageParser {
-    GvoxImageParserConfig config{};
-    uint32_t size_x{}, size_y{};
-    std::vector<Pixel> pixels;
-
-    explicit GvoxImageParser(GvoxImageParserConfig const &a_config) : config{a_config} {}
-
-    auto load(GvoxInputStream input_stream) -> GvoxResult;
-};
-
 namespace {
+    struct Pixel {
+        uint8_t b, g, r, a;
+    };
+
+    struct Parser {
+        GvoxImageParserConfig config{};
+        uint32_t size_x{}, size_y{};
+        std::vector<Pixel> pixels;
+
+        explicit Parser(GvoxImageParserConfig const &a_config) : config{a_config} {}
+
+        auto load(GvoxInputStream input_stream) -> GvoxResult;
+    };
+
     inline auto create_io_and_get_voxel_desc(GvoxInputStream input_stream) -> std::pair<FreeImageIO, FREE_IMAGE_FORMAT> {
         auto io = FreeImageIO{
             .read_proc = [](void *buffer, unsigned size, unsigned count, fi_handle handle) -> unsigned {
@@ -47,9 +47,52 @@ namespace {
         auto fi_voxel_desc = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(input_stream), 0);
         return {io, fi_voxel_desc};
     }
+
+    auto create(void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
+        GvoxImageParserConfig config;
+        if (args->config != nullptr) {
+            config = *static_cast<GvoxImageParserConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        *self = new (std::nothrow) Parser(config);
+        auto load_res = static_cast<Parser *>(*self)->load(args->input_stream);
+        if (load_res != GVOX_SUCCESS) {
+            return load_res;
+        }
+        return GVOX_SUCCESS;
+    }
+
+    void destroy(void *self) {
+        delete static_cast<Parser *>(self);
+    }
+
+    auto create_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
+        auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
+        if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
+            return GVOX_ERROR_UNPARSABLE_INPUT;
+        }
+
+        auto parser_ci = GvoxParserCreateInfo{};
+        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+        parser_ci.next = nullptr;
+        parser_ci.cb_args.config = nullptr;
+        parser_ci.cb_args.input_stream = input_stream;
+        parser_ci.description = gvox_parser_image_description();
+
+        return gvox_create_parser(&parser_ci, user_parser);
+    }
+
+    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+    }
+    void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
+    }
+    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+        out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
+    }
 } // namespace
 
-auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
+auto Parser::load(GvoxInputStream input_stream) -> GvoxResult {
     auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
     if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
         return GVOX_ERROR_UNKNOWN;
@@ -93,38 +136,11 @@ auto GvoxImageParser::load(GvoxInputStream input_stream) -> GvoxResult {
 
 auto gvox_parser_image_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
     return GvoxParserDescription{
-        .create = [](void **self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
-            GvoxImageParserConfig config;
-            if (args->config != nullptr) {
-                config = *static_cast<GvoxImageParserConfig const *>(args->config);
-            } else {
-                config = {};
-            }
-            *self = new (std::nothrow) GvoxImageParser(config);
-            auto load_res = static_cast<GvoxImageParser *>(*self)->load(args->input_stream);
-            if (load_res != GVOX_SUCCESS) {
-                return load_res;
-            }
-            return GVOX_SUCCESS;
-        },
-        .destroy = [](void *self) -> void { delete static_cast<GvoxImageParser *>(self); },
-        .create_from_input = [](GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
-            auto [io, fi_voxel_desc] = create_io_and_get_voxel_desc(input_stream);
-            if (fi_voxel_desc == FREE_IMAGE_FORMAT::FIF_UNKNOWN) {
-                return GVOX_ERROR_UNPARSABLE_INPUT;
-            }
-
-            auto parser_ci = GvoxParserCreateInfo{};
-            parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
-            parser_ci.next = nullptr;
-            parser_ci.cb_args.config = nullptr;
-            parser_ci.cb_args.input_stream = input_stream;
-            parser_ci.description = gvox_parser_image_description();
-
-            return gvox_create_parser(&parser_ci, user_parser);
-        },
-        .create_input_iterator = [](void *self_ptr, void **out_iterator_ptr) -> void {},
-        .destroy_iterator = [](void *self_ptr, void *iterator_ptr) -> void {},
-        .iterator_advance = [](void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) -> void {},
+        .create = create,
+        .destroy = destroy,
+        .create_from_input = create_from_input,
+        .create_iterator = create_iterator,
+        .destroy_iterator = destroy_iterator,
+        .iterator_advance = iterator_advance,
     };
 }

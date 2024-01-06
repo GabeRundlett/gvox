@@ -5,20 +5,21 @@
 #include <span>
 #include <array>
 
+#include "gvox/core.h"
 #include "types.hpp"
 #include "utils/handle.hpp"
 #include "utils/tracy.hpp"
 
-#define HANDLE_CREATE(Type, TYPE)                                                        \
-    ZoneScoped;                                                                          \
-    HANDLE_NEW(Type, TYPE)                                                               \
-    (*handle)->desc = info->description;                                                 \
-    {                                                                                    \
-        auto create_result = (*handle) -> desc.create(&(*handle)->self, &info->cb_args); \
-        if (create_result != GVOX_SUCCESS) {                                             \
-            delete *handle;                                                              \
-            return create_result;                                                        \
-        }                                                                                \
+#define HANDLE_CREATE(Type, TYPE)                                                      \
+    ZoneScoped;                                                                        \
+    HANDLE_NEW(Type, TYPE)                                                             \
+    (*handle)->desc = info->description;                                               \
+    {                                                                                  \
+        auto create_result = (*handle)->desc.create(&(*handle)->self, &info->cb_args); \
+        if (create_result != GVOX_SUCCESS) {                                           \
+            delete *handle;                                                            \
+            return create_result;                                                      \
+        }                                                                              \
     }
 
 auto gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle) GVOX_FUNC_ATTRIB->GvoxResult {
@@ -49,11 +50,29 @@ auto gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *h
 auto gvox_create_iterator(GvoxIteratorCreateInfo const *info, GvoxIterator *handle) GVOX_FUNC_ATTRIB->GvoxResult {
     HANDLE_NEW(Iterator, ITERATOR)
 
-    (*handle)->destroy_iterator = info->parser->desc.destroy_iterator;
-    (*handle)->iterator_advance = info->parser->desc.iterator_advance;
-    (*handle)->parent_self = info->parser->self;
+    if (info->next == nullptr) {
+        return GVOX_ERROR_INVALID_ARGUMENT;
+    }
 
-    info->parser->desc.create_input_iterator((*handle)->parent_self, &(*handle)->self);
+    auto s_type = static_cast<GvoxChainStruct const *>(info->next)->struct_type;
+    switch (s_type) {
+    case GVOX_STRUCT_TYPE_PARSE_ITERATOR_CREATE_INFO: {
+        auto p_info = static_cast<GvoxParseIteratorCreateInfo const *>(info->next);
+        (*handle)->destroy_iterator = p_info->parser->desc.destroy_iterator;
+        (*handle)->iterator_advance = p_info->parser->desc.iterator_advance;
+        (*handle)->parent_self = p_info->parser->self;
+        p_info->parser->desc.create_iterator((*handle)->parent_self, &(*handle)->self);
+    } break;
+    case GVOX_STRUCT_TYPE_CONTAINER_ITERATOR_CREATE_INFO: {
+        auto p_info = static_cast<GvoxContainerIteratorCreateInfo const *>(info->next);
+        (*handle)->destroy_iterator = p_info->container->desc.destroy_iterator;
+        (*handle)->iterator_advance = p_info->container->desc.iterator_advance;
+        (*handle)->parent_self = p_info->container->self;
+        p_info->container->desc.create_iterator((*handle)->parent_self, &(*handle)->self);
+    } break;
+    default: return GVOX_ERROR_INVALID_ARGUMENT;
+    }
+
     return GVOX_SUCCESS;
 }
 

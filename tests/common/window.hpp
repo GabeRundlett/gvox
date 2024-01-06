@@ -48,3 +48,16 @@ inline void rect_opt(Image *image, int32_t x1, int32_t y1, int32_t width, int32_
         pixel += next_row;
     }
 }
+
+inline void set_opt(Image *image, int32_t x1, int32_t y1, uint32_t color) {
+    auto image_size_x = static_cast<int32_t>(image->extent.data[0]);
+    auto image_size_y = static_cast<int32_t>(image->extent.data[1]);
+
+    if (x1 >= image_size_x || x1 < 0 ||
+        y1 >= image_size_y || y1 < 0) {
+        return;
+    }
+
+    uint32_t *pixel = image->pixels.data() + static_cast<ptrdiff_t>(y1) * image_size_x + x1;
+    *pixel = color;
+}

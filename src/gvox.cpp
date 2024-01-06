@@ -4,11 +4,6 @@
 #include "types.hpp"
 #include "utils/tracy.hpp"
 
-struct GvoxChainStruct {
-    GvoxStructType struct_type;
-    void const *next;
-};
-
 auto gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB->GvoxResult {
     ZoneScoped;
 

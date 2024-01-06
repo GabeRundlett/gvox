@@ -123,3 +123,11 @@ GVOX_CREATE_SAMPLE(
     LIBS minifb::minifb
     WEB_COMPATIBLE
 )
+
+GVOX_CREATE_SAMPLE(
+    FOLDER bvh
+    FILE main
+    LANG cpp
+    LIBS minifb::minifb
+    WEB_COMPATIBLE
+)

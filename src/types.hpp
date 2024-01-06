@@ -96,3 +96,8 @@ struct IMPL_STRUCT_NAME(VoxelDesc) {
     uint32_t bit_count{};
     std::vector<Attribute> attributes{};
 };
+
+struct GvoxChainStruct {
+    GvoxStructType struct_type;
+    void const *next;
+};

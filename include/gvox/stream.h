@@ -79,7 +79,7 @@ GVOX_STRUCT(GvoxParserDescription) {
     void (*destroy)(void *);
     GvoxResult (*create_from_input)(GvoxInputStream, GvoxParser *);
 
-    void (*create_input_iterator)(void *, void **);
+    void (*create_iterator)(void *, void **);
     void (*destroy_iterator)(void *, void *);
     void (*iterator_advance)(void *, void **, GvoxIteratorAdvanceInfo const *, GvoxIteratorValue *);
 };
@@ -95,6 +95,10 @@ GVOX_STRUCT(GvoxContainerDescription) {
     GvoxResult (*fill)(void *, void const *, GvoxVoxelDesc, GvoxRange);
     GvoxResult (*move)(void *, GvoxContainer *, GvoxRange *, GvoxOffset *, uint32_t);
     GvoxResult (*sample)(void *, GvoxSample const *, uint32_t);
+
+    void (*create_iterator)(void *, void **);
+    void (*destroy_iterator)(void *, void *);
+    void (*iterator_advance)(void *, void **, GvoxIteratorAdvanceInfo const *, GvoxIteratorValue *);
 };
 
 GVOX_STRUCT(GvoxInputStreamCreateInfo) {
@@ -142,8 +146,16 @@ GVOX_ENUM(GvoxIteratorType){
 GVOX_STRUCT(GvoxIteratorCreateInfo) {
     GvoxStructType struct_type;
     void const *next;
+};
+GVOX_STRUCT(GvoxParseIteratorCreateInfo) {
+    GvoxStructType struct_type;
+    void const *next;
     GvoxParser parser;
-    GvoxIteratorType iterator_type;
+};
+GVOX_STRUCT(GvoxContainerIteratorCreateInfo) {
+    GvoxStructType struct_type;
+    void const *next;
+    GvoxContainer container;
 };
 
 GVOX_STRUCT(GvoxParserDescriptionCollection) {
