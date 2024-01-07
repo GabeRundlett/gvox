@@ -112,6 +112,7 @@ set(GVOX_CONTAINERS
     "raw"
     "raw3d"
     "bounded_raw"
+    "bounded_raw3d"
 )
 
 target_compile_definitions(${PROJECT_NAME}

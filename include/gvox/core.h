@@ -125,6 +125,17 @@ GVOX_STRUCT(GvoxExtentMut) {
 #endif
 };
 
+#define _GVOX_DECL_OFFSET_EXTENT_ND(N)                  \
+    GVOX_STRUCT(GvoxOffset##N##D) { int64_t data[N]; }; \
+    GVOX_STRUCT(GvoxExtent##N##D) { uint64_t data[N]; };
+
+_GVOX_DECL_OFFSET_EXTENT_ND(1)
+_GVOX_DECL_OFFSET_EXTENT_ND(2)
+_GVOX_DECL_OFFSET_EXTENT_ND(3)
+_GVOX_DECL_OFFSET_EXTENT_ND(4)
+_GVOX_DECL_OFFSET_EXTENT_ND(5)
+_GVOX_DECL_OFFSET_EXTENT_ND(6)
+
 GVOX_STRUCT(GvoxRange) {
     GvoxOffset offset;
     GvoxExtent extent;

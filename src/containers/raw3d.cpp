@@ -1,7 +1,7 @@
 #include <gvox/format.h>
 #include <gvox/stream.h>
 #include <gvox/gvox.h>
-#include <gvox/containers/raw3d.h>
+#include <gvox/containers/raw.h>
 
 #include <cstdlib>
 #include <cstdint>

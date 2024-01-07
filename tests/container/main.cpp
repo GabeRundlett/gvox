@@ -1,5 +1,5 @@
 #include <gvox/gvox.h>
-#include <gvox/containers/raw3d.h>
+#include <gvox/containers/raw.h>
 
 #include <array>
 #include <span>
@@ -16,7 +16,7 @@
         auto res = (x);                                                \
         if (res != GVOX_SUCCESS) {                                     \
             std::cerr << "(" << res << ") " << (message) << std::endl; \
-            return -1;                                                 \
+            return;                                                    \
         }                                                              \
     }
 
@@ -52,7 +52,165 @@ namespace gvox {
     }
 } // namespace gvox
 
-auto main() -> int {
+void multi_thread_test() {
+    auto image = Image{.extent = GvoxExtent2D{256, 256}};
+
+    auto rgb_voxel_desc = gvox::create_voxel_desc(std::array{
+        GvoxAttribute{
+            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+            .next = nullptr,
+            .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+            .format = GVOX_STANDARD_FORMAT_B8G8R8_SRGB,
+        },
+        GvoxAttribute{
+            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+            .next = nullptr,
+            .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+            .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+        },
+    });
+    auto const chunk_n = 8;
+    // auto raw_container = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
+    auto chunk_data = std::vector<uint32_t>{};
+    auto chunk_extent = GvoxExtent3D{chunk_n * 64, chunk_n * 64, chunk_n * 64};
+    chunk_data.resize(chunk_extent.data[0] * chunk_extent.data[1] * chunk_extent.data[2]);
+    auto raw_container = gvox::create_container(gvox_container_bounded_raw3d_description(), GvoxBoundedRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get(), .extent = chunk_extent, .pre_allocated_buffer = chunk_data.data()});
+    using Clock = std::chrono::high_resolution_clock;
+    auto t0 = Clock::now();
+    {
+        struct ChunkgenContext {
+            gvox::Container container = {nullptr, &gvox_destroy_container};
+            GvoxOffset3D offset = {};
+        };
+        auto gen_voxel = [](GvoxOffset3D const &pos) -> uint32_t {
+            auto r = uint32_t{0};
+            auto g = uint32_t{0};
+            auto b = uint32_t{0};
+            auto x = static_cast<float>(pos.data[0] - 32);
+            auto y = static_cast<float>(pos.data[1] - 32);
+            r = static_cast<uint32_t>((sinf(x * 0.3f) * 0.5f + 0.5f) * 150.0f);
+            g = static_cast<uint32_t>((sinf(y * 0.5f) * 0.5f + 0.5f) * 150.0f);
+            b = static_cast<uint32_t>((sinf(sqrtf(x * x + y * y)) * 0.5f + 0.5f) * 250.0f);
+            return (r << 0x10) | (g << 0x08) | (b << 0x00);
+            // return 0;
+        };
+        auto chunkgen = [&rgb_voxel_desc, &gen_voxel, &chunk_data, &chunk_extent, &raw_container](ChunkgenContext &ctx) {
+            // ctx.container = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
+            uint32_t voxel_data{0xff4080ff};
+            auto offset = ctx.offset;
+            auto extent = GvoxExtent3D{1, 1, 1};
+            auto fill_info = GvoxFillInfo{
+                .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
+                .src_data = &voxel_data,
+                .src_desc = rgb_voxel_desc.get(),
+                .dst = raw_container.get(),
+                // .dst = ctx.container.get(),
+                .range = {{3, offset.data}, {3, extent.data}},
+            };
+            for (uint32_t zi = 0; zi < 64; ++zi) {
+                for (uint32_t yi = 0; yi < 64; ++yi) {
+                    for (uint32_t xi = 0; xi < 64; ++xi) {
+                        offset.data[0] = ctx.offset.data[0] + xi;
+                        offset.data[1] = ctx.offset.data[1] + yi;
+                        offset.data[2] = ctx.offset.data[2] + zi;
+                        voxel_data = gen_voxel(offset);
+                        // HANDLE_RES(gvox_fill(&fill_info), "Failed to fill");
+                        auto index = offset.data[0] + offset.data[1] * chunk_extent.data[0] + offset.data[2] * chunk_extent.data[0] * chunk_extent.data[1];
+                        chunk_data[index] = voxel_data;
+                    }
+                }
+            }
+        };
+        auto chunks = std::vector<ChunkgenContext>{};
+        chunks.resize(chunk_n * chunk_n * chunk_n);
+        for (uint32_t zi = 0; zi < chunk_n; ++zi) {
+            for (uint32_t yi = 0; yi < chunk_n; ++yi) {
+                for (uint32_t xi = 0; xi < chunk_n; ++xi) {
+                    chunks[xi + yi * chunk_n + zi * chunk_n * chunk_n].offset = GvoxOffset3D{64 * xi, 64 * yi, 64 * zi};
+                }
+            }
+        }
+        bool multi_threaded = true;
+        if (multi_threaded) {
+            auto chunks_per_thread = (chunks.size() + 15) / 16;
+            auto thread_n = (chunks.size() + chunks_per_thread - 1) / chunks_per_thread;
+            chunks_per_thread = (chunks.size() + thread_n - 1) / thread_n;
+            auto threads = std::vector<std::thread>{};
+            threads.reserve(thread_n);
+            auto gen_span = [&chunkgen](std::span<ChunkgenContext> chunks_span) { for (auto &chunk : chunks_span) { chunkgen(chunk); } };
+            for (uint32_t i = 0; i < thread_n - 1; ++i) {
+                threads.emplace_back([=, &chunks]() { gen_span(std::span(chunks.begin() + i * chunks_per_thread, chunks.begin() + (i + 1) * chunks_per_thread)); });
+            }
+            gen_span(std::span(chunks.begin() + (thread_n - 1) * chunks_per_thread, chunks.end()));
+            for (auto &thread : threads) {
+                thread.join();
+            }
+        } else {
+            for (auto &chunk : chunks) {
+                chunkgen(chunk);
+            }
+        }
+        // auto child_containers = std::vector<GvoxContainer>{};
+        // auto ranges = std::vector<GvoxRange>{};
+        // auto offsets = std::vector<GvoxOffset>{};
+        // auto base_offset = GvoxOffset3D{0, 0, 0};
+        // auto base_extent = GvoxExtent3D{64, 64, 64};
+        // for (auto &chunk : chunks) {
+        //     child_containers.push_back(chunk.container.get());
+        //     ranges.push_back(GvoxRange{{3, chunk.offset.data}, {3, base_extent.data}});
+        //     offsets.push_back({3, base_offset.data});
+        // }
+        // auto move_info = GvoxMoveInfo{
+        //     .struct_type = GVOX_STRUCT_TYPE_MOVE_INFO,
+        //     .src_containers = child_containers.data(),
+        //     .src_container_ranges = ranges.data(),
+        //     .src_dst_offsets = offsets.data(),
+        //     .src_container_n = static_cast<uint32_t>(child_containers.size()),
+        //     .dst = raw_container.get(),
+        // };
+        // HANDLE_RES(gvox_move(&move_info), "Failed to move");
+    }
+    auto t1 = Clock::now();
+    auto elapsed_ns = std::chrono::duration<float, std::nano>(t1 - t0).count();
+    auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
+    auto voxel_n = chunk_n * chunk_n * chunk_n * 64 * 64 * 64;
+    auto voxel_nf = static_cast<float>(voxel_n);
+    std::cout << elapsed_s << "s total. " << voxel_n << " voxels.\n"
+              << elapsed_ns / voxel_nf << "ns per voxel | " << voxel_nf / 1'000'000.0f / elapsed_s << " M voxels/s\n";
+
+    for (uint32_t yi = 0; yi < image.extent.data[1]; ++yi) {
+        for (uint32_t xi = 0; xi < image.extent.data[0]; ++xi) {
+            auto voxel_data = uint32_t{0};
+            auto offset = GvoxOffset3D{.data = {xi, yi, 0}};
+            auto sample = GvoxSample{
+                .offset = {.axis_n = 3, .axis = offset.data},
+                .dst_voxel_data = &voxel_data,
+                .dst_voxel_desc = rgb_voxel_desc.get(),
+            };
+            auto sample_info = GvoxSampleInfo{
+                .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
+                .next = nullptr,
+                .src = raw_container.get(),
+                .samples = &sample,
+                .sample_n = 1,
+            };
+            HANDLE_RES(gvox_sample(&sample_info), "Failed to sample");
+            rect_opt(&image, static_cast<int32_t>(offset.data[0]), static_cast<int32_t>(offset.data[1]), 1, 1, voxel_data);
+        }
+    }
+
+    struct mfb_window *window = mfb_open("viewer", static_cast<uint32_t>(image.extent.data[0] * 3), static_cast<uint32_t>(image.extent.data[1] * 3));
+    while (true) {
+        if (mfb_update_ex(window, image.pixels.data(), static_cast<uint32_t>(image.extent.data[0]), static_cast<uint32_t>(image.extent.data[1])) < 0) {
+            break;
+        }
+        if (!mfb_wait_sync(window)) {
+            break;
+        }
+    }
+}
+
+void iterator_test() {
     auto image = Image{.extent = GvoxExtent2D{256, 256}};
 
     auto rgb_voxel_desc = gvox::create_voxel_desc(std::array{
@@ -110,7 +268,6 @@ auto main() -> int {
                 .range = {{3, offset.data}, {3, extent.data}},
             };
             HANDLE_RES(gvox_fill(&fill_info), "Failed to fill a");
-            return 0;
         });
         auto thread_b = std::thread([&]() {
             // process chunk B
@@ -133,7 +290,6 @@ auto main() -> int {
                 voxel_data = (voxel_data & ~0x00ff00ffu) | ((i * 23) << 0) | ((i * 31) << 16);
                 HANDLE_RES(gvox_fill(&fill_info), "Failed to fill b");
             }
-            return 0;
         });
 
         thread_a.join();
@@ -149,7 +305,9 @@ auto main() -> int {
             .dst = raw_container.get(),
         };
         HANDLE_RES(gvox_move(&move_info), "Failed to move");
+    }
 
+    {
         using Clock = std::chrono::steady_clock;
         auto t0 = Clock::now();
 
@@ -249,4 +407,9 @@ auto main() -> int {
             break;
         }
     }
+}
+
+auto main() -> int {
+    multi_thread_test();
+    // iterator_test();
 }

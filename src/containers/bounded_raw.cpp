@@ -1,4 +1,4 @@
-#include <gvox/containers/bounded_raw.h>
+#include <gvox/containers/raw.h>
 #include <gvox/stream.h>
 #include <gvox/format.h>
 

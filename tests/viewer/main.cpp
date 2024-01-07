@@ -3,7 +3,7 @@
 #include <gvox/format.h>
 #include <gvox/gvox.h>
 
-#include <gvox/containers/bounded_raw.h>
+#include <gvox/containers/raw.h>
 #include <gvox/streams/input/file.h>
 #include <gvox/streams/input/byte_buffer.h>
 
