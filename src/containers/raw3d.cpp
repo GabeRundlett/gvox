@@ -100,7 +100,10 @@ namespace {
         return GVOX_SUCCESS;
     }
 
-    void destroy(void *self_ptr) { delete static_cast<Container *>(self_ptr); }
+    void destroy(void *self_ptr) {
+        auto &self = *static_cast<Container *>(self_ptr);
+        delete &self;
+    }
 
     auto fill(void *self_ptr, void const *single_voxel_data, GvoxVoxelDesc src_voxel_desc, GvoxRange range) -> GvoxResult {
         auto &self = *static_cast<Container *>(self_ptr);
@@ -108,15 +111,20 @@ namespace {
         // convert src data to be compatible with the dst_voxel_desc
         const auto *converted_data = static_cast<void const *>(nullptr);
         // test to see if the input data is already compatible (basically if it's the same exact voxel desc)
-        auto is_compatible_voxel_desc = [](GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) -> bool {
-            return desc_a == desc_b;
-        };
-        if (is_compatible_voxel_desc(src_voxel_desc, self.voxel_desc)) {
+        auto converted_temp_storage = std::vector<uint8_t>{};
+        auto self_voxel_size = (gvox_voxel_desc_size_in_bits(self.voxel_desc) + 7) >> 3;
+        if (gvox_voxel_desc_compare(src_voxel_desc, self.voxel_desc) != 0) {
             converted_data = single_voxel_data;
         } else {
-            // converted_data = convert_data(converted_data_stack);
+            converted_temp_storage.resize(self_voxel_size);
+            // TODO: create standard mapping?
+            auto mapping = GvoxAttributeMapping{.dst_index = 0, .src_index = 0};
+            auto res = gvox_translate_voxel(single_voxel_data, src_voxel_desc, converted_temp_storage.data(), self.voxel_desc, &mapping, 1);
+            if (res != GVOX_SUCCESS) {
+                return res;
+            }
+            converted_data = converted_temp_storage.data();
         }
-        auto voxel_size = self.voxel_size_bytes();
 
         if (range.offset.axis_n < range.extent.axis_n) {
             return GVOX_ERROR_INVALID_ARGUMENT;
@@ -135,7 +143,7 @@ namespace {
 
         Voxel const in_voxel = {
             .ptr = static_cast<uint8_t const *>(converted_data),
-            .size = voxel_size,
+            .size = self_voxel_size,
         };
         auto const voxels_in_chunk = VOXELS_PER_CHUNK;
         auto const chunk_size = in_voxel.size * voxels_in_chunk;

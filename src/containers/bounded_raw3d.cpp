@@ -91,9 +91,9 @@ namespace {
             .size = static_cast<uint32_t>(self_voxel_size),
         };
 
-        auto voxel_range_offset = GvoxOffset3D{};
-        auto voxel_range_extent = GvoxExtent3D{};
-        auto voxel_next = GvoxOffset3D{};
+        auto voxel_range_offset = GvoxOffset3D{0, 0, 0};
+        auto voxel_range_extent = GvoxExtent3D{1, 1, 1};
+        auto voxel_next = GvoxOffset3D{0, 0, 0};
 
         auto *voxel_ptr = static_cast<uint8_t *>(self.pre_allocated_buffer);
 

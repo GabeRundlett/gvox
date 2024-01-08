@@ -8,6 +8,8 @@
 #include <gvox/streams/input/byte_buffer.h>
 
 #include "../common/window.hpp"
+#include "gvox/core.h"
+#include "gvox/parsers/magicavoxel.h"
 
 #include <iostream>
 #include <array>
@@ -97,7 +99,7 @@ auto main() -> int {
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
                 .type = GVOX_ATTRIBUTE_TYPE_UNKNOWN,
-                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, 16),
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(16)),
             },
         };
         auto voxel_desc_info = GvoxVoxelDescCreateInfo{
@@ -111,22 +113,19 @@ auto main() -> int {
 
     auto image = Image{.extent = GvoxExtent2D{1536, 1024}};
     auto depth_image = Image{.extent = image.extent};
-    for (auto &p : depth_image.pixels) {
-        p = (static_cast<uint32_t>(std::bit_cast<uint16_t>(std::numeric_limits<int16_t>::max())) << 16) |
-            std::bit_cast<uint16_t>(std::numeric_limits<int16_t>::max());
-    }
 
     auto *raw_container = GvoxContainer{};
     {
-        auto raw_container_conf = GvoxBoundedRawContainerConfig{
+        auto raw_container_conf = GvoxBoundedRaw3dContainerConfig{
             .voxel_desc = rgb_voxel_desc,
-            .extent = {2, image.extent.data},
+            // .extent = {2, image.extent.data},
+            .extent = {image.extent.data[0], image.extent.data[1], 1},
             .pre_allocated_buffer = image.pixels.data(),
         };
         auto cont_info = GvoxContainerCreateInfo{
             .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
             .next = nullptr,
-            .description = gvox_container_bounded_raw_description(),
+            .description = gvox_container_bounded_raw3d_description(),
             .cb_args = {
                 .struct_type = {}, // ?
                 .next = nullptr,
@@ -138,15 +137,16 @@ auto main() -> int {
 
     auto *depth_container = GvoxContainer{};
     {
-        auto raw_container_conf = GvoxBoundedRawContainerConfig{
+        auto raw_container_conf = GvoxBoundedRaw3dContainerConfig{
             .voxel_desc = depth_voxel_desc,
-            .extent = {2, depth_image.extent.data},
+            // .extent = {2, depth_image.extent.data},
+            .extent = {depth_image.extent.data[0], depth_image.extent.data[1], 1},
             .pre_allocated_buffer = depth_image.pixels.data(),
         };
         auto cont_info = GvoxContainerCreateInfo{
             .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
             .next = nullptr,
-            .description = gvox_container_bounded_raw_description(),
+            .description = gvox_container_bounded_raw3d_description(),
             .cb_args = {
                 .struct_type = {}, // ?
                 .next = nullptr,
@@ -155,21 +155,6 @@ auto main() -> int {
         };
         HANDLE_RES(gvox_create_container(&cont_info, &depth_container), "Failed to create raw container")
     }
-
-    // auto *vdb_container = GvoxContainer{};
-    // {
-    //     auto cont_info = GvoxContainerCreateInfo{
-    //         .struct_type = GVOX_STRUCT_TYPE_CONTAINER_CREATE_INFO,
-    //         .next = nullptr,
-    //         .description = gvox_container_openvdb_description(),
-    //         .cb_args = {
-    //             .struct_type = {}, // ?
-    //             .next = nullptr,
-    //             .config = nullptr,
-    //         },
-    //     };
-    //     HANDLE_RES(gvox_create_container(&cont_info, &vdb_container), "Failed to create vdb container")
-    // }
 
     uint32_t voxel_data{};
     GvoxOffset2D offset{};
@@ -185,6 +170,16 @@ auto main() -> int {
             {2, extent.data},
         },
     };
+
+    auto const FAR_DEPTH = std::numeric_limits<int16_t>::max();
+    {
+        fill_info.src_data = &FAR_DEPTH;
+        fill_info.src_desc = depth_voxel_desc;
+        fill_info.dst = depth_container;
+        offset = {0, 0};
+        extent = depth_image.extent;
+        HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+    }
 
     using Clock = std::chrono::high_resolution_clock;
     auto *file_input = GvoxInputStream{};
@@ -233,6 +228,21 @@ auto main() -> int {
         };
         gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
         HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
+        // auto magicavoxel_config = MagicavoxelParserConfig{
+        //     .object_name = "wardrobe",
+        // };
+        // auto parser_info = GvoxParserCreateInfo{
+        //     .struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO,
+        //     .next = nullptr,
+        //     .description = gvox_parser_magicavoxel_description(),
+        //     .cb_args = {
+        //         .struct_type = {}, // ?
+        //         .next = nullptr,
+        //         .input_stream = file_input,
+        //         .config = &magicavoxel_config,
+        //     },
+        // };
+        // HANDLE_RES(gvox_create_parser(&parser_info, &file_parser), "Failed to create parser");
     }
 
     for (uint32_t i = 0; i < 1; ++i) {
@@ -314,7 +324,7 @@ auto main() -> int {
                 extent.data[0] = iter_value.range.extent.axis[0] * 1;
                 extent.data[1] = iter_value.range.extent.axis[2] * 1;
 
-                int16_t current_depth = 0;
+                auto current_depth = FAR_DEPTH;
                 sample_info.src = depth_container;
                 sample.offset = {.axis_n = 2, .axis = offset.data};
                 sample.dst_voxel_data = &current_depth;
@@ -409,7 +419,6 @@ auto main() -> int {
 
     gvox_destroy_input_stream(file_input);
     gvox_destroy_parser(file_parser);
-    // gvox_destroy_container(vdb_container);
     gvox_destroy_container(depth_container);
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(depth_voxel_desc);

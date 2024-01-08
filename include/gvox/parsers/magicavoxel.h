@@ -4,7 +4,8 @@
 #include <gvox/stream.h>
 
 typedef struct {
-    uint8_t _pad;
+    // Optional object name filter.
+    char const *object_name;
 } MagicavoxelParserConfig;
 
 GVOX_EXPORT GvoxParserDescription gvox_parser_magicavoxel_description(void) GVOX_FUNC_ATTRIB;

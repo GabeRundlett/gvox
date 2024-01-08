@@ -74,7 +74,7 @@ namespace {
         magicavoxel::Color voxel{};
     };
 
-    void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, size_t parent_group_begin_index, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p) {
+    void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, size_t parent_group_begin_index, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p, MagicavoxelParserConfig const &config) {
         auto const &node_info = scene_info.node_infos[node_index];
         if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
             auto const &t_node_info = std::get<magicavoxel::SceneTransformInfo>(node_info);
@@ -84,7 +84,9 @@ namespace {
             new_trn.offset.data[1] += rotated_offset.data[1];
             new_trn.offset.data[2] += rotated_offset.data[2];
             new_trn.rotation = magicavoxel::rotate(new_trn.rotation, t_node_info.transform.rotation);
-            construct_scene(scene, scene_info, t_node_info.child_node_id, parent_group_begin_index, new_trn, min_p, max_p);
+            if (config.object_name == nullptr || strlen(t_node_info.name.data()) == 0 || strcmp(t_node_info.name.data(), config.object_name) == 0) {
+                construct_scene(scene, scene_info, t_node_info.child_node_id, parent_group_begin_index, new_trn, min_p, max_p, config);
+            }
         } else if (std::holds_alternative<magicavoxel::SceneGroupInfo>(node_info)) {
             auto const &g_node_info = std::get<magicavoxel::SceneGroupInfo>(node_info);
             scene.iterator_nodes.reserve(scene.iterator_nodes.size() + g_node_info.num_child_nodes + 2);
@@ -102,7 +104,7 @@ namespace {
                 construct_scene(
                     scene, scene_info,
                     scene_info.group_children_ids[g_node_info.first_child_node_id_index + child_i],
-                    group_begin_index, trn, group_min_p, group_max_p);
+                    group_begin_index, trn, group_min_p, group_max_p, config);
             }
             auto end_index = scene.iterator_nodes.size();
             scene.iterator_nodes.emplace_back(GroupInstanceEnd{.parent_group_begin_index = group_begin_index});
@@ -515,7 +517,7 @@ namespace {
             max_p.data[0] = std::numeric_limits<int64_t>::min();
             max_p.data[1] = max_p.data[0];
             max_p.data[2] = max_p.data[0];
-            construct_scene(self.scene, scene_info, 0, 0, {}, min_p, max_p);
+            construct_scene(self.scene, scene_info, 0, 0, {}, min_p, max_p, config);
         } else {
             // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER, "Somehow there were no scene nodes parsed from this model. Please let us know in the gvox GitHub issues what to do to reproduce this bug");
             return GVOX_ERROR_UNKNOWN;
