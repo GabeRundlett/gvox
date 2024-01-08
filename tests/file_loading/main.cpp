@@ -85,9 +85,6 @@ auto main() -> int {
         HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
     }
 
-    // Now we'll ensure that we're at the beginning of the input stream before using the parser to iterate over the input.
-    gvox_input_seek(file_input, 0, GVOX_SEEK_ORIGIN_BEG);
-
     // And of course, create that iterator.
     auto *input_iterator = GvoxIterator{};
     {

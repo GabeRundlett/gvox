@@ -116,6 +116,7 @@ namespace {
     const auto std_parser_descriptions = std::array{
         // gvox_parser_image_description(),
         gvox_parser_magicavoxel_description(),
+        gvox_parser_magicavoxel_xraw_description(),
     };
 } // namespace
 

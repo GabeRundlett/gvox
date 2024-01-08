@@ -326,4 +326,49 @@ namespace magicavoxel {
         }
         return result;
     }
+
+    namespace xraw {
+        static constexpr uint32_t MAGIC = std::bit_cast<uint32_t>(std::array{'X', 'R', 'A', 'W'});
+
+        enum class ColorChannelDataType : uint8_t {
+            U32,
+            I32,
+            F32,
+        };
+
+        struct Header {
+            uint32_t magic;
+            ColorChannelDataType color_channel_data_type;
+            uint8_t color_channel_n;
+            uint8_t bits_per_channel;
+            uint8_t bits_per_index; // if 0, no palette
+            uint32_t volume_size_x;
+            uint32_t volume_size_y;
+            uint32_t volume_size_z;
+            uint32_t palette_size;
+
+            [[nodiscard]] auto valid() const -> bool {
+                if (magic != MAGIC) {
+                    return false;
+                }
+                auto c = static_cast<uint8_t>(color_channel_data_type);
+                if (c > 2) {
+                    return false;
+                }
+                if (color_channel_n > 4) {
+                    return false;
+                }
+                if (bits_per_channel != 8 && bits_per_channel != 16 && bits_per_channel != 32) {
+                    return false;
+                }
+                if (bits_per_index != 8 && bits_per_index != 16 && bits_per_index != 0) {
+                    return false;
+                }
+                if (palette_size != 256 && palette_size != 32768) {
+                    return false;
+                }
+                return true;
+            }
+        };
+    } // namespace xraw
 } // namespace magicavoxel

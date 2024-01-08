@@ -663,3 +663,179 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
         .iterator_advance = iterator_advance,
     };
 }
+namespace magicavoxel::xraw {
+    struct Parser {
+        Header header;
+        uint32_t per_voxel_size;
+        uint32_t palette_element_size;
+        std::vector<uint8_t> voxels;
+        std::vector<uint8_t> palette;
+        GvoxVoxelDesc desc{};
+    };
+
+    struct Iterator {
+        size_t iterator_index{};
+        size_t voxel_index{std::numeric_limits<size_t>::max()};
+        GvoxOffset3D offset{};
+        GvoxExtent3D extent{};
+        uint32_t voxel{};
+    };
+
+    auto create(void **out_self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
+        auto config = MagicavoxelXrawParserConfig{};
+        if (args->config != nullptr) {
+            config = *static_cast<MagicavoxelXrawParserConfig const *>(args->config);
+        } else {
+            config = {};
+        }
+        auto &self = *(new (std::nothrow) Parser());
+        *out_self = &self;
+
+        auto ret = gvox_input_read(args->input_stream, &self.header, sizeof(self.header));
+        if (ret != GVOX_SUCCESS) {
+            delete &self;
+            return ret;
+        }
+        if (!self.header.valid()) {
+            delete &self;
+            return GVOX_ERROR_UNPARSABLE_INPUT;
+        }
+
+        auto voxel_count = self.header.volume_size_x * self.header.volume_size_y * self.header.volume_size_z;
+        self.palette_element_size = self.header.color_channel_n * self.header.bits_per_channel / 8u;
+        self.per_voxel_size = self.header.bits_per_index == 0 ? self.palette_element_size : (self.header.bits_per_index / 8u);
+        auto palette_size = self.header.bits_per_index == 0 ? 0 : (self.header.palette_size * self.palette_element_size);
+
+        self.voxels.resize(self.per_voxel_size * voxel_count);
+        self.palette.resize(palette_size);
+
+        auto attribs = std::array{
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
+            },
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+            },
+        };
+        switch (self.header.color_channel_n) {
+        case 1: {
+            attribs[0].format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_SRGB, GVOX_PACKED_ENCODING(1, GVOX_SWIZZLE_MODE_NONE, 8, 0, 0));
+        } break;
+        case 2: {
+            attribs[0].format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_SRGB, GVOX_PACKED_ENCODING(2, GVOX_SWIZZLE_MODE_NONE, 8, 8, 0));
+        } break;
+        }
+
+        auto voxel_desc_info = GvoxVoxelDescCreateInfo{
+            .struct_type = GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO,
+            .next = nullptr,
+            .attribute_count = self.header.color_channel_n == 4 ? 2u : 1u,
+            .attributes = attribs.data(),
+        };
+
+        auto res = gvox_create_voxel_desc(&voxel_desc_info, &self.desc);
+        if (res != GVOX_SUCCESS) {
+            delete &self;
+            return res;
+        }
+
+        ret = gvox_input_read(args->input_stream, self.voxels.data(), self.voxels.size());
+        if (ret != GVOX_SUCCESS) {
+            delete &self;
+            return ret;
+        }
+
+        if (palette_size != 0) {
+            ret = gvox_input_read(args->input_stream, self.palette.data(), self.palette.size());
+            if (ret != GVOX_SUCCESS) {
+                delete &self;
+                return ret;
+            }
+        }
+
+        return GVOX_SUCCESS;
+    }
+    void destroy(void *self) { delete static_cast<Parser *>(self); }
+
+    auto create_from_input(GvoxInputStream input_stream, GvoxParser *user_parser) -> GvoxResult {
+        auto header = Header{};
+        auto ret = gvox_input_read(input_stream, &header, sizeof(header));
+        if (ret != GVOX_SUCCESS) {
+            return ret;
+        }
+        if (!header.valid()) {
+            return GVOX_ERROR_UNPARSABLE_INPUT;
+        }
+        auto parser_ci = GvoxParserCreateInfo{};
+        parser_ci.struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO;
+        parser_ci.next = nullptr;
+        parser_ci.cb_args.config = nullptr;
+        parser_ci.cb_args.input_stream = input_stream;
+        parser_ci.description = gvox_parser_magicavoxel_xraw_description();
+        gvox_input_seek(input_stream, -static_cast<int64_t>(sizeof(header)), GVOX_SEEK_ORIGIN_CUR);
+        return gvox_create_parser(&parser_ci, user_parser);
+    }
+
+    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+        *out_iterator_ptr = new (std::nothrow) Iterator();
+    }
+    void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
+        delete static_cast<Iterator *>(iterator_ptr);
+    }
+    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+        auto &self = *static_cast<Parser *>(self_ptr);
+        auto &iter = *static_cast<Iterator *>(*iterator_ptr);
+
+        if (iter.iterator_index != 0) {
+            out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
+            return;
+        }
+
+        if (iter.voxel_index == std::numeric_limits<size_t>::max()) {
+            iter.voxel_index = 0;
+            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
+            iter.offset = {0, 0, 0};
+            iter.extent = {self.header.volume_size_x, self.header.volume_size_y, self.header.volume_size_z};
+            out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
+        } else if (iter.voxel_index >= self.voxels.size()) {
+            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
+            iter.offset = {0, 0, 0};
+            iter.extent = {self.header.volume_size_x, self.header.volume_size_y, self.header.volume_size_z};
+            out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
+            iter.iterator_index = 1;
+        } else {
+            out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
+            iter.offset.data[0] = iter.voxel_index % self.header.volume_size_x;
+            iter.offset.data[1] = (iter.voxel_index / self.header.volume_size_x) % self.header.volume_size_y;
+            iter.offset.data[2] = (iter.voxel_index / self.header.volume_size_x / self.header.volume_size_y) % self.header.volume_size_z;
+            iter.extent = {1, 1, 1};
+            out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
+            iter.voxel = 0;
+            std::memcpy(&iter.voxel, self.voxels.data() + iter.voxel_index * self.per_voxel_size, self.per_voxel_size);
+            if (!self.palette.empty()) {
+                // if the palette is not empty, then the voxel must now hold an index into the palette
+                std::memcpy(&iter.voxel, self.palette.data() + iter.voxel * self.palette_element_size, self.palette_element_size);
+            }
+            out->voxel_desc = self.desc;
+            out->voxel_data = &iter.voxel;
+            ++iter.voxel_index;
+        }
+    }
+} // namespace magicavoxel::xraw
+
+auto gvox_parser_magicavoxel_xraw_description() GVOX_FUNC_ATTRIB->GvoxParserDescription {
+    return GvoxParserDescription{
+        .create = magicavoxel::xraw::create,
+        .destroy = magicavoxel::xraw::destroy,
+        .create_from_input = magicavoxel::xraw::create_from_input,
+        .create_iterator = magicavoxel::xraw::create_iterator,
+        .destroy_iterator = magicavoxel::xraw::destroy_iterator,
+        .iterator_advance = magicavoxel::xraw::iterator_advance,
+    };
+}
