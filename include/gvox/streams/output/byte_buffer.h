@@ -3,10 +3,10 @@
 
 #include <gvox/stream.h>
 
-typedef struct {
+GVOX_STRUCT(GvoxByteBufferOutputStreamConfig) {
     uint8_t _pad;
-} GvoxByteBufferOutputStreamConfig;
+};
 
-GVOX_EXPORT GvoxOutputStreamDescription gvox_output_stream_byte_buffer_description(void) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxOutputStreamDescription, gvox_output_stream_byte_buffer_description, void);
 
 #endif

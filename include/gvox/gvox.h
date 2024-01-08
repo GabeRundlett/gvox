@@ -50,9 +50,9 @@ GVOX_STRUCT(GvoxSampleInfo) {
 
 // Consumer API
 
-GVOX_EXPORT GvoxResult gvox_fill(GvoxFillInfo const *info) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_move(GvoxMoveInfo const *info) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_blit(GvoxBlitInfo const *info) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_sample(GvoxSampleInfo const *info) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_fill, GvoxFillInfo const *info);
+GVOX_FUNC(GvoxResult, gvox_move, GvoxMoveInfo const *info);
+GVOX_FUNC(GvoxResult, gvox_blit, GvoxBlitInfo const *info);
+GVOX_FUNC(GvoxResult, gvox_sample, GvoxSampleInfo const *info);
 
 #endif

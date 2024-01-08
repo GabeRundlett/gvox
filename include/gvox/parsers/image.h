@@ -3,10 +3,10 @@
 
 #include <gvox/stream.h>
 
-typedef struct {
+GVOX_STRUCT(GvoxImageParserConfig) {
     uint8_t _pad;
-} GvoxImageParserConfig;
+};
 
-GVOX_EXPORT GvoxParserDescription gvox_parser_image_description(void) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxParserDescription, gvox_parser_image_description, void);
 
 #endif

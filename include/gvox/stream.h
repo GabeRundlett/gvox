@@ -165,30 +165,30 @@ GVOX_STRUCT(GvoxParserDescriptionCollection) {
     uint32_t description_n;
 };
 
-GVOX_EXPORT GvoxResult gvox_create_input_stream(GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_output_stream(GvoxOutputStreamCreateInfo const *info, GvoxOutputStream *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_parser(GvoxParserCreateInfo const *info, GvoxParser *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_serializer(GvoxSerializerCreateInfo const *info, GvoxSerializer *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_container(GvoxContainerCreateInfo const *info, GvoxContainer *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_iterator(GvoxIteratorCreateInfo const *info, GvoxIterator *handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_create_input_stream, GvoxInputStreamCreateInfo const *info, GvoxInputStream *handle);
+GVOX_FUNC(GvoxResult, gvox_create_output_stream, GvoxOutputStreamCreateInfo const *info, GvoxOutputStream *handle);
+GVOX_FUNC(GvoxResult, gvox_create_parser, GvoxParserCreateInfo const *info, GvoxParser *handle);
+GVOX_FUNC(GvoxResult, gvox_create_serializer, GvoxSerializerCreateInfo const *info, GvoxSerializer *handle);
+GVOX_FUNC(GvoxResult, gvox_create_container, GvoxContainerCreateInfo const *info, GvoxContainer *handle);
+GVOX_FUNC(GvoxResult, gvox_create_iterator, GvoxIteratorCreateInfo const *info, GvoxIterator *handle);
 
-GVOX_EXPORT void gvox_destroy_input_stream(GvoxInputStream handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_output_stream(GvoxOutputStream handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_parser(GvoxParser handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_serializer(GvoxSerializer handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_container(GvoxContainer handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_iterator(GvoxIterator handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(void, gvox_destroy_input_stream, GvoxInputStream handle);
+GVOX_FUNC(void, gvox_destroy_output_stream, GvoxOutputStream handle);
+GVOX_FUNC(void, gvox_destroy_parser, GvoxParser handle);
+GVOX_FUNC(void, gvox_destroy_serializer, GvoxSerializer handle);
+GVOX_FUNC(void, gvox_destroy_container, GvoxContainer handle);
+GVOX_FUNC(void, gvox_destroy_iterator, GvoxIterator handle);
 
-GVOX_EXPORT GvoxResult gvox_input_read(GvoxInputStream handle, void *data, size_t size) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_input_seek(GvoxInputStream handle, int64_t offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT int64_t gvox_input_tell(GvoxInputStream handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_input_read, GvoxInputStream handle, void *data, size_t size);
+GVOX_FUNC(GvoxResult, gvox_input_seek, GvoxInputStream handle, int64_t offset, GvoxSeekOrigin origin);
+GVOX_FUNC(int64_t, gvox_input_tell, GvoxInputStream handle);
 
-GVOX_EXPORT GvoxResult gvox_output_write(GvoxOutputStream handle, void *data, size_t size) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_output_seek(GvoxOutputStream handle, int64_t offset, GvoxSeekOrigin origin) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT int64_t gvox_output_tell(GvoxOutputStream handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_output_write, GvoxOutputStream handle, void *data, size_t size);
+GVOX_FUNC(GvoxResult, gvox_output_seek, GvoxOutputStream handle, int64_t offset, GvoxSeekOrigin origin);
+GVOX_FUNC(int64_t, gvox_output_tell, GvoxOutputStream handle);
 
-GVOX_EXPORT GvoxResult gvox_enumerate_standard_parser_descriptions(GvoxParserDescription const **out_descriptions, uint32_t *description_n) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_create_parser_from_input(GvoxParserDescriptionCollection const *parsers, GvoxInputStream input_stream, GvoxParser *user_parser) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_enumerate_standard_parser_descriptions, GvoxParserDescription const **out_descriptions, uint32_t *description_n);
+GVOX_FUNC(GvoxResult, gvox_create_parser_from_input, GvoxParserDescriptionCollection const *parsers, GvoxInputStream input_stream, GvoxParser *user_parser);
 
 GVOX_EXPORT void gvox_iterator_advance(GvoxIterator handle, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *value);
 

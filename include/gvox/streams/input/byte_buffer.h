@@ -3,11 +3,11 @@
 
 #include <gvox/stream.h>
 
-typedef struct {
+GVOX_STRUCT(GvoxByteBufferInputStreamConfig) {
     uint8_t const *data;
     size_t size;
-} GvoxByteBufferInputStreamConfig;
+};
 
-GVOX_EXPORT GvoxInputStreamDescription gvox_input_stream_byte_buffer_description(void) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxInputStreamDescription, gvox_input_stream_byte_buffer_description, void);
 
 #endif

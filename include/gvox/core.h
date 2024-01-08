@@ -12,7 +12,9 @@
 
 #ifdef __cplusplus
 #define GVOX_EXPORT extern "C" GVOX_CMAKE_EXPORT
+#define GVOX_FUNC_ATTRIB noexcept
 #define GVOX_DEFAULT(x) = x
+#define GVOX_FUNC(ret, name, ...) GVOX_EXPORT auto name(__VA_ARGS__) GVOX_FUNC_ATTRIB->ret
 #define GVOX_ENUM(x) enum x : int32_t
 #define GVOX_STRUCT(x) struct x
 #define GVOX_UNION(x) union x
@@ -22,7 +24,9 @@
 #define GVOX_CONSTANTS_END()
 #else
 #define GVOX_EXPORT GVOX_CMAKE_EXPORT
+#define GVOX_FUNC_ATTRIB
 #define GVOX_DEFAULT(x)
+#define GVOX_FUNC(ret, name, ...) GVOX_EXPORT ret name(__VA_ARGS__) GVOX_FUNC_ATTRIB
 #define GVOX_ENUM(x)   \
     typedef int32_t x; \
     enum x
@@ -186,10 +190,6 @@ concept GvoxExtentType =
     std::same_as<T, GvoxExtent> ||
     std::same_as<T, GvoxExtentMut>;
 
-#define GVOX_FUNC_ATTRIB noexcept
-
-#else
-#define GVOX_FUNC_ATTRIB
 #endif
 
 #undef GVOX_DEFINE_HANDLE

@@ -4,9 +4,10 @@
 #include <gvox/stream.h>
 #include <gvox/format.h>
 
-typedef struct {
-} GvoxOpenvdbContainerConfig;
+GVOX_STRUCT(GvoxOpenvdbContainerConfig) {
+    uint8_t _pad;
+};
 
-GVOX_EXPORT GvoxContainerDescription gvox_container_openvdb_description(void) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxContainerDescription, gvox_container_openvdb_description, void);
 
 #endif

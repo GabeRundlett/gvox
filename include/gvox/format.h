@@ -89,15 +89,15 @@ GVOX_STRUCT(GvoxAttributeMapping) {
     uint8_t src2_index;
 };
 
-GVOX_EXPORT GvoxResult gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(GvoxResult, gvox_create_voxel_desc, GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle);
+GVOX_FUNC(void, gvox_destroy_voxel_desc, GvoxVoxelDesc handle);
 
-GVOX_EXPORT uint32_t gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT uint32_t gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(uint32_t, gvox_voxel_desc_size_in_bits, GvoxVoxelDesc handle);
+GVOX_FUNC(uint32_t, gvox_voxel_desc_attribute_count, GvoxVoxelDesc handle);
 
-GVOX_EXPORT uint8_t gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB;
+GVOX_FUNC(uint8_t, gvox_voxel_desc_compare, GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b);
 
-// GVOX_EXPORT GvoxResult gvox_translate_format(void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format) GVOX_FUNC_ATTRIB;
-GVOX_EXPORT GvoxResult gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n) GVOX_FUNC_ATTRIB;
+// GVOX_FUNC(GvoxResult, gvox_translate_format, void const *src_data, GvoxFormat src_format, void *dst_data, GvoxFormat dst_format);
+GVOX_FUNC(GvoxResult, gvox_translate_voxel, void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n);
 
 #endif
