@@ -1,5 +1,4 @@
-#include "gvox/core.h"
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 
 #include <cstdint>
 #include <array>

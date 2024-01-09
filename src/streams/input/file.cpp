@@ -1,7 +1,6 @@
-#define CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
-#include "gvox/core.h"
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 #include <gvox/streams/input/file.h>
 
 #include <cstdio>

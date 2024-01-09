@@ -1,7 +1,7 @@
 #ifndef GVOX_INPUT_STREAM_BYTE_BUFFER_H
 #define GVOX_INPUT_STREAM_BYTE_BUFFER_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxByteBufferInputStreamConfig) {
     uint8_t const *data;

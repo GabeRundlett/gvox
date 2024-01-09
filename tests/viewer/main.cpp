@@ -1,6 +1,4 @@
 
-#include <gvox/stream.h>
-#include <gvox/format.h>
 #include <gvox/gvox.h>
 
 #include <gvox/containers/raw.h>
@@ -8,7 +6,6 @@
 #include <gvox/streams/input/byte_buffer.h>
 
 #include "../common/window.hpp"
-#include "gvox/core.h"
 #include "gvox/parsers/magicavoxel.h"
 
 #include <iostream>

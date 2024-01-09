@@ -1,5 +1,4 @@
 #include <gvox/gvox.h>
-#include <gvox/stream.h>
 #include <gvox/streams/input/file.h>
 #include <gvox/streams/input/gzip.h>
 #include <gvox/streams/output/stdout.h>

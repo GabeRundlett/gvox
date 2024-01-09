@@ -1,7 +1,7 @@
 #ifndef GVOX_INPUT_STREAM_GZIP_H
 #define GVOX_INPUT_STREAM_GZIP_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GzipInputStreamConfig) {
     uint8_t _pad;

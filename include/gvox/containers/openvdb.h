@@ -1,8 +1,7 @@
 #ifndef GVOX_CONTAINER_OPENVDB_H
 #define GVOX_CONTAINER_OPENVDB_H
 
-#include <gvox/stream.h>
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxOpenvdbContainerConfig) {
     uint8_t _pad;

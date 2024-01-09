@@ -1,5 +1,3 @@
-#include <gvox/format.h>
-#include <gvox/stream.h>
 #include <gvox/gvox.h>
 #include <gvox/containers/raw.h>
 
@@ -9,11 +7,8 @@
 
 #include <new>
 #include <vector>
-#include <unordered_map>
-#include <functional>
 #include <algorithm>
 
-#include "gvox/core.h"
 #include "raw_helper.hpp"
 
 namespace {
@@ -30,7 +25,7 @@ namespace {
     };
 
     auto create(void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
-        GvoxBoundedRaw3dContainerConfig config;
+        auto config = GvoxBoundedRaw3dContainerConfig{};
         if (args->config != nullptr) {
             config = *static_cast<GvoxBoundedRaw3dContainerConfig const *>(args->config);
         } else {
@@ -137,7 +132,7 @@ namespace {
         return GVOX_SUCCESS;
     }
 
-    auto move(void *self_ptr, GvoxContainer *src_containers, GvoxRange *src_ranges, GvoxOffset *offsets, uint32_t src_container_n) -> GvoxResult {
+    auto move(void * /*self_ptr*/, GvoxContainer * /*src_containers*/, GvoxRange * /*src_ranges*/, GvoxOffset * /*offsets*/, uint32_t /*src_container_n*/) -> GvoxResult {
         return GVOX_ERROR_UNKNOWN;
     }
 
@@ -155,7 +150,10 @@ namespace {
             auto voxel_offset = size_t{};
             auto stride = size_t{self_voxel_size};
             for (size_t i = 0; i < dim; ++i) {
-                voxel_offset += offset.axis[i] * stride;
+                if (offset.axis[i] < 0) {
+                    return GVOX_SUCCESS;
+                }
+                voxel_offset += static_cast<size_t>(offset.axis[i]) * stride;
                 stride *= self.extent.data[i];
             }
 
@@ -174,8 +172,8 @@ namespace {
         return GVOX_SUCCESS;
     }
 
-    void create_iterator(void *self_ptr, void **out_iterator_ptr) {
-        auto &self = *static_cast<Container *>(self_ptr);
+    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+        // auto &self = *static_cast<Container *>(self_ptr);
         *out_iterator_ptr = new (std::nothrow) Iterator{
             // .chunk_iter = self.chunks.begin(),
         };
@@ -183,15 +181,13 @@ namespace {
     void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
         delete static_cast<Iterator *>(iterator_ptr);
     }
-    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
-        auto &self = *static_cast<Container *>(self_ptr);
-        auto &iter = *static_cast<Iterator *>(*iterator_ptr);
-        auto mode = info->mode;
-        out->range = GvoxRange{
-            .offset = {.axis_n = 3, .axis = iter.offset.data},
-            .extent = {.axis_n = 3, .axis = iter.extent.data},
-        };
-
+    void iterator_advance(void * /*self_ptr*/, void ** /*iterator_ptr*/, GvoxIteratorAdvanceInfo const * /*info*/, GvoxIteratorValue * /*out*/) {
+        // auto &self = *static_cast<Container *>(self_ptr);
+        // auto &iter = *static_cast<Iterator *>(*iterator_ptr);
+        // out->range = GvoxRange{
+        //     .offset = {.axis_n = 3, .axis = iter.offset.data},
+        //     .extent = {.axis_n = 3, .axis = iter.extent.data},
+        // };
         // while (true) {
         //     if (iter.chunk_iter == self.chunks.end()) {
         //         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;

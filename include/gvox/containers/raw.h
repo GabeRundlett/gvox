@@ -1,8 +1,7 @@
 #ifndef GVOX_CONTAINER_RAW_H
 #define GVOX_CONTAINER_RAW_H
 
-#include <gvox/stream.h>
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxRawContainerConfig) {
     GvoxVoxelDesc voxel_desc;

@@ -1,7 +1,7 @@
 #ifndef GVOX_OUTPUT_STREAM_STDOUT_H
 #define GVOX_OUTPUT_STREAM_STDOUT_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxStdoutOutputStreamConfig) {
     uint8_t _pad;

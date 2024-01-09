@@ -1,10 +1,8 @@
-
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 #include <gvox/parsers/image.h>
 
 #include <FreeImage.h>
 
-#include <iostream>
 #include <iomanip>
 #include <new>
 #include <vector>
@@ -83,11 +81,11 @@ namespace {
         return gvox_create_parser(&parser_ci, user_parser);
     }
 
-    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+    void create_iterator(void * /*self_ptr*/, void ** /*out_iterator_ptr*/) {
     }
-    void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
+    void destroy_iterator(void * /*self_ptr*/, void * /*iterator_ptr*/) {
     }
-    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+    void iterator_advance(void * /*self_ptr*/, void ** /*iterator_ptr*/, GvoxIteratorAdvanceInfo const * /*info*/, GvoxIteratorValue *out) {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
     }
 } // namespace
@@ -113,23 +111,23 @@ auto Parser::load(GvoxInputStream input_stream) -> GvoxResult {
 
     FreeImage_Unload(fi_bitmap);
 
-    {
-        std::cout.fill('0');
-        for (uint32_t yi = 0; yi < size_y; ++yi) {
-            for (uint32_t xi = 0; xi < size_x; ++xi) {
-                auto index = static_cast<size_t>(xi + (size_y - 1 - yi) * size_x);
-                auto r = static_cast<uint32_t>(pixels[index].r);
-                auto g = static_cast<uint32_t>(pixels[index].g);
-                auto b = static_cast<uint32_t>(pixels[index].b);
-                r = std::min(std::max(r, 0u), 255u);
-                g = std::min(std::max(g, 0u), 255u);
-                b = std::min(std::max(b, 0u), 255u);
-                std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
-            }
-            std::cout << "\033[0m\n";
-        }
-        std::cout << "\033[0m" << std::flush;
-    }
+    // {
+    //     std::cout.fill('0');
+    //     for (uint32_t yi = 0; yi < size_y; ++yi) {
+    //         for (uint32_t xi = 0; xi < size_x; ++xi) {
+    //             auto index = static_cast<size_t>(xi + (size_y - 1 - yi) * size_x);
+    //             auto r = static_cast<uint32_t>(pixels[index].r);
+    //             auto g = static_cast<uint32_t>(pixels[index].g);
+    //             auto b = static_cast<uint32_t>(pixels[index].b);
+    //             r = std::min(std::max(r, 0u), 255u);
+    //             g = std::min(std::max(g, 0u), 255u);
+    //             b = std::min(std::max(b, 0u), 255u);
+    //             std::cout << "\033[48;2;" << std::setw(3) << r << ";" << std::setw(3) << g << ";" << std::setw(3) << b << "m  ";
+    //         }
+    //         std::cout << "\033[0m\n";
+    //     }
+    //     std::cout << "\033[0m" << std::flush;
+    // }
 
     return GVOX_SUCCESS;
 }

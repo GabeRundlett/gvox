@@ -1,11 +1,10 @@
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <array>
 
-#include "gvox/core.h"
 #include "types.hpp"
 #include "utils/handle.hpp"
 #include "utils/tracy.hpp"

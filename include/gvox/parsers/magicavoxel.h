@@ -1,7 +1,7 @@
 #ifndef GVOX_PARSER_MAGICAVOXEL_H
 #define GVOX_PARSER_MAGICAVOXEL_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(MagicavoxelParserConfig) {
     // Optional object name filter.

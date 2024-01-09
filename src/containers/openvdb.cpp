@@ -2,8 +2,6 @@
 #include <gvox/containers/openvdb.h>
 
 #include "../utils/tracy.hpp"
-#include "gvox/core.h"
-#include "gvox/format.h"
 
 #include <cstdlib>
 #include <cstdint>

@@ -1,5 +1,3 @@
-#include <gvox/format.h>
-#include <gvox/stream.h>
 #include <gvox/gvox.h>
 #include <gvox/containers/raw.h>
 
@@ -13,7 +11,6 @@
 #include <functional>
 #include <algorithm>
 
-#include "gvox/core.h"
 #include "raw_helper.hpp"
 
 template <>
@@ -50,8 +47,9 @@ namespace {
         auto stride = size_t{1};
 
         for (size_t i = 0; i < 3; ++i) {
-            chunk_offset.data[i] = offset.data[i] >> LOG2_CHUNK_SIZE;
-            auto axis_p = offset.data[i] & (CHUNK_SIZE - 1);
+            auto offset_i = static_cast<uint64_t>(offset.data[i]);
+            chunk_offset.data[i] = offset_i >> LOG2_CHUNK_SIZE;
+            auto axis_p = offset_i & (CHUNK_SIZE - 1);
             index += axis_p * stride;
             stride *= CHUNK_SIZE;
         }

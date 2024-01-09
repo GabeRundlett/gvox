@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gvox/core.h"
+#include <gvox/gvox.h>
 
 #include <cstdint>
 using Word = uint32_t;
@@ -159,7 +159,7 @@ namespace {
     }
 
     // Mustn't be called with depth < 4
-    void fill_Nd_over_4(uint32_t depth, uint8_t *&voxel_ptr, Voxel in_voxel, GvoxExtentMut voxel_range_extent, GvoxOffsetMut voxel_next) {
+    [[maybe_unused]] void fill_Nd_over_4(uint32_t depth, uint8_t *&voxel_ptr, Voxel in_voxel, GvoxExtentMut voxel_range_extent, GvoxOffsetMut voxel_next) {
         if (depth == 4) {
             fill_4d(voxel_ptr, in_voxel, voxel_range_extent, voxel_next);
         } else {
@@ -172,7 +172,7 @@ namespace {
         }
     }
 
-    void fill_Nd(uint32_t dim, uint8_t *&voxel_ptr, Voxel in_voxel, GvoxExtentMut voxel_range_extent, GvoxOffsetMut voxel_next) {
+    [[maybe_unused]] void fill_Nd(uint32_t dim, uint8_t *&voxel_ptr, Voxel in_voxel, GvoxExtentMut voxel_range_extent, GvoxOffsetMut voxel_next) {
         switch (dim) {
         case 1: fill_1d(voxel_ptr, in_voxel, voxel_range_extent); break;
         case 2: fill_2d(voxel_ptr, in_voxel, voxel_range_extent, voxel_next); break;

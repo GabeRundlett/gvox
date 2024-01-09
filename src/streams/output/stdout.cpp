@@ -1,4 +1,4 @@
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 #include <gvox/streams/output/stdout.h>
 
 #include <iostream>

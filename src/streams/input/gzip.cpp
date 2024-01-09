@@ -1,4 +1,4 @@
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 #include <gvox/streams/input/gzip.h>
 
 #include <new>

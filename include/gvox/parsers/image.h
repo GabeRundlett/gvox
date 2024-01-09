@@ -1,7 +1,7 @@
 #ifndef GVOX_PARSER_IMAGE_H
 #define GVOX_PARSER_IMAGE_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxImageParserConfig) {
     uint8_t _pad;

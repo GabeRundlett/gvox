@@ -1,6 +1,5 @@
 #include <gvox/gvox.h>
 
-#include "gvox/core.h"
 #include "types.hpp"
 #include "utils/tracy.hpp"
 

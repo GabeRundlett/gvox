@@ -1,7 +1,7 @@
 #ifndef GVOX_OUTPUT_STREAM_BYTE_BUFFER_H
 #define GVOX_OUTPUT_STREAM_BYTE_BUFFER_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxByteBufferOutputStreamConfig) {
     uint8_t _pad;

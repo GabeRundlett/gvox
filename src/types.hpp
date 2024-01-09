@@ -1,6 +1,5 @@
 #pragma once
 
-#include "gvox/format.h"
 #include <gvox/gvox.h>
 #include <vector>
 

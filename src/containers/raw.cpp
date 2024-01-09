@@ -1,5 +1,4 @@
-#include <gvox/stream.h>
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 #include <gvox/containers/raw.h>
 
 #include <cstdlib>
@@ -14,8 +13,6 @@
 #include <vector>
 #include <span>
 #include <unordered_map>
-
-#include <iostream>
 
 #include "raw_helper.hpp"
 
@@ -101,13 +98,13 @@ namespace {
         return result;
     }
 
-    auto operator<<(std::ostream &out, GvoxOffsetOrExtentType auto offset) -> std::ostream & {
-        out << "[";
-        for (uint32_t i = 0; i < offset.axis_n - 1; ++i) {
-            out << offset.axis[i] << ", ";
-        }
-        return out << offset.axis[offset.axis_n - 1] << "]";
-    }
+    // auto operator<<(std::ostream &out, GvoxOffsetOrExtentType auto offset) -> std::ostream & {
+    //     out << "[";
+    //     for (uint32_t i = 0; i < offset.axis_n - 1; ++i) {
+    //         out << offset.axis[i] << ", ";
+    //     }
+    //     return out << offset.axis[offset.axis_n - 1] << "]";
+    // }
 
     auto voxel_in_chunk_index(GvoxOffsetType auto o) -> size_t {
         size_t result = 0;
@@ -163,7 +160,7 @@ namespace {
     };
 
     auto create(void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
-        GvoxRawContainerConfig config;
+        auto config = GvoxRawContainerConfig{};
         if (args->config != nullptr) {
             config = *static_cast<GvoxRawContainerConfig const *>(args->config);
         } else {
@@ -311,7 +308,7 @@ namespace {
 
         return GVOX_SUCCESS;
     }
-    auto move(void *self_ptr, GvoxContainer *src_containers, GvoxRange *src_ranges, GvoxOffset *offsets, uint32_t src_container_n) -> GvoxResult {
+    auto move(void * /*self_ptr*/, GvoxContainer * /*src_containers*/, GvoxRange * /*src_ranges*/, GvoxOffset * /*offsets*/, uint32_t /*src_container_n*/) -> GvoxResult {
         return GVOX_ERROR_UNKNOWN;
     }
     auto sample(void *self_ptr, GvoxSample const *samples, uint32_t sample_n) -> GvoxResult {
@@ -353,11 +350,11 @@ namespace {
         }
         return GVOX_SUCCESS;
     }
-    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+    void create_iterator(void * /*self_ptr*/, void ** /*out_iterator_ptr*/) {
     }
-    void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
+    void destroy_iterator(void * /*self_ptr*/, void * /*iterator_ptr*/) {
     }
-    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+    void iterator_advance(void * /*self_ptr*/, void ** /*iterator_ptr*/, GvoxIteratorAdvanceInfo const * /*info*/, GvoxIteratorValue *out) {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
     }
 } // namespace

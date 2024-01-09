@@ -1,6 +1,4 @@
 
-#include <gvox/stream.h>
-#include <gvox/format.h>
 #include <gvox/gvox.h>
 
 #include <gvox/containers/raw.h>
@@ -97,7 +95,7 @@ auto main() -> int {
         auto p0 = Vec3(-1, +1, -16.0f); // bottom-left
         auto p1 = Vec3(+1, +1, -16.0f); // bottom-right
         auto p2 = Vec3(-1, -1, -16.0f); // top-left
-        auto ray =Ray{};
+        auto ray = Ray{};
 
         rect_opt(&image, 0, 0, image.extent.data[0], image.extent.data[1], MAKE_COLOR_RGBA(0, 0, 0, 0));
 

@@ -1,7 +1,7 @@
 #ifndef GVOX_SERIALIZER_COLORED_TEXT_H
 #define GVOX_SERIALIZER_COLORED_TEXT_H
 
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 
 GVOX_STRUCT(GvoxColoredTextSerializerConfig) {
     // Doesn't make sense to have a default for this, when the default channel is color data

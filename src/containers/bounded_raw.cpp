@@ -1,6 +1,5 @@
 #include <gvox/containers/raw.h>
-#include <gvox/stream.h>
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 
 #include <cstdlib>
 #include <cstdint>
@@ -21,61 +20,8 @@ namespace {
         std::vector<int64_t> pre_alloc_offset_buffer{};
     };
 
-    struct Iterator {
-        uint64_t index;
-        uint64_t max_index;
-        std::vector<int64_t> offset_buffer;
-        GvoxOffsetMut voxel_pos;
-        GvoxRangeMut range;
-    };
-
-    void gvox_container_raw_create_input_iterator(void *self_ptr, void **out_iterator_ptr) {
-        auto &self = *static_cast<Container *>(self_ptr);
-        auto &iter = *new Iterator({
-            .index = ~uint64_t{0},
-            .max_index = 0,
-            .offset_buffer = std::vector<int64_t>(static_cast<size_t>(self.extent.axis_n * 3)),
-            .voxel_pos = {.axis_n = self.extent.axis_n},
-            .range = {
-                .offset = {.axis_n = self.extent.axis_n},
-                .extent = {.axis_n = self.extent.axis_n},
-            },
-        });
-        iter.voxel_pos.axis = iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 0);
-        iter.range.offset.axis = iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 1);
-        iter.range.extent.axis = reinterpret_cast<uint64_t *>(iter.offset_buffer.data() + static_cast<ptrdiff_t>(self.extent.axis_n * 2));
-        uint64_t stride = 1;
-        for (uint32_t i = 0; i < self.extent.axis_n; ++i) {
-            iter.max_index += self.extent.axis[i] * stride;
-            stride *= self.extent.axis[i];
-        }
-        (*out_iterator_ptr) = &iter;
-    }
-
-    void gvox_container_raw_iterator_advance(void *self_ptr, void *iterator_ptr, GvoxIteratorValue *out) {
-        auto &self = *static_cast<Container *>(self_ptr);
-        auto &iter_self = *static_cast<Iterator *>(iterator_ptr);
-        if (iter_self.index == ~uint64_t{0}) {
-            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
-            out->range = static_cast<GvoxRange>(iter_self.range);
-            iter_self.index = 0;
-        } else if (iter_self.index < iter_self.max_index) {
-            out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
-            auto *voxel_ptr = static_cast<uint8_t *>(self.pre_allocated_buffer) + iter_self.index;
-            out->voxel_data = voxel_ptr;
-        } else {
-            out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
-        }
-        ++iter_self.index;
-    }
-
-    void gvox_container_raw_destroy_iterator(void *iterator_ptr) {
-        auto *iterator = static_cast<Iterator *>(iterator_ptr);
-        delete iterator;
-    }
-
     auto create(void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {
-        GvoxBoundedRawContainerConfig config;
+        auto config = GvoxBoundedRawContainerConfig{};
         if (args->config != nullptr) {
             config = *static_cast<GvoxBoundedRawContainerConfig const *>(args->config);
         } else {
@@ -182,7 +128,7 @@ namespace {
 
         return GVOX_SUCCESS;
     }
-    auto move(void *self_ptr, GvoxContainer *src_containers, GvoxRange *src_ranges, GvoxOffset *offsets, uint32_t src_container_n) -> GvoxResult {
+    auto move(void * /*self_ptr*/, GvoxContainer * /*src_containers*/, GvoxRange * /*src_ranges*/, GvoxOffset * /*offsets*/, uint32_t /*src_container_n*/) -> GvoxResult {
         return GVOX_ERROR_UNKNOWN;
     }
     auto sample(void *self_ptr, GvoxSample const *samples, uint32_t sample_n) -> GvoxResult {
@@ -217,11 +163,11 @@ namespace {
         }
         return GVOX_SUCCESS;
     }
-    void create_iterator(void * /*self_ptr*/, void **out_iterator_ptr) {
+    void create_iterator(void * /*self_ptr*/, void ** /*out_iterator_ptr*/) {
     }
-    void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
+    void destroy_iterator(void * /*self_ptr*/, void * /*iterator_ptr*/) {
     }
-    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+    void iterator_advance(void * /*self_ptr*/, void ** /*iterator_ptr*/, GvoxIteratorAdvanceInfo const * /*info*/, GvoxIteratorValue *out) {
         out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
     }
 } // namespace

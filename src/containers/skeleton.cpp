@@ -1,5 +1,4 @@
-#include <gvox/stream.h>
-#include <gvox/format.h>
+#include <gvox/gvox.h>
 
 namespace {
     auto create(void **out_self, GvoxContainerCreateCbArgs const *args) -> GvoxResult {

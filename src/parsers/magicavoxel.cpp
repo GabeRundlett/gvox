@@ -1,7 +1,6 @@
-#include <gvox/stream.h>
+#include <gvox/gvox.h>
 #include <gvox/parsers/magicavoxel.h>
 
-#include <iostream>
 #include <limits>
 #include <new>
 #include <variant>
@@ -14,9 +13,6 @@
 #include <cstring>
 #include <cstdlib>
 
-#include "gvox/core.h"
-#include "gvox/format.h"
-#include "gvox/gvox.h"
 #include "magicavoxel.hpp"
 
 namespace {
@@ -157,12 +153,12 @@ namespace {
         }
     }
 
-    auto operator<<(std::ostream &out, magicavoxel::Model const &m) -> std::ostream & {
-        out << "extent = {" << m.extent[0] << ", " << m.extent[1] << ", " << m.extent[2] << "}\n";
-        out << "voxel_count = " << m.voxel_count << "\n";
-        out << "input_offset = " << m.input_offset;
-        return out;
-    }
+    // auto operator<<(std::ostream &out, magicavoxel::Model const &m) -> std::ostream & {
+    //     out << "extent = {" << m.extent[0] << ", " << m.extent[1] << ", " << m.extent[2] << "}\n";
+    //     out << "voxel_count = " << m.voxel_count << "\n";
+    //     out << "input_offset = " << m.input_offset;
+    //     return out;
+    // }
 
     auto create(void **out_self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
         MagicavoxelParserConfig config;
@@ -670,7 +666,7 @@ namespace magicavoxel::xraw {
         uint32_t palette_element_size;
         std::vector<uint8_t> voxels;
         std::vector<uint8_t> palette;
-        GvoxVoxelDesc desc{};
+        GvoxVoxelDesc desc;
     };
 
     struct Iterator {
@@ -788,7 +784,7 @@ namespace magicavoxel::xraw {
     void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
         delete static_cast<Iterator *>(iterator_ptr);
     }
-    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
+    void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const * /*info*/, GvoxIteratorValue *out) {
         auto &self = *static_cast<Parser *>(self_ptr);
         auto &iter = *static_cast<Iterator *>(*iterator_ptr);
 
