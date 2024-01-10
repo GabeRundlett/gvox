@@ -179,205 +179,209 @@ auto main() -> int {
     }
 
     using Clock = std::chrono::high_resolution_clock;
-    auto *file_input = GvoxInputStream{};
 
-    {
-        auto t0 = Clock::now();
+    if (!GVOX_TEST_BUILT_FOR_WEB) { // Can't load from file if we're on the web...
+        auto *file_input = GvoxInputStream{};
+        {
+            auto t0 = Clock::now();
 
-        auto const input_mode = 1;
-        switch (input_mode) {
-        case 0: {
-            auto config = GvoxFileInputStreamConfig{};
-            config.filepath = "assets/nuke.vox";
-            auto input_ci = GvoxInputStreamCreateInfo{};
-            input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
-            input_ci.next = nullptr;
-            input_ci.cb_args.config = &config;
-            input_ci.description = gvox_input_stream_file_description();
-            HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (file) input stream");
-        } break;
-        case 1: {
-            auto file = std::ifstream{"assets/nuke.vox", std::ios::binary};
-            auto size = std::filesystem::file_size("assets/nuke.vox");
-            auto bytes = std::vector<uint8_t>(size);
-            file.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(size));
-            auto config = GvoxByteBufferInputStreamConfig{.data = bytes.data(), .size = bytes.size()};
-            auto input_ci = GvoxInputStreamCreateInfo{};
-            input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
-            input_ci.next = nullptr;
-            input_ci.cb_args.config = &config;
-            input_ci.description = gvox_input_stream_byte_buffer_description();
-            HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (byte buffer) input stream");
-        } break;
+            auto const input_mode = 1;
+            switch (input_mode) {
+            case 0: {
+                auto config = GvoxFileInputStreamConfig{};
+                config.filepath = "assets/nuke.vox";
+                auto input_ci = GvoxInputStreamCreateInfo{};
+                input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
+                input_ci.next = nullptr;
+                input_ci.cb_args.config = &config;
+                input_ci.description = gvox_input_stream_file_description();
+                HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (file) input stream");
+            } break;
+            case 1: {
+                auto file = std::ifstream{"assets/nuke.vox", std::ios::binary};
+                auto size = std::filesystem::file_size("assets/nuke.vox");
+                auto bytes = std::vector<uint8_t>(size);
+                file.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(size));
+                auto config = GvoxByteBufferInputStreamConfig{.data = bytes.data(), .size = bytes.size()};
+                auto input_ci = GvoxInputStreamCreateInfo{};
+                input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
+                input_ci.next = nullptr;
+                input_ci.cb_args.config = &config;
+                input_ci.description = gvox_input_stream_byte_buffer_description();
+                HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (byte buffer) input stream");
+            } break;
+            }
+
+            auto t1 = Clock::now();
+            auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
+
+            std::cout << elapsed_s << " s to open file" << '\n';
         }
 
-        auto t1 = Clock::now();
-        auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
+        auto *file_parser = GvoxParser{};
+        {
+            auto parser_collection = GvoxParserDescriptionCollection{
+                .struct_type = GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
+                .next = nullptr,
+            };
+            gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
+            HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
+            // auto magicavoxel_config = MagicavoxelParserConfig{
+            //     .object_name = "wardrobe",
+            // };
+            // auto parser_info = GvoxParserCreateInfo{
+            //     .struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO,
+            //     .next = nullptr,
+            //     .description = gvox_parser_magicavoxel_description(),
+            //     .cb_args = {
+            //         .struct_type = {}, // ?
+            //         .next = nullptr,
+            //         .input_stream = file_input,
+            //         .config = &magicavoxel_config,
+            //     },
+            // };
+            // HANDLE_RES(gvox_create_parser(&parser_info, &file_parser), "Failed to create parser");
+        }
 
-        std::cout << elapsed_s << " s to open file" << '\n';
-    }
+        for (uint32_t i = 0; i < 1; ++i) {
+            gvox_input_seek(file_input, 0, GVOX_SEEK_ORIGIN_BEG);
+            auto t0 = Clock::now();
 
-    auto *file_parser = GvoxParser{};
-    {
-        auto parser_collection = GvoxParserDescriptionCollection{
-            .struct_type = GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
-            .next = nullptr,
-        };
-        gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
-        HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
-        // auto magicavoxel_config = MagicavoxelParserConfig{
-        //     .object_name = "wardrobe",
-        // };
-        // auto parser_info = GvoxParserCreateInfo{
-        //     .struct_type = GVOX_STRUCT_TYPE_PARSER_CREATE_INFO,
-        //     .next = nullptr,
-        //     .description = gvox_parser_magicavoxel_description(),
-        //     .cb_args = {
-        //         .struct_type = {}, // ?
-        //         .next = nullptr,
-        //         .input_stream = file_input,
-        //         .config = &magicavoxel_config,
-        //     },
-        // };
-        // HANDLE_RES(gvox_create_parser(&parser_info, &file_parser), "Failed to create parser");
-    }
+            auto temp_offset = GvoxOffset2D{};
+            auto temp_extent = GvoxExtent2D{.data = {1, 1}};
+            auto temp_fill_info = fill_info;
+            temp_fill_info.range = {
+                {2, temp_offset.data},
+                {2, temp_extent.data},
+            };
 
-    for (uint32_t i = 0; i < 1; ++i) {
-        gvox_input_seek(file_input, 0, GVOX_SEEK_ORIGIN_BEG);
-        auto t0 = Clock::now();
+            auto parse_iter_ci = GvoxParseIteratorCreateInfo{
+                .struct_type = GVOX_STRUCT_TYPE_PARSE_ITERATOR_CREATE_INFO,
+                .next = nullptr,
+                .parser = file_parser,
+            };
+            auto iter_ci = GvoxIteratorCreateInfo{
+                .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
+                .next = &parse_iter_ci,
+            };
+            auto *input_iterator = GvoxIterator{};
+            gvox_create_iterator(&iter_ci, &input_iterator);
 
-        auto temp_offset = GvoxOffset2D{};
-        auto temp_extent = GvoxExtent2D{.data = {1, 1}};
-        auto temp_fill_info = fill_info;
-        temp_fill_info.range = {
-            {2, temp_offset.data},
-            {2, temp_extent.data},
-        };
+            auto iter_value = GvoxIteratorValue{};
+            size_t voxel_count = 0;
+            auto sample = GvoxSample{
+                .offset = {.axis_n = 0, .axis = nullptr},
+                .dst_voxel_data = nullptr,
+                .dst_voxel_desc = depth_voxel_desc,
+            };
+            auto sample_info = GvoxSampleInfo{
+                .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
+                .next = nullptr,
+                .src = nullptr,
+                .samples = &sample,
+                .sample_n = 1,
+            };
 
-        auto parse_iter_ci = GvoxParseIteratorCreateInfo{
-            .struct_type = GVOX_STRUCT_TYPE_PARSE_ITERATOR_CREATE_INFO,
-            .next = nullptr,
-            .parser = file_parser,
-        };
-        auto iter_ci = GvoxIteratorCreateInfo{
-            .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
-            .next = &parse_iter_ci,
-        };
-        auto *input_iterator = GvoxIterator{};
-        gvox_create_iterator(&iter_ci, &input_iterator);
+            // uint32_t depth = 0;
+            // auto indent = std::string{};
 
-        auto iter_value = GvoxIteratorValue{};
-        size_t voxel_count = 0;
-        auto sample = GvoxSample{
-            .offset = {.axis_n = 0, .axis = nullptr},
-            .dst_voxel_data = nullptr,
-            .dst_voxel_desc = depth_voxel_desc,
-        };
-        auto sample_info = GvoxSampleInfo{
-            .struct_type = GVOX_STRUCT_TYPE_SAMPLE_INFO,
-            .next = nullptr,
-            .src = nullptr,
-            .samples = &sample,
-            .sample_n = 1,
-        };
+            auto advance_info = GvoxIteratorAdvanceInfo{
+                .input_stream = file_input,
+                .mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT,
+            };
 
-        // uint32_t depth = 0;
-        // auto indent = std::string{};
+            while (true) {
+                gvox_iterator_advance(input_iterator, &advance_info, &iter_value);
 
-        auto advance_info = GvoxIteratorAdvanceInfo{
-            .input_stream = file_input,
-            .mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT,
-        };
+                // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_END) {
+                //     depth -= 1;
+                // }
+                // indent = "";
+                // for (uint32_t j = 0; j < depth; ++j) {
+                //     indent += "  ";
+                // }
+                // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN) {
+                //     depth += 1;
+                // }
 
-        while (true) {
-            gvox_iterator_advance(input_iterator, &advance_info, &iter_value);
+                bool should_break = false;
+                switch (iter_value.tag) {
+                case GVOX_ITERATOR_VALUE_TYPE_NULL: {
+                    // std::cout << "NULL\n";
+                    should_break = true;
+                } break;
+                case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
+                    // std::array<uint8_t, 4> const &col = *static_cast<std::array<uint8_t, 4> const *>(iter_value.voxel_data);
+                    // std::cout << std::format("{}VOXEL: pos={}, data={} (\033[48;2;{:0>3};{:0>3};{:0>3}m  \033[0m), desc={}\n",
+                    //                          indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
+                    if (iter_value.range.offset.axis[0] > 0) {
+                        continue;
+                    }
+                    offset.data[0] = ((iter_value.range.offset.axis[0] + 0) * 1 + 768);
+                    offset.data[1] = static_cast<int64_t>(image.extent.data[1]) - ((iter_value.range.offset.axis[2] + 1) * 1 + 0);
+                    extent.data[0] = iter_value.range.extent.axis[0] * 1;
+                    extent.data[1] = iter_value.range.extent.axis[2] * 1;
 
-            // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_END) {
-            //     depth -= 1;
-            // }
-            // indent = "";
-            // for (uint32_t j = 0; j < depth; ++j) {
-            //     indent += "  ";
-            // }
-            // if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN) {
-            //     depth += 1;
-            // }
+                    auto current_depth = FAR_DEPTH;
+                    sample_info.src = depth_container;
+                    sample.offset = {.axis_n = 2, .axis = offset.data};
+                    sample.dst_voxel_data = &current_depth;
 
-            bool should_break = false;
-            switch (iter_value.tag) {
-            case GVOX_ITERATOR_VALUE_TYPE_NULL: {
-                // std::cout << "NULL\n";
-                should_break = true;
-            } break;
-            case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
-                // std::array<uint8_t, 4> const &col = *static_cast<std::array<uint8_t, 4> const *>(iter_value.voxel_data);
-                // std::cout << std::format("{}VOXEL: pos={}, data={} (\033[48;2;{:0>3};{:0>3};{:0>3}m  \033[0m), desc={}\n",
-                //                          indent, iter_value.range.offset, (void *)iter_value.voxel_data, static_cast<int>(col[0]), static_cast<int>(col[1]), static_cast<int>(col[2]), (void *)iter_value.voxel_desc);
-                if (iter_value.range.offset.axis[0] > 0) {
-                    continue;
-                }
-                offset.data[0] = ((iter_value.range.offset.axis[0] + 0) * 1 + 768);
-                offset.data[1] = static_cast<int64_t>(image.extent.data[1]) - ((iter_value.range.offset.axis[2] + 1) * 1 + 0);
-                extent.data[0] = iter_value.range.extent.axis[0] * 1;
-                extent.data[1] = iter_value.range.extent.axis[2] * 1;
+                    HANDLE_RES(gvox_sample(&sample_info), "Failed to sample depth image");
+                    auto const &new_depth = iter_value.range.offset.axis[1];
+                    if (new_depth < current_depth) {
+                        fill_info.src_data = iter_value.voxel_data;
+                        fill_info.src_desc = iter_value.voxel_desc;
+                        fill_info.dst = raw_container;
+                        HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
 
-                auto current_depth = FAR_DEPTH;
-                sample_info.src = depth_container;
-                sample.offset = {.axis_n = 2, .axis = offset.data};
-                sample.dst_voxel_data = &current_depth;
+                        fill_info.src_data = &new_depth;
+                        fill_info.src_desc = depth_voxel_desc;
+                        fill_info.dst = depth_container;
+                        HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                    }
 
-                HANDLE_RES(gvox_sample(&sample_info), "Failed to sample depth image");
-                auto const &new_depth = iter_value.range.offset.axis[1];
-                if (new_depth < current_depth) {
-                    fill_info.src_data = iter_value.voxel_data;
-                    fill_info.src_desc = iter_value.voxel_desc;
-                    fill_info.dst = raw_container;
-                    HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                    // fill_info.src_data = iter_value.voxel_data;
+                    // fill_info.src_desc = iter_value.voxel_desc;
+                    // fill_info.dst = vdb_container;
+                    // HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
 
-                    fill_info.src_data = &new_depth;
-                    fill_info.src_desc = depth_voxel_desc;
-                    fill_info.dst = depth_container;
-                    HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
-                }
-
-                // fill_info.src_data = iter_value.voxel_data;
-                // fill_info.src_desc = iter_value.voxel_desc;
-                // fill_info.dst = vdb_container;
-                // HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
-
-                ++voxel_count;
-                advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
-            } break;
-            case GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN: {
-                // std::cout << std::format("{}{{ offset={}, extent={}\n", indent, iter_value.range.offset, iter_value.range.extent);
-                if (iter_value.range.offset.axis[0] > 0) {
-                    advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH;
-                } else {
+                    ++voxel_count;
                     advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                } break;
+                case GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN: {
+                    // std::cout << std::format("{}{{ offset={}, extent={}\n", indent, iter_value.range.offset, iter_value.range.extent);
+                    if (iter_value.range.offset.axis[0] > 0) {
+                        advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH;
+                    } else {
+                        advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                    }
+                } break;
+                case GVOX_ITERATOR_VALUE_TYPE_NODE_END: {
+                    // std::cout << std::format("{}}} offset={}, extent={}\n", indent, iter_value.range.offset, iter_value.range.extent);
+                    advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                } break;
                 }
-            } break;
-            case GVOX_ITERATOR_VALUE_TYPE_NODE_END: {
-                // std::cout << std::format("{}}} offset={}, extent={}\n", indent, iter_value.range.offset, iter_value.range.extent);
-                advance_info.mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
-            } break;
+
+                if (should_break) {
+                    break;
+                }
             }
 
-            if (should_break) {
-                break;
-            }
+            gvox_destroy_iterator(input_iterator);
+            auto t1 = Clock::now();
+            auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
+
+            std::cout << elapsed_s << " s (" << (static_cast<float>(voxel_count) / (elapsed_s * 1'000'000.0f)) << " MVx/s)" << '\n';
         }
 
-        gvox_destroy_iterator(input_iterator);
-        auto t1 = Clock::now();
-        auto elapsed_s = std::chrono::duration<float>(t1 - t0).count();
-
-        std::cout << elapsed_s << " s (" << (static_cast<float>(voxel_count) / (elapsed_s * 1'000'000.0f)) << " MVx/s)" << '\n';
+        gvox_destroy_input_stream(file_input);
+        gvox_destroy_parser(file_parser);
     }
-
-    // return 0;
 
     fill_info.src_data = &voxel_data;
     fill_info.src_desc = rgb_voxel_desc;
+    fill_info.dst = raw_container;
     fill_info.range = {
         {2, offset.data},
         {2, extent.data},
@@ -414,8 +418,6 @@ auto main() -> int {
         // break;
     }
 
-    gvox_destroy_input_stream(file_input);
-    gvox_destroy_parser(file_parser);
     gvox_destroy_container(depth_container);
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(depth_voxel_desc);

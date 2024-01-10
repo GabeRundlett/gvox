@@ -97,7 +97,7 @@ auto main() -> int {
         auto p2 = Vec3(-1, -1, -16.0f); // top-left
         auto ray = Ray{};
 
-        rect_opt(&image, 0, 0, image.extent.data[0], image.extent.data[1], MAKE_COLOR_RGBA(0, 0, 0, 0));
+        rect_opt(&image, 0, 0, image.extent.data[0], image.extent.data[1], MAKE_COLOR_RGBA(0, 0, 0, 255));
 
         auto t1 = Clock::now();
 
@@ -119,7 +119,7 @@ auto main() -> int {
                 if (ir.t != MAX_DEPTH) {
                     // auto col = (ir.nrm * 0.5f + Vec3(0.5f)) * 250.0f;
                     auto col = Vec3(255);
-                    set_opt(&image, xi, yi, MAKE_COLOR_RGBA(uint8_t(col.x), uint8_t(col.y), uint8_t(col.z), 0));
+                    set_opt(&image, xi, yi, MAKE_COLOR_RGBA(uint8_t(col.x), uint8_t(col.y), uint8_t(col.z), 255));
                 }
             }
         }

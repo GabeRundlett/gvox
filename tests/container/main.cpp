@@ -91,7 +91,7 @@ void multi_thread_test() {
             r = static_cast<uint32_t>((sinf(x * 0.3f) * 0.5f + 0.5f) * 150.0f);
             g = static_cast<uint32_t>((sinf(y * 0.5f) * 0.5f + 0.5f) * 150.0f);
             b = static_cast<uint32_t>((sinf(sqrtf(x * x + y * y)) * 0.5f + 0.5f) * 250.0f);
-            return (r << 0x10) | (g << 0x08) | (b << 0x00);
+            return (r << 0x10) | (g << 0x08) | (b << 0x00) | (255u << 0x18);
             // return 0;
         };
         auto chunkgen = [&rgb_voxel_desc, &gen_voxel, &chunk_data, &chunk_extent, &raw_container](ChunkgenContext &ctx) {
@@ -130,7 +130,7 @@ void multi_thread_test() {
                 }
             }
         }
-        bool multi_threaded = true;
+        bool multi_threaded = true && !GVOX_TEST_BUILT_FOR_WEB;
         if (multi_threaded) {
             auto chunks_per_thread = (chunks.size() + 15) / 16;
             auto thread_n = (chunks.size() + chunks_per_thread - 1) / chunks_per_thread;

@@ -161,7 +161,7 @@ namespace {
     // }
 
     auto create(void **out_self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
-        MagicavoxelParserConfig config;
+        auto config = MagicavoxelParserConfig{};
         if (args->config != nullptr) {
             config = *static_cast<MagicavoxelParserConfig const *>(args->config);
         } else {
@@ -661,6 +661,7 @@ auto gvox_parser_magicavoxel_description() GVOX_FUNC_ATTRIB->GvoxParserDescripti
 }
 namespace magicavoxel::xraw {
     struct Parser {
+        MagicavoxelXrawParserConfig config;
         Header header;
         uint32_t per_voxel_size;
         uint32_t palette_element_size;
@@ -678,14 +679,14 @@ namespace magicavoxel::xraw {
     };
 
     auto create(void **out_self, GvoxParserCreateCbArgs const *args) -> GvoxResult {
-        auto config = MagicavoxelXrawParserConfig{};
-        if (args->config != nullptr) {
-            config = *static_cast<MagicavoxelXrawParserConfig const *>(args->config);
-        } else {
-            config = {};
-        }
         auto &self = *(new (std::nothrow) Parser());
         *out_self = &self;
+
+        if (args->config != nullptr) {
+            self.config = *static_cast<MagicavoxelXrawParserConfig const *>(args->config);
+        } else {
+            self.config = {};
+        }
 
         auto ret = gvox_input_read(args->input_stream, &self.header, sizeof(self.header));
         if (ret != GVOX_SUCCESS) {
@@ -793,6 +794,14 @@ namespace magicavoxel::xraw {
             return;
         }
 
+        auto end_iterator = [&]() {
+            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
+            iter.offset = {0, 0, 0};
+            iter.extent = {self.header.volume_size_x, self.header.volume_size_y, self.header.volume_size_z};
+            out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
+            iter.iterator_index = 1;
+        };
+
         if (iter.voxel_index == std::numeric_limits<size_t>::max()) {
             iter.voxel_index = 0;
             out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
@@ -800,27 +809,39 @@ namespace magicavoxel::xraw {
             iter.extent = {self.header.volume_size_x, self.header.volume_size_y, self.header.volume_size_z};
             out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
         } else if (iter.voxel_index >= self.voxels.size()) {
-            out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
-            iter.offset = {0, 0, 0};
-            iter.extent = {self.header.volume_size_x, self.header.volume_size_y, self.header.volume_size_z};
-            out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
-            iter.iterator_index = 1;
+            end_iterator();
         } else {
             out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
-            iter.offset.data[0] = iter.voxel_index % self.header.volume_size_x;
-            iter.offset.data[1] = (iter.voxel_index / self.header.volume_size_x) % self.header.volume_size_y;
-            iter.offset.data[2] = (iter.voxel_index / self.header.volume_size_x / self.header.volume_size_y) % self.header.volume_size_z;
             iter.extent = {1, 1, 1};
             out->range = {.offset = {.axis_n = 3, .axis = iter.offset.data}, .extent = {.axis_n = 3, .axis = iter.extent.data}};
-            iter.voxel = 0;
-            std::memcpy(&iter.voxel, self.voxels.data() + iter.voxel_index * self.per_voxel_size, self.per_voxel_size);
-            if (!self.palette.empty()) {
-                // if the palette is not empty, then the voxel must now hold an index into the palette
-                std::memcpy(&iter.voxel, self.palette.data() + iter.voxel * self.palette_element_size, self.palette_element_size);
-            }
             out->voxel_desc = self.desc;
             out->voxel_data = &iter.voxel;
-            ++iter.voxel_index;
+            auto iterate_leaf = [&]() {
+                iter.offset.data[0] = iter.voxel_index % self.header.volume_size_x;
+                iter.offset.data[1] = (iter.voxel_index / self.header.volume_size_x) % self.header.volume_size_y;
+                iter.offset.data[2] = (iter.voxel_index / self.header.volume_size_x / self.header.volume_size_y) % self.header.volume_size_z;
+                iter.voxel = 0;
+                std::memcpy(&iter.voxel, self.voxels.data() + iter.voxel_index * self.per_voxel_size, self.per_voxel_size);
+                ++iter.voxel_index;
+                if (!self.palette.empty()) {
+                    // if the palette is not empty, then the voxel must now hold an index into the palette
+                    std::memcpy(&iter.voxel, self.palette.data() + iter.voxel * self.palette_element_size, self.palette_element_size);
+                }
+            };
+            if (self.config.ignore_fully_transparent_voxels == 0) {
+                iterate_leaf();
+            } else {
+                while (true) {
+                    if (iter.voxel_index >= self.voxels.size()) {
+                        end_iterator();
+                        return;
+                    }
+                    iterate_leaf();
+                    if (iter.voxel != 0) {
+                        break;
+                    }
+                }
+            }
         }
     }
 } // namespace magicavoxel::xraw

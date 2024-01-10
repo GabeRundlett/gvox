@@ -47,6 +47,8 @@ function(GVOX_CREATE_TARGET)
         endif()
     endif()
 
+    target_compile_definitions(${TGT} PRIVATE GVOX_TEST_BUILT_FOR_WEB=${GVOX_BUILD_FOR_WEB})
+
     if(GVOX_BUILD_FOR_WEB AND EMSCRIPTEN)
         add_custom_target(${TGT}_web_assets
             COMMAND ${CMAKE_COMMAND}
@@ -63,7 +65,7 @@ function(GVOX_CREATE_TARGET)
         target_link_options(${TGT} PRIVATE
             "-sSTRICT=1"
             "-sENVIRONMENT=web"
-            "-sLLD_REPORT_UNDEFINED"
+            # "-sLLD_REPORT_UNDEFINED"
             "-sMODULARIZE=1"
             "-sALLOW_MEMORY_GROWTH=1"
             "-sALLOW_TABLE_GROWTH"

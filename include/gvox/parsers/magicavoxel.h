@@ -11,7 +11,7 @@ GVOX_STRUCT(MagicavoxelParserConfig) {
 GVOX_FUNC(GvoxParserDescription, gvox_parser_magicavoxel_description, void);
 
 GVOX_STRUCT(MagicavoxelXrawParserConfig) {
-    uint8_t _pad;
+    uint8_t ignore_fully_transparent_voxels;
 };
 
 GVOX_FUNC(GvoxParserDescription, gvox_parser_magicavoxel_xraw_description, void);
