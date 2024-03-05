@@ -42,3 +42,10 @@ GVOX_CREATE_TEST(
     LANG cpp
     LIBS procedural_parse_adapter
 )
+
+GVOX_CREATE_TEST(
+    FOLDER simple
+    FILE parsing
+    LANG cpp
+    LIBS
+)
