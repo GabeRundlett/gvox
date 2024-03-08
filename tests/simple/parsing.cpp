@@ -20,12 +20,14 @@ void destroy(GvoxAdapterContext *ctx) {
     //   void *my_pointer = gvox_adapter_get_user_pointer(ctx);
     //   free(my_pointer);
 }
-// Called at the beginning of a blit operation.
+// Called once, at the beginning of a blit operation.
 void blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
-    // We get a minimal description of the volume we're
+    // We get a minimal description of the volume we're blitting.
 }
+// Called once, at the end of a blit operation.
 void blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
 }
+// Legacy... We don't care to implement.
 void serialize_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
 }
 
