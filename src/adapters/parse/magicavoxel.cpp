@@ -174,7 +174,7 @@ void subdivide_scene_bvh(std::vector<magicavoxel::ModelInstance> &model_instance
 }
 
 void construct_scene_bvh(magicavoxel::Scene &scene) {
-    scene.bvh_nodes.reserve(scene.model_instances.size() * 2 - 1);
+    scene.bvh_nodes.reserve(scene.model_instances.size() * 2);
     uint32_t const root_node_i = 0;
     auto &root = scene.bvh_nodes[root_node_i];
     root.data = magicavoxel::BvhNode::Range{0, static_cast<uint32_t>(scene.model_instances.size())};

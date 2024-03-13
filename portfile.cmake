@@ -1,6 +1,6 @@
 # Local-only code
 
-set(SOURCE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../")
+set(SOURCE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
 # Standard vcpkg stuff
 

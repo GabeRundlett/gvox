@@ -23,5 +23,8 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_DATADIR}/gvox)
 install(TARGETS gvox EXPORT gvox-targets)
+if(BUILD_SHARED_LIBS AND WIN32)
+    install(FILES $<TARGET_PDB_FILE:gvox> DESTINATION bin OPTIONAL)
+endif()
 install(EXPORT gvox-targets DESTINATION ${CMAKE_INSTALL_DATADIR}/gvox NAMESPACE gvox::)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/../include/ TYPE INCLUDE)
