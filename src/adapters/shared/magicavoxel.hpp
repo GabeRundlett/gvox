@@ -16,6 +16,10 @@
 #include <sstream>
 #endif
 
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
+#include <mutex>
+#endif
+
 namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_VOX_ = std::bit_cast<uint32_t>(std::array{'V', 'O', 'X', ' '});
     static constexpr uint32_t CHUNK_ID_MAIN = std::bit_cast<uint32_t>(std::array{'M', 'A', 'I', 'N'});
@@ -138,8 +142,44 @@ namespace magicavoxel {
     };
 
     struct Model {
+        mutable std::vector<uint8_t> palette_ids{};
+        size_t input_offset{0};
+        uint32_t num_voxels_in_chunk{0};
         GvoxExtent3D extent{};
-        std::vector<uint8_t> palette_ids{};
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
+        mutable std::mutex mtx{};
+#endif
+        Model() {}
+
+        Model(const Model& other) {
+            palette_ids = std::move(other.palette_ids);
+            input_offset = other.input_offset;
+            num_voxels_in_chunk = other.num_voxels_in_chunk;
+            extent = other.extent;
+        }
+
+        Model(Model&& other) {
+            palette_ids = std::move(other.palette_ids);
+            input_offset = other.input_offset;
+            num_voxels_in_chunk = other.num_voxels_in_chunk;
+            extent = other.extent;
+        }
+
+        Model& operator=(Model&& other) {
+            palette_ids = std::move(other.palette_ids);
+            input_offset = other.input_offset;
+            num_voxels_in_chunk = other.num_voxels_in_chunk;
+            extent = other.extent;
+            return *this;
+        }
+
+        Model& operator=(const Model& other) {
+            palette_ids = std::move(other.palette_ids);
+            input_offset = other.input_offset;
+            num_voxels_in_chunk = other.num_voxels_in_chunk;
+            extent = other.extent;
+            return *this;
+        }
     };
 
     struct ModelKeyframe {
