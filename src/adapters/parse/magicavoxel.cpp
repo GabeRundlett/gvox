@@ -28,6 +28,37 @@ struct MagicavoxelParseUserState {
     ThreadPool thread_pool{};
 };
 
+void initialize_model(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, magicavoxel::Model const &model) {
+    thread_local auto packed_voxel_data = std::vector<uint8_t>();
+    packed_voxel_data.resize(static_cast<size_t>(model.num_voxels_in_chunk) * 4);
+    gvox_input_read(blit_ctx, model.input_offset, packed_voxel_data.size(), packed_voxel_data.data());
+    const uint32_t k_stride_x = 1;
+    const uint32_t k_stride_y = model.extent.x;
+    const uint32_t k_stride_z = model.extent.x * model.extent.y;
+    model.palette_ids.resize(static_cast<size_t>(model.extent.x) * model.extent.y * model.extent.z);
+    std::fill(model.palette_ids.begin(), model.palette_ids.end(), uint8_t{255});
+    for (uint32_t i = 0; i < model.num_voxels_in_chunk; i++) {
+        uint8_t const x = packed_voxel_data[i * 4 + 0];
+        uint8_t const y = packed_voxel_data[i * 4 + 1];
+        uint8_t const z = packed_voxel_data[i * 4 + 2];
+        if (x >= model.extent.x && y >= model.extent.y && z >= model.extent.z) {
+            gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "invalid data in XYZI chunk");
+            return;
+        }
+        uint8_t const color_index = packed_voxel_data[i * 4 + 3];
+        model.palette_ids[(x * k_stride_x) + (y * k_stride_y) + (z * k_stride_z)] = color_index - 1;
+    }
+}
+
+void ensure_initialized_model(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, magicavoxel::Model const &model) {
+#if GVOX_ENABLE_MULTITHREADED_ADAPTERS && GVOX_ENABLE_THREADSAFETY
+    auto lock = std::lock_guard{model.mtx};
+#endif
+    if (model.palette_ids.empty()) {
+        initialize_model(blit_ctx, ctx, model);
+    }
+}
+
 void construct_scene(magicavoxel::Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, uint32_t depth, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p) {
     auto const &node_info = scene_info.node_infos[node_index];
     if (std::holds_alternative<magicavoxel::SceneTransformInfo>(node_info)) {
@@ -181,7 +212,7 @@ void construct_scene_bvh(magicavoxel::Scene &scene) {
     subdivide_scene_bvh(scene.model_instances, scene.bvh_nodes, root);
 }
 
-void sample_scene_bvh(magicavoxel::Scene const &scene, magicavoxel::BvhNode const &node, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
+void sample_scene_bvh(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, magicavoxel::Scene const &scene, magicavoxel::BvhNode const &node, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
     if (sample_pos.x < node.aabb_min.x ||
         sample_pos.y < node.aabb_min.y ||
         sample_pos.z < node.aabb_min.z ||
@@ -196,6 +227,8 @@ void sample_scene_bvh(magicavoxel::Scene const &scene, magicavoxel::BvhNode cons
         for (uint32_t i = 0; i < node_data.count; ++i) {
             auto const &s_current_node = scene.model_instances[node_data.first + i];
             auto const &model = scene.models[s_current_node.index];
+            ensure_initialized_model(blit_ctx, ctx, model);
+
             if (sample_pos.x < s_current_node.aabb_min.x ||
                 sample_pos.y < s_current_node.aabb_min.y ||
                 sample_pos.z < s_current_node.aabb_min.z ||
@@ -229,19 +262,19 @@ void sample_scene_bvh(magicavoxel::Scene const &scene, magicavoxel::BvhNode cons
         auto const &node_data = std::get<magicavoxel::BvhNode::Children>(node.data);
         auto const &node_a = scene.bvh_nodes[node_data.offset + 0];
         auto const &node_b = scene.bvh_nodes[node_data.offset + 1];
-        sample_scene_bvh(scene, node_a, sample_pos, sampled_voxel);
+        sample_scene_bvh(blit_ctx, ctx, scene, node_a, sample_pos, sampled_voxel);
         if (sampled_voxel != 255) {
             return;
         }
-        sample_scene_bvh(scene, node_b, sample_pos, sampled_voxel);
+        sample_scene_bvh(blit_ctx, ctx, scene, node_b, sample_pos, sampled_voxel);
     }
 }
 
-void sample_scene(magicavoxel::Scene &scene, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
+void sample_scene(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, magicavoxel::Scene &scene, GvoxOffset3D const &sample_pos, uint32_t &sampled_voxel) {
     if (scene.bvh_nodes.empty()) {
         return;
     }
-    sample_scene_bvh(scene, scene.bvh_nodes[0], sample_pos, sampled_voxel);
+    sample_scene_bvh(blit_ctx, ctx, scene, scene.bvh_nodes[0], sample_pos, sampled_voxel);
 }
 
 // Base
@@ -344,35 +377,22 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 user_state.scene.models.back().extent.x == 0 ||
                 user_state.scene.models.back().extent.y == 0 ||
                 user_state.scene.models.back().extent.z == 0 ||
-                !user_state.scene.models.back().palette_ids.empty()) {
+                user_state.scene.models.back().input_offset != 0) {
                 gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "expected a SIZE chunk before XYZI chunk");
                 return;
             }
             auto &model = user_state.scene.models.back();
             uint32_t num_voxels_in_chunk = 0;
             read_var(num_voxels_in_chunk);
+
+            model.input_offset = user_state.offset;
+            model.num_voxels_in_chunk = num_voxels_in_chunk;
+
             if (num_voxels_in_chunk == 0) {
                 user_state.offset += chunk_size - sizeof(num_voxels_in_chunk);
-                break;
             }
-            auto packed_voxel_data = std::vector<uint8_t>(static_cast<size_t>(num_voxels_in_chunk) * 4);
-            gvox_input_read(blit_ctx, user_state.offset, packed_voxel_data.size(), packed_voxel_data.data());
-            user_state.offset += packed_voxel_data.size();
-            const uint32_t k_stride_x = 1;
-            const uint32_t k_stride_y = model.extent.x;
-            const uint32_t k_stride_z = model.extent.x * model.extent.y;
-            model.palette_ids.resize(static_cast<size_t>(model.extent.x) * model.extent.y * model.extent.z);
-            std::fill(model.palette_ids.begin(), model.palette_ids.end(), uint8_t{255});
-            for (uint32_t i = 0; i < num_voxels_in_chunk; i++) {
-                uint8_t const x = packed_voxel_data[i * 4 + 0];
-                uint8_t const y = packed_voxel_data[i * 4 + 1];
-                uint8_t const z = packed_voxel_data[i * 4 + 2];
-                if (x >= model.extent.x && y >= model.extent.y && z >= model.extent.z) {
-                    gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "invalid data in XYZI chunk");
-                    return;
-                }
-                uint8_t const color_index = packed_voxel_data[i * 4 + 3];
-                model.palette_ids[(x * k_stride_x) + (y * k_stride_y) + (z * k_stride_z)] = color_index - 1;
+            else {
+                user_state.offset += static_cast<size_t>(num_voxels_in_chunk) * 4;
             }
         } break;
         case magicavoxel::CHUNK_ID_RGBA: {
@@ -666,15 +686,15 @@ extern "C" auto gvox_parse_adapter_magicavoxel_query_parsable_range(GvoxBlitCont
     return {{0, 0, 0}, {0, 0, 0}};
 }
 
-extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
+extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region, GvoxOffset3D const *offset, uint32_t channel_id) -> GvoxSample {
     auto &user_state = *static_cast<MagicavoxelParseUserState *>(gvox_adapter_get_user_pointer(ctx));
     uint32_t voxel_data = 0;
     auto palette_id = 255u;
     if (region->data != nullptr) {
         auto const &node = *reinterpret_cast<magicavoxel::BvhNode const *>(region->data);
-        sample_scene_bvh(user_state.scene, node, *offset, palette_id);
+        sample_scene_bvh(blit_ctx, ctx, user_state.scene, node, *offset, palette_id);
     } else {
-        sample_scene(user_state.scene, *offset, palette_id);
+        sample_scene(blit_ctx, ctx, user_state.scene, *offset, palette_id);
     }
     switch (channel_id) {
     case GVOX_CHANNEL_ID_COLOR:
