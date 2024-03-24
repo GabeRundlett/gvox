@@ -29,7 +29,11 @@ struct MagicavoxelParseUserState {
 };
 
 void initialize_model(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, magicavoxel::Model const &model) {
+#if __wasm32__
+    auto packed_voxel_data = std::vector<uint8_t>();
+#else
     thread_local auto packed_voxel_data = std::vector<uint8_t>();
+#endif
     packed_voxel_data.resize(static_cast<size_t>(model.num_voxels_in_chunk) * 4);
     gvox_input_read(blit_ctx, model.input_offset, packed_voxel_data.size(), packed_voxel_data.data());
     const uint32_t k_stride_x = 1;
