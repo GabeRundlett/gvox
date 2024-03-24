@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 
 extern "C" {
 uint32_t __imported_wasi_snapshot_preview1_fd_fdstat_get(uint32_t, uint32_t) {
@@ -23,6 +24,10 @@ int32_t __imported_wasi_snapshot_preview1_fd_seek(int32_t, int64_t, int32_t, int
 
 int32_t __imported_wasi_snapshot_preview1_fd_write(int32_t, int32_t, int32_t, int32_t) {
     assert(false);
+    return -1;
+}
+
+int vfprintf(FILE*, const char *, va_list) {
     return -1;
 }
 }
