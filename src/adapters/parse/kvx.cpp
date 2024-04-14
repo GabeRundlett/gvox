@@ -127,7 +127,18 @@ extern "C" auto gvox_parse_adapter_kvx_sample_region(GvoxBlitContext * /*unused*
 
         if (z < slabztop) {
             // missed voxel
+            if (is_solid) {
+                auto palette_index = startptr[0];
+                auto palette_entry = user_state.palette[palette_index];
+                color = uint32_t(palette_entry[0] * 4) | uint32_t(palette_entry[1] * 4 << 8) | uint32_t(palette_entry[2] * 4 << 16) | (0x1u << 24);
+            }
             break;
+        }
+
+        if (slabbackfacecullinfo & 0x20) {
+            is_solid = false;
+        } else {
+            is_solid = true;
         }
 
         if (z < slabztop + slabzleng) {
@@ -136,6 +147,7 @@ extern "C" auto gvox_parse_adapter_kvx_sample_region(GvoxBlitContext * /*unused*
             auto palette_entry = user_state.palette[palette_index];
             color = uint32_t(palette_entry[0] * 4) | uint32_t(palette_entry[1] * 4 << 8) | uint32_t(palette_entry[2] * 4 << 16) | (0x1u << 24);
             is_solid = true;
+            break;
         }
 
         startptr += slabzleng;
