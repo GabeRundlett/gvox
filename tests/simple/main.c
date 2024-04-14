@@ -275,6 +275,37 @@ void test_palette_file_io(void) {
     gvox_destroy_context(gvox_ctx);
 }
 
+void test_kvx(void) {
+    GvoxContext *gvox_ctx = gvox_create_context();
+
+    {
+        GvoxFileInputAdapterConfig i_config = {
+            .filepath = "assets/test.kvx",
+            .byte_offset = 0,
+        };
+        GvoxColoredTextSerializeAdapterConfig s_config = {
+            .non_color_max_value = 255,
+            .vertical = 1,
+        };
+        GvoxAdapterContext *i_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_input_adapter(gvox_ctx, "file"), &i_config);
+        GvoxAdapterContext *o_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_output_adapter(gvox_ctx, "stdout"), NULL);
+        GvoxAdapterContext *p_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_parse_adapter(gvox_ctx, "kvx"), NULL);
+        GvoxAdapterContext *s_ctx = gvox_create_adapter_context(gvox_ctx, gvox_get_serialize_adapter(gvox_ctx, "colored_text"), &s_config);
+        gvox_blit_region(
+            i_ctx, o_ctx, p_ctx, s_ctx,
+            NULL,
+            GVOX_CHANNEL_BIT_COLOR |
+                GVOX_CHANNEL_BIT_MATERIAL_ID);
+        gvox_destroy_adapter_context(i_ctx);
+        gvox_destroy_adapter_context(o_ctx);
+        gvox_destroy_adapter_context(p_ctx);
+        gvox_destroy_adapter_context(s_ctx);
+    }
+    handle_gvox_error(gvox_ctx);
+
+    gvox_destroy_context(gvox_ctx);
+}
+
 void test_magicavoxel(void) {
     GvoxContext *gvox_ctx = gvox_create_context();
 
@@ -492,6 +523,7 @@ int main(void) {
     test_raw_file_io();
     test_palette_buffer_io();
     test_palette_file_io();
+    test_kvx();
     test_magicavoxel();
     test_voxlap();
     // test_speed();

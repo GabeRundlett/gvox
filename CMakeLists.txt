@@ -9,7 +9,7 @@ if(GVOX_ENABLE_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
-project(gvox VERSION 1.2.11)
+project(gvox VERSION 1.3.0)
 
 if(GVOX_ENABLE_STATIC_ANALYSIS)
     set(CPPCHECK_TEMPLATE "gcc")
@@ -50,6 +50,7 @@ set(GVOX_PARSE_ADAPTERS
     "gvox_global_palette"
     "gvox_brickmap"
     "voxlap"
+    "kvx"
     "magicavoxel"
 )
 set(GVOX_SERIALIZE_ADAPTERS
