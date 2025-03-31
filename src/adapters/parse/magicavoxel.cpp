@@ -394,8 +394,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
 
             if (num_voxels_in_chunk == 0) {
                 user_state.offset += chunk_size - sizeof(num_voxels_in_chunk);
-            }
-            else {
+            } else {
                 user_state.offset += static_cast<size_t>(num_voxels_in_chunk) * 4;
             }
         } break;
@@ -563,29 +562,27 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
                 }
             }
             constexpr auto material_property_ids = std::array{
-                std::pair<char const *, uint32_t>{"_metal", magicavoxel::MATERIAL_METAL_BIT},
-                std::pair<char const *, uint32_t>{"_rough", magicavoxel::MATERIAL_ROUGH_BIT},
-                std::pair<char const *, uint32_t>{"_spec", magicavoxel::MATERIAL_SPEC_BIT},
-                std::pair<char const *, uint32_t>{"_ior", magicavoxel::MATERIAL_IOR_BIT},
-                std::pair<char const *, uint32_t>{"_att", magicavoxel::MATERIAL_ATT_BIT},
-                std::pair<char const *, uint32_t>{"_flux", magicavoxel::MATERIAL_FLUX_BIT},
-                std::pair<char const *, uint32_t>{"_emit", magicavoxel::MATERIAL_EMIT_BIT},
-                std::pair<char const *, uint32_t>{"_ldr", magicavoxel::MATERIAL_LDR_BIT},
-                std::pair<char const *, uint32_t>{"_trans", magicavoxel::MATERIAL_TRANS_BIT},
-                std::pair<char const *, uint32_t>{"_alpha", magicavoxel::MATERIAL_ALPHA_BIT},
-                std::pair<char const *, uint32_t>{"_d", magicavoxel::MATERIAL_D_BIT},
-                std::pair<char const *, uint32_t>{"_sp", magicavoxel::MATERIAL_SP_BIT},
-                std::pair<char const *, uint32_t>{"_g", magicavoxel::MATERIAL_G_BIT},
-                std::pair<char const *, uint32_t>{"_media", magicavoxel::MATERIAL_MEDIA_BIT},
+                std::tuple<char const *, uint32_t, uint32_t>{"_metal", magicavoxel::MATERIAL_METAL_BIT, offsetof(magicavoxel::Material, metal)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_rough", magicavoxel::MATERIAL_ROUGH_BIT, offsetof(magicavoxel::Material, rough)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_spec", magicavoxel::MATERIAL_SPEC_BIT, offsetof(magicavoxel::Material, spec)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_ior", magicavoxel::MATERIAL_IOR_BIT, offsetof(magicavoxel::Material, ior)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_att", magicavoxel::MATERIAL_ATT_BIT, offsetof(magicavoxel::Material, att)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_flux", magicavoxel::MATERIAL_FLUX_BIT, offsetof(magicavoxel::Material, flux)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_emit", magicavoxel::MATERIAL_EMIT_BIT, offsetof(magicavoxel::Material, emit)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_ldr", magicavoxel::MATERIAL_LDR_BIT, offsetof(magicavoxel::Material, ldr)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_trans", magicavoxel::MATERIAL_TRANS_BIT, offsetof(magicavoxel::Material, trans)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_alpha", magicavoxel::MATERIAL_ALPHA_BIT, offsetof(magicavoxel::Material, alpha)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_d", magicavoxel::MATERIAL_D_BIT, offsetof(magicavoxel::Material, d)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_sp", magicavoxel::MATERIAL_SP_BIT, offsetof(magicavoxel::Material, sp)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_g", magicavoxel::MATERIAL_G_BIT, offsetof(magicavoxel::Material, g)},
+                std::tuple<char const *, uint32_t, uint32_t>{"_media", magicavoxel::MATERIAL_MEDIA_BIT, offsetof(magicavoxel::Material, media)},
             };
-            size_t field_offset = 0;
-            for (auto const &[mat_str, mat_bit] : material_property_ids) {
+            for (auto const &[mat_str, mat_bit, offset] : material_property_ids) {
                 char const *prop_str = temp_dict.get<char const *>(mat_str, NULL);
                 if (prop_str != nullptr) {
                     user_state.materials[static_cast<size_t>(material_id)].content_flags |= mat_bit;
-                    *(&user_state.materials[static_cast<size_t>(material_id)].metal + field_offset) = static_cast<float>(atof(prop_str));
+                    *reinterpret_cast<float *>(reinterpret_cast<std::byte *>(&user_state.materials[static_cast<size_t>(material_id)]) + offset) = static_cast<float>(atof(prop_str));
                 }
-                ++field_offset;
             }
         } break;
         case magicavoxel::CHUNK_ID_MATT: {
@@ -600,6 +597,14 @@ extern "C" void gvox_parse_adapter_magicavoxel_blit_begin(GvoxBlitContext *blit_
             read_var(material_type);
             float material_weight = 0.0f;
             read_var(material_weight);
+            // bit(0) : Plastic
+            // bit(1) : Roughness
+            // bit(2) : Specular
+            // bit(3) : IOR
+            // bit(4) : Attenuation
+            // bit(5) : Power
+            // bit(6) : Glow
+            // bit(7) : isTotalPower (*no value)
             uint32_t property_bits = 0u;
             read_var(property_bits);
             switch (material_type) {
@@ -749,6 +754,19 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext *bl
             voxel_data = 0;
         }
         break;
+    case GVOX_CHANNEL_ID_REFLECTIVITY:
+        if (palette_id < 255) {
+            if ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_SP_BIT) != 0u) {
+                voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].sp);
+            } else if ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_SPEC_BIT) != 0u) {
+                voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].spec);
+            } else {
+                voxel_data = std::bit_cast<uint32_t>(1.0f);
+            }
+        } else {
+            voxel_data = 0;
+        }
+        break;
     default:
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Requested unsupported channel from magicavoxel file");
         break;
@@ -766,7 +784,7 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*u
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVITY};
+                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY};
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
@@ -818,7 +836,7 @@ extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *bli
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVITY};
+                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY};
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
