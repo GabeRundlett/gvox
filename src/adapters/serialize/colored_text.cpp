@@ -105,9 +105,11 @@ namespace {
                 (channel_i == GVOX_CHANNEL_ID_ROUGHNESS) ||
                 (channel_i == GVOX_CHANNEL_ID_METALNESS) ||
                 (channel_i == GVOX_CHANNEL_ID_TRANSPARENCY) ||
-                (channel_i == GVOX_CHANNEL_ID_REFLECTIVITY);
-            float const normalized_range_min = 0.0f;
-            float const normalized_range_max = channel_i == GVOX_CHANNEL_ID_REFLECTIVITY ? 2.0f : 1.0f;
+                (channel_i == GVOX_CHANNEL_ID_REFLECTIVITY) ||
+                (channel_id == GVOX_CHANNEL_ID_DENSITY) ||
+                (channel_id == GVOX_CHANNEL_ID_PHASE);
+            float const normalized_range_min = channel_i == GVOX_CHANNEL_ID_PHASE ? -0.9f : 0.0f;
+            float const normalized_range_max = channel_i == GVOX_CHANNEL_ID_PHASE ? 0.9f : channel_i == GVOX_CHANNEL_ID_REFLECTIVITY ? 2.0f : 1.0f;
             for (uint32_t zi = 0; zi < range->extent.z; zi += user_state.config.downscale_factor) {
                 for (uint32_t yi = 0; yi < range->extent.y; yi += user_state.config.downscale_factor) {
                     for (uint32_t xi = 0; xi < range->extent.x; xi += user_state.config.downscale_factor) {

@@ -767,6 +767,20 @@ extern "C" auto gvox_parse_adapter_magicavoxel_sample_region(GvoxBlitContext *bl
             voxel_data = 0;
         }
         break;
+    case GVOX_CHANNEL_ID_DENSITY:
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_D_BIT) != 0u)) {
+            voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].d);
+        } else {
+            voxel_data = 0;
+        }
+        break;
+    case GVOX_CHANNEL_ID_PHASE:
+        if (palette_id < 255 && ((user_state.materials[palette_id].content_flags & magicavoxel::MATERIAL_G_BIT) != 0u)) {
+            voxel_data = std::bit_cast<uint32_t>(user_state.materials[palette_id].g);
+        } else {
+            voxel_data = 0;
+        }
+        break;
     default:
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Requested unsupported channel from magicavoxel file");
         break;
@@ -784,7 +798,8 @@ extern "C" auto gvox_parse_adapter_magicavoxel_load_region(GvoxBlitContext * /*u
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY};
+                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY | GVOX_CHANNEL_BIT_DENSITY |
+                    GVOX_CHANNEL_BIT_PHASE};
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
@@ -836,7 +851,8 @@ extern "C" void gvox_parse_adapter_magicavoxel_parse_region(GvoxBlitContext *bli
     auto const available_channels =
         uint32_t{GVOX_CHANNEL_BIT_COLOR | GVOX_CHANNEL_BIT_MATERIAL_ID | GVOX_CHANNEL_BIT_ROUGHNESS |
                  GVOX_CHANNEL_BIT_METALNESS | GVOX_CHANNEL_BIT_TRANSPARENCY | GVOX_CHANNEL_BIT_IOR |
-                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY};
+                 GVOX_CHANNEL_BIT_EMISSIVITY | GVOX_CHANNEL_BIT_REFLECTIVITY | GVOX_CHANNEL_BIT_DENSITY |
+                    GVOX_CHANNEL_BIT_PHASE};
     if ((channel_flags & ~available_channels) != 0) {
         gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_REQUESTED_CHANNEL_NOT_PRESENT, "Tried loading a region with a channel that wasn't present in the original data");
     }
