@@ -45,7 +45,7 @@ namespace {
     // } // namespace float_conv
 } // namespace
 
-auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle) GVOX_FUNC_ATTRIB -> GvoxResult {
     ZoneScoped;
     HANDLE_NEW(VoxelDesc, VOXEL_DESC);
 
@@ -89,16 +89,16 @@ void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB {
     destroy_handle(handle);
 }
 
-auto gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->uint32_t {
+auto gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB -> uint32_t {
     auto &voxel_desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
     return voxel_desc.bit_count;
 }
-auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB->uint32_t {
+auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB -> uint32_t {
     auto &voxel_desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
     return static_cast<uint32_t>(voxel_desc.attributes.size());
 }
 
-auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB->uint8_t {
+auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB -> uint8_t {
     if (desc_a == desc_b) {
         return 2;
     }
@@ -117,7 +117,7 @@ auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FU
 //     return convert_formats(src_data, std::bit_cast<FormatDescriptor>(src_format), dst_data, std::bit_cast<FormatDescriptor>(dst_format));
 // }
 
-auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n) GVOX_FUNC_ATTRIB->GvoxResult {
+auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n) GVOX_FUNC_ATTRIB -> GvoxResult {
     for (uint32_t mapping_i = 0; mapping_i < attrib_mapping_n; ++mapping_i) {
         auto const &mapping = attrib_mapping[mapping_i];
 
@@ -196,7 +196,34 @@ auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *ds
             if (is_packed_multi_channel_attribute(src_attrib.type)) {
                 return GVOX_ERROR_INVALID_ARGUMENT;
             }
-            // TODO: implement
+
+            // NOTE(grundlett): Work-in-progress
+
+            auto src_begin_bit = src_attrib.bit_offset;
+            auto src_end_bit = src_begin_bit + src_attrib.bit_count;
+            const auto *src_real_byte_begin = static_cast<uint8_t const *>(src_data) + src_begin_bit / 8;
+            // auto src_real_byte_end = static_cast<uint8_t const *>(src_data) + (src_end_bit + 7) / 8;
+            const auto *src_full_byte_begin = static_cast<uint8_t const *>(src_data) + (src_begin_bit + 7) / 8;
+            const auto *src_full_byte_end = static_cast<uint8_t const *>(src_data) + src_end_bit / 8;
+
+            auto dst_begin_bit = dst_attrib.bit_offset;
+            // auto dst_end_bit = dst_begin_bit + dst_attrib.bit_count;
+            auto *dst_real_byte_begin = static_cast<uint8_t *>(dst_data) + dst_begin_bit / 8;
+            auto *dst_full_byte_begin = static_cast<uint8_t *>(dst_data) + (dst_begin_bit + 7) / 8;
+
+            if (std::bit_cast<uint32_t>(src_format) == std::bit_cast<uint32_t>(dst_format)) {
+                // same format-format copy.
+
+                // optimization for when the bits line-up at byte boundaries
+                if (src_full_byte_begin != src_full_byte_end && (src_begin_bit & 7) == (dst_begin_bit & 7)) {
+                    std::copy(src_full_byte_begin, src_full_byte_end, dst_full_byte_begin);
+                }
+
+                if ((dst_begin_bit % 8) != 0 || (src_begin_bit % 8) != 0 || (src_end_bit % 8) != 0) {
+                    // TODO: Copy over bit-wise on voxel edges.
+                    return GVOX_ERROR_UNKNOWN;
+                }
+            }
         }
     }
 

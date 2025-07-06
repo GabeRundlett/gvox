@@ -1,5 +1,6 @@
 #include <gvox/gvox.h>
 #include <gvox/containers/raw.h>
+#include <gvox/streams/input/byte_buffer.h>
 
 #include <array>
 #include <span>
@@ -8,6 +9,8 @@
 #include <cstdint>
 #include <memory>
 #include <chrono>
+#include <fstream>
+#include <filesystem>
 
 #include "../common/window.hpp"
 
@@ -228,10 +231,19 @@ void iterator_test() {
         },
     });
 
+    auto float_voxel_desc = gvox::create_voxel_desc(std::array{
+        GvoxAttribute{
+            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+            .next = nullptr,
+            .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_FLOAT,
+            .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+        },
+    });
+
     auto raw_container = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
 
     // Construct the container from multiple containers via multi-threading
-    {
+    if (false) {
         auto raw_container_chunk_a = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
         auto raw_container_chunk_b = gvox::create_container(gvox_container_raw3d_description(), GvoxRaw3dContainerConfig{.voxel_desc = rgb_voxel_desc.get()});
 
@@ -305,6 +317,140 @@ void iterator_test() {
             .dst = raw_container.get(),
         };
         HANDLE_RES(gvox_move(&move_info), "Failed to move");
+    }
+
+    {
+        auto *file_input = GvoxInputStream{};
+        {
+            auto file = std::ifstream{"assets/bedroom.vox", std::ios::binary};
+            auto size = std::filesystem::file_size("assets/bedroom.vox");
+            auto bytes = std::vector<uint8_t>(size);
+            file.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(size));
+            auto config = GvoxByteBufferInputStreamConfig{.data = bytes.data(), .size = bytes.size()};
+            auto input_ci = GvoxInputStreamCreateInfo{};
+            input_ci.struct_type = GVOX_STRUCT_TYPE_INPUT_STREAM_CREATE_INFO;
+            input_ci.next = nullptr;
+            input_ci.cb_args.config = &config;
+            input_ci.description = gvox_input_stream_byte_buffer_description();
+            HANDLE_RES(gvox_create_input_stream(&input_ci, &file_input), "Failed to create (byte buffer) input stream");
+        }
+
+        // Now we'll create our parser. This can be automatically detected from the input data itself.
+        auto *file_parser = GvoxParser{};
+        {
+            auto parser_collection = GvoxParserDescriptionCollection{
+                .struct_type = GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
+                .next = nullptr,
+            };
+            gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
+            HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
+        }
+
+        // And of course, create that iterator.
+        auto *input_iterator = GvoxIterator{};
+        {
+            auto parse_iter_ci = GvoxParseIteratorCreateInfo{
+                .struct_type = GVOX_STRUCT_TYPE_PARSE_ITERATOR_CREATE_INFO,
+                .next = nullptr,
+                .parser = file_parser,
+            };
+            auto iter_ci = GvoxIteratorCreateInfo{
+                .struct_type = GVOX_STRUCT_TYPE_ITERATOR_CREATE_INFO,
+                .next = &parse_iter_ci,
+            };
+            gvox_create_iterator(&iter_ci, &input_iterator);
+        }
+
+        // Now we'll simply iterate over the input.
+        auto iter_value = GvoxIteratorValue{};
+        auto advance_info = GvoxIteratorAdvanceInfo{
+            .input_stream = file_input,
+            .mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT,
+        };
+        bool exit = false;
+
+        while (!exit) {
+            gvox_iterator_advance(input_iterator, &advance_info, &iter_value);
+            switch (iter_value.tag) {
+
+            case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
+                // And for every "Leaf" node in the model, we'll write it into our container.
+
+                auto offset = GvoxOffset3D{};
+                auto extent = GvoxExtent3D{};
+                auto dst_range = GvoxRange{
+                    .offset{.axis_n = 3, .axis = &offset.data[0]},
+                    .extent{.axis_n = 3, .axis = &extent.data[0]},
+                };
+
+                // incoming data is 3D because we know it's magicavoxel.
+                // Remapping into 2d space
+                offset.data[0] = iter_value.range.offset.axis[0] + 100;
+                offset.data[1] = -iter_value.range.offset.axis[1] + 40;
+
+                extent.data[0] = iter_value.range.extent.axis[0];
+                extent.data[1] = iter_value.range.extent.axis[1];
+                extent.data[2] = iter_value.range.extent.axis[2];
+
+                std::array<uint8_t, 4> color = {};
+
+                auto fill_info = GvoxFillInfo{
+                    .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
+                    .next = nullptr,
+                    .src_data = iter_value.voxel_data,
+                    .src_desc = iter_value.voxel_desc,
+                    .dst = raw_container.get(),
+                    .range = dst_range,
+                };
+
+                if (offset.data[0] >= 0 && offset.data[1] >= 0)
+                    HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+
+                GvoxAttributeMapping mapping{};
+                mapping.dst_index = 0;
+                mapping.src_index = 0;
+                float value = 0.0f;
+                fill_info.src_data = color.data();
+
+                {
+                    offset.data[1] += 40;
+
+                    // Ideally we'd scan the voxel descriptor to find the ROUGHNESS index (if present) but I
+                    mapping.src_index = 2;
+                    gvox_translate_voxel(iter_value.voxel_data, iter_value.voxel_desc, &value, float_voxel_desc.get(), &mapping, 1);
+
+                    value = std::max(std::min(value, 1.0f), 0.0f);
+                    color[0] = 255 * value;
+                    color[1] = 255 * value;
+                    color[2] = 255 * value;
+
+                    if (offset.data[0] >= 0 && offset.data[1] >= 0)
+                        HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                }
+
+                {
+                    offset.data[1] += 40;
+                    mapping.src_index = 4;
+                    gvox_translate_voxel(iter_value.voxel_data, iter_value.voxel_desc, &value, float_voxel_desc.get(), &mapping, 1);
+
+                    value = std::max(std::min(value, 1.0f), 0.0f);
+                    color[0] = 255 * value;
+                    color[1] = 255 * value;
+                    color[2] = 255 * value;
+
+                    if (offset.data[0] >= 0 && offset.data[1] >= 0)
+                        HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                }
+            } break;
+            case GVOX_ITERATOR_VALUE_TYPE_NULL: {
+                std::cout << "Done here!" << std::endl;
+                exit = true;
+            } break;
+            }
+        }
+        gvox_destroy_iterator(input_iterator);
+        gvox_destroy_input_stream(file_input);
+        gvox_destroy_parser(file_parser);
     }
 
     {
@@ -410,6 +556,6 @@ void iterator_test() {
 }
 
 auto main() -> int {
-    multi_thread_test();
-    // iterator_test();
+    // multi_thread_test();
+    iterator_test();
 }
