@@ -26,7 +26,6 @@ namespace {
         float ior;
         float reflectivity;
         float emissivity;
-        float transparency;
         float density;
         float phase;
     };
@@ -238,12 +237,6 @@ namespace {
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
                 .type = GVOX_ATTRIBUTE_TYPE_EMISSIVITY,
-                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
-            },
-            GvoxAttribute{
-                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
-                .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_TRANSPARENCY,
                 .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
             },
             GvoxAttribute{
@@ -696,10 +689,9 @@ namespace {
                         if ((flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u)
                             iter.voxel_data.roughness = material.rough;
 
-                        if ((flags & magicavoxel::MATERIAL_ALPHA_BIT) != 0u)
-                            iter.voxel_data.opacity = material.alpha;
-                        else
-                            iter.voxel_data.opacity = 1.0f;
+                        // NOTE: redundant
+                        // if ((flags & magicavoxel::MATERIAL_ALPHA_BIT) != 0u)
+                        //     iter.voxel_data.opacity = material.alpha;
 
                         if ((flags & magicavoxel::MATERIAL_METAL_BIT) != 0u)
                             iter.voxel_data.metalness = material.metal;
@@ -712,13 +704,15 @@ namespace {
                         else if ((flags & magicavoxel::MATERIAL_SPEC_BIT) != 0u)
                             iter.voxel_data.reflectivity = material.spec;
                         else
-                            iter.voxel_data.reflectivity = 1.0;
+                            iter.voxel_data.reflectivity = 1.0f;
 
                         if ((flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)
                             iter.voxel_data.emissivity = material.emit;
 
                         if ((flags & magicavoxel::MATERIAL_TRANS_BIT) != 0u)
-                            iter.voxel_data.transparency = material.trans;
+                            iter.voxel_data.opacity = 1.0f - material.trans;
+                        else
+                            iter.voxel_data.opacity = 1.0f;
 
                         if ((flags & magicavoxel::MATERIAL_D_BIT) != 0u)
                             iter.voxel_data.density = material.d;
