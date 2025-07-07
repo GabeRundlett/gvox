@@ -686,6 +686,7 @@ namespace {
                     magicavoxel::Material const &material = self.materials[palette_id];
                     auto flags = self.materials[palette_id].content_flags;
                     auto type = self.materials[palette_id].type;
+                    iter.voxel_data = VoxelIteratorData();
                     iter.voxel_data.color.a = 255;
                     if (palette_id < 255) {
                         iter.voxel_data.color = self.palette[palette_id];
@@ -710,6 +711,8 @@ namespace {
                             iter.voxel_data.reflectivity = material.sp;
                         else if ((flags & magicavoxel::MATERIAL_SPEC_BIT) != 0u)
                             iter.voxel_data.reflectivity = material.spec;
+                        else
+                            iter.voxel_data.reflectivity = 1.0;
 
                         if ((flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)
                             iter.voxel_data.emissivity = material.emit;
