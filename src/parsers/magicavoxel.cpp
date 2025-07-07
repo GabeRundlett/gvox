@@ -16,8 +16,10 @@
 #include "magicavoxel.hpp"
 
 namespace {
+    #pragma pack(push, 1)
     struct VoxelIteratorData {
         magicavoxel::Color color;
+        uint8_t type;
         float roughness;
         float opacity;
         float metalness;
@@ -27,6 +29,7 @@ namespace {
         float density;
         float phase;
     };
+#pragma pack(pop)
 
     struct ModelInstance {
         size_t parent_group_begin_index{};
@@ -191,8 +194,14 @@ namespace {
             GvoxAttribute{
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
-                .type = GVOX_ATTRIBUTE_TYPE_UNKNOWN,
-                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_UNKNOWN, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+                .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+            },
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
             },
             GvoxAttribute{
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
@@ -666,11 +675,15 @@ namespace {
                     iter.offset.data[1] = static_cast<int64_t>(offset.data[1]) + model_instance.offset.data[1];
                     iter.offset.data[2] = static_cast<int64_t>(offset.data[2]) + model_instance.offset.data[2];
                     iter.extent = GvoxExtent3D{1, 1, 1};
-                    auto palette_id = voxel[3] - 1;
+                    auto palette_id = static_cast<uint8_t>(voxel[3] - 1);
                     magicavoxel::Material const &material = self.materials[palette_id];
                     auto flags = self.materials[palette_id].content_flags;
+                    auto type = self.materials[palette_id].type;
+                    iter.voxel_data.color.a = 255;
                     if (palette_id < 255) {
                         iter.voxel_data.color = self.palette[palette_id];
+                        iter.voxel_data.color.a = palette_id;
+                        iter.voxel_data.type = static_cast<uint8_t>(type);
 
                         if ((flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u)
                             iter.voxel_data.roughness = material.rough;
