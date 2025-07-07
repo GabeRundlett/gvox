@@ -118,6 +118,10 @@ auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FU
 // }
 
 auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n) GVOX_FUNC_ATTRIB -> GvoxResult {
+
+    if(src_desc->attributes.size() < attrib_mapping_n || dst_desc->attributes.size() < attrib_mapping_n)
+        return GVOX_ERROR_OUT_OF_BOUNDS;
+
     for (uint32_t mapping_i = 0; mapping_i < attrib_mapping_n; ++mapping_i) {
         auto const &mapping = attrib_mapping[mapping_i];
 

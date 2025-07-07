@@ -47,6 +47,7 @@ namespace {
         auto stride = size_t{1};
 
         for (size_t i = 0; i < 3; ++i) {
+            // FIXME: this casting doesn't support negative coord
             auto offset_i = static_cast<uint64_t>(offset.data[i]);
             chunk_offset.data[i] = offset_i >> LOG2_CHUNK_SIZE;
             auto axis_p = offset_i & (CHUNK_SIZE - 1);
