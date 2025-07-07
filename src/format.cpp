@@ -98,6 +98,19 @@ auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB -> u
     return static_cast<uint32_t>(voxel_desc.attributes.size());
 }
 
+auto gvox_voxel_desc_get_attribute(GvoxVoxelDesc handle, uint32_t index, GvoxAttribute *out_attribute) GVOX_FUNC_ATTRIB -> GvoxResult {
+    auto &desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc)*>(handle);
+    if (index >= desc.attributes.size()) {
+        return GVOX_ERROR_OUT_OF_BOUNDS;
+    }
+    auto const &impl = desc.attributes[index];
+    out_attribute->struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE;
+    out_attribute->next        = nullptr;
+    out_attribute->type        = impl.type;
+    out_attribute->format      = std::bit_cast<GvoxFormat>(impl.format_desc);
+    return GVOX_SUCCESS;
+}
+
 auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB -> uint8_t {
     if (desc_a == desc_b) {
         return 2;

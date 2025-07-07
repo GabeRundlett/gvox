@@ -543,6 +543,7 @@ GVOX_FUNC(void, gvox_destroy_voxel_desc, GvoxVoxelDesc handle);
 
 GVOX_FUNC(uint32_t, gvox_voxel_desc_size_in_bits, GvoxVoxelDesc handle);
 GVOX_FUNC(uint32_t, gvox_voxel_desc_attribute_count, GvoxVoxelDesc handle);
+GVOX_FUNC(GvoxResult, gvox_voxel_desc_get_attribute, GvoxVoxelDesc handle, uint32_t index, GvoxAttribute *out_attribute);
 
 GVOX_FUNC(uint8_t, gvox_voxel_desc_compare, GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b);
 

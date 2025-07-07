@@ -59,6 +59,7 @@ namespace {
 
     struct Parser {
         MagicavoxelParserConfig config{};
+        // TODO: is this desc necessary anymore?
         GvoxVoxelDesc desc{};
         std::vector<magicavoxel::TransformKeyframe> transform_keyframes{};
         magicavoxel::Palette palette = {};
@@ -82,7 +83,9 @@ namespace {
         size_t voxel_index{std::numeric_limits<size_t>::max()};
         GvoxOffset3D offset{};
         GvoxExtent3D extent{};
-        VoxelIteratorData voxel_data{};
+        
+        std::vector<uint8_t> voxel_buffer;
+        GvoxVoxelDesc dynamic_desc{};
     };
 
     void construct_scene(Scene &scene, magicavoxel::SceneInfo &scene_info, uint32_t node_index, size_t parent_group_begin_index, magicavoxel::Transform trn, GvoxOffset3D &min_p, GvoxOffset3D &max_p, MagicavoxelParserConfig const &config) {
@@ -618,7 +621,11 @@ namespace {
         *out_iterator_ptr = new (std::nothrow) Iterator();
     }
     void destroy_iterator(void * /*self_ptr*/, void *iterator_ptr) {
-        delete static_cast<Iterator *>(iterator_ptr);
+        auto *iter = static_cast<Iterator *>(iterator_ptr);
+        if (iter->dynamic_desc) {
+            gvox_destroy_voxel_desc(iter->dynamic_desc);
+        }
+        delete iter;
     }
     void iterator_advance(void *self_ptr, void **iterator_ptr, GvoxIteratorAdvanceInfo const *info, GvoxIteratorValue *out) {
         auto &self = *static_cast<Parser *>(self_ptr);
@@ -665,6 +672,7 @@ namespace {
                     ++iter.iterator_index;
                     return;
                 }
+                
                 {
                     // Next voxel
                     auto voxel = std::array<uint8_t, 4>{};
@@ -679,54 +687,179 @@ namespace {
                     magicavoxel::Material const &material = self.materials[palette_id];
                     auto flags = self.materials[palette_id].content_flags;
                     auto type = self.materials[palette_id].type;
-                    iter.voxel_data = VoxelIteratorData();
-                    iter.voxel_data.color.a = 255;
+                    // TODO: fix max size for dynamic attr and buffer?
+                    std::vector<GvoxAttribute> dynamic_attributes;
+                    auto &buf = iter.voxel_buffer;
+                    buf.clear();
                     if (palette_id < 255) {
-                        iter.voxel_data.color = self.palette[palette_id];
-                        iter.voxel_data.color.a = palette_id;
-                        iter.voxel_data.type = static_cast<uint8_t>(type);
+                        auto color = self.palette[palette_id];
+                        buf.push_back(color.r);
+                        buf.push_back(color.g);
+                        buf.push_back(color.b);
+                        buf.push_back(palette_id);
+                        buf.push_back(static_cast<uint8_t>(type));
 
-                        if ((flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u)
-                            iter.voxel_data.roughness = material.rough;
+                        auto append_float = [&](float v){
+                            uint8_t const *p = reinterpret_cast<uint8_t const*>(&v);
+                            buf.insert(buf.end(), p, p + sizeof(v));
+                        };
 
-                        // NOTE: redundant
-                        // if ((flags & magicavoxel::MATERIAL_ALPHA_BIT) != 0u)
-                        //     iter.voxel_data.opacity = material.alpha;
+                        dynamic_attributes.push_back(GvoxAttribute{
+                            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                            .next = nullptr,
+                            .type = GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED,
+                            .format = GVOX_STANDARD_FORMAT_R8G8B8_SRGB,
+                        });
+                        dynamic_attributes.push_back(GvoxAttribute{
+                            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                            .next = nullptr,
+                            .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                            .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+                        });
+                        dynamic_attributes.push_back(GvoxAttribute{
+                            .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                            .next = nullptr,
+                            .type = GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER,
+                            .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_RAW, GVOX_SINGLE_CHANNEL_BIT_COUNT(8)),
+                        });
 
-                        if ((flags & magicavoxel::MATERIAL_METAL_BIT) != 0u)
-                            iter.voxel_data.metalness = material.metal;
+                        {
+                            // NOTE: redundant
+                            // if ((flags & magicavoxel::MATERIAL_ALPHA_BIT) != 0u)
+                            //     iter.voxel_data.opacity = material.alpha;
+                            if ((flags & magicavoxel::MATERIAL_TRANS_BIT) != 0u)
+                                append_float(1.0f - material.trans);
+                            else
+                                append_float(1.0f);
 
-                        if ((flags & magicavoxel::MATERIAL_IOR_BIT) != 0u)
-                            iter.voxel_data.ior = material.ior;
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next = nullptr,
+                                .type = GVOX_ATTRIBUTE_TYPE_OPACITY,
+                                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
 
-                        if ((flags & magicavoxel::MATERIAL_SP_BIT) != 0u)
-                            iter.voxel_data.reflectivity = material.sp;
-                        else if ((flags & magicavoxel::MATERIAL_SPEC_BIT) != 0u)
-                            iter.voxel_data.reflectivity = material.spec;
-                        else
-                            iter.voxel_data.reflectivity = 1.0f;
+                        if ((flags & magicavoxel::MATERIAL_ROUGH_BIT) != 0u) {
+                            append_float(material.rough);
 
-                        if ((flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)
-                            iter.voxel_data.emissivity = material.emit;
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next = nullptr,
+                                .type = GVOX_ATTRIBUTE_TYPE_ROUGHNESS,
+                                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
 
-                        if ((flags & magicavoxel::MATERIAL_TRANS_BIT) != 0u)
-                            iter.voxel_data.opacity = 1.0f - material.trans;
-                        else
-                            iter.voxel_data.opacity = 1.0f;
+                        if ((flags & magicavoxel::MATERIAL_METAL_BIT) != 0u) {
+                            append_float(material.metal);
 
-                        if ((flags & magicavoxel::MATERIAL_D_BIT) != 0u)
-                            iter.voxel_data.density = material.d;
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_METALNESS,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
 
-                        if ((flags & magicavoxel::MATERIAL_G_BIT) != 0u)
-                            iter.voxel_data.phase = material.g;
+                        if ((flags & magicavoxel::MATERIAL_IOR_BIT) != 0u) {
+                            append_float(material.ior);
+
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_IOR,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
+
+                        {
+                            float reflectivity = 1.0f;
+                            if ((flags & magicavoxel::MATERIAL_SP_BIT) != 0u)
+                                reflectivity = material.sp;
+                            else if ((flags & magicavoxel::MATERIAL_SPEC_BIT) != 0u)
+                                reflectivity = material.spec;
+
+                            append_float(reflectivity);
+                            
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_REFLECTIVITY,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
+                            
+
+                        if ((flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u) {
+                            append_float(material.emit);
+
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_EMISSIVITY,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
+
+                        if ((flags & magicavoxel::MATERIAL_D_BIT) != 0u) {
+                            append_float(material.d);
+                            
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_DENSITY,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
+
+                        if ((flags & magicavoxel::MATERIAL_G_BIT) != 0u) {
+                            append_float(material.g);
+
+                            dynamic_attributes.push_back(GvoxAttribute{
+                                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                                .next        = nullptr,
+                                .type        = GVOX_ATTRIBUTE_TYPE_PHASE,
+                                .format      = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+                            });
+                        }
                     }
+
+                    auto voxel_desc_info = GvoxVoxelDescCreateInfo{
+                        .struct_type = GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO,
+                        .next = nullptr,
+                        .attribute_count = static_cast<uint32_t>(dynamic_attributes.size()),
+                        .attributes = dynamic_attributes.data(),
+                    };
+                    
+                    if (iter.dynamic_desc) {
+                        gvox_destroy_voxel_desc(iter.dynamic_desc);
+                        iter.dynamic_desc = nullptr;
+                    }
+
+                    auto res = gvox_create_voxel_desc(&voxel_desc_info, &iter.dynamic_desc);
+                    if (res != GVOX_SUCCESS) {
+                        // NOTE: hoping that it doesn't fail
+                        out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
+                        iter.offset.data[0] = iter.offset.data[1] = iter.offset.data[2] = 0u;
+                        iter.extent.data[0] = iter.extent.data[1] = iter.extent.data[2] = 0u;
+                        out->range = GvoxRange{
+                            .offset = {.axis_n = 3, .axis = iter.offset.data},
+                            .extent = {.axis_n = 3, .axis = iter.extent.data},
+                        };
+                        out->voxel_data = static_cast<void *>(buf.data());
+                        out->voxel_desc = self.desc;
+                        ++iter.voxel_index;
+                        return;
+                    }
+
                     out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
                     out->range = GvoxRange{
                         .offset = {.axis_n = 3, .axis = iter.offset.data},
                         .extent = {.axis_n = 3, .axis = iter.extent.data},
                     };
-                    out->voxel_data = static_cast<void *>(&iter.voxel_data);
-                    out->voxel_desc = self.desc;
+                    out->voxel_data = static_cast<void *>(buf.data());
+                    out->voxel_desc = iter.dynamic_desc;
                     ++iter.voxel_index;
                     return;
                 }
