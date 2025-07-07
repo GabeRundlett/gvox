@@ -26,6 +26,7 @@ namespace {
         float ior;
         float reflectivity;
         float emissivity;
+        float transparency;
         float density;
         float phase;
     };
@@ -237,6 +238,12 @@ namespace {
                 .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
                 .next = nullptr,
                 .type = GVOX_ATTRIBUTE_TYPE_EMISSIVITY,
+                .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
+            },
+            GvoxAttribute{
+                .struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE,
+                .next = nullptr,
+                .type = GVOX_ATTRIBUTE_TYPE_TRANSPARENCY,
                 .format = GVOX_CREATE_FORMAT(GVOX_FORMAT_ENCODING_FLOAT, GVOX_SINGLE_CHANNEL_BIT_COUNT(32)),
             },
             GvoxAttribute{
@@ -706,6 +713,9 @@ namespace {
 
                         if ((flags & magicavoxel::MATERIAL_EMIT_BIT) != 0u)
                             iter.voxel_data.emissivity = material.emit;
+
+                        if ((flags & magicavoxel::MATERIAL_TRANS_BIT) != 0u)
+                            iter.voxel_data.transparency = material.trans;
 
                         if ((flags & magicavoxel::MATERIAL_D_BIT) != 0u)
                             iter.voxel_data.density = material.d;
