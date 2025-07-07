@@ -60,6 +60,7 @@ GVOX_ENUM(GvoxResult){
     GVOX_ERROR_BAD_STRUCT_TYPE = -10,
     GVOX_ERROR_BAD_STREAM_CHAIN = -11,
     GVOX_ERROR_UNPARSABLE_INPUT = -12,
+    GVOX_ERROR_OUT_OF_BOUNDS = -13,
 };
 
 GVOX_ENUM(GvoxStructType){
@@ -538,10 +539,12 @@ GVOX_EXPORT void gvox_iterator_advance(GvoxIterator handle, GvoxIteratorAdvanceI
 
 #pragma region GVOX_FORMAT
 GVOX_FUNC(GvoxResult, gvox_create_voxel_desc, GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle);
+GVOX_FUNC(GvoxResult, gvox_voxel_desc_update, GvoxVoxelDesc handle, GvoxVoxelDescCreateInfo const *info);
 GVOX_FUNC(void, gvox_destroy_voxel_desc, GvoxVoxelDesc handle);
 
 GVOX_FUNC(uint32_t, gvox_voxel_desc_size_in_bits, GvoxVoxelDesc handle);
 GVOX_FUNC(uint32_t, gvox_voxel_desc_attribute_count, GvoxVoxelDesc handle);
+GVOX_FUNC(GvoxResult, gvox_voxel_desc_get_attribute, GvoxVoxelDesc handle, uint32_t index, GvoxAttribute *out_attribute);
 
 GVOX_FUNC(uint8_t, gvox_voxel_desc_compare, GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b);
 
