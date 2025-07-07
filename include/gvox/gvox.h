@@ -539,6 +539,7 @@ GVOX_EXPORT void gvox_iterator_advance(GvoxIterator handle, GvoxIteratorAdvanceI
 
 #pragma region GVOX_FORMAT
 GVOX_FUNC(GvoxResult, gvox_create_voxel_desc, GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *handle);
+GVOX_FUNC(GvoxResult, gvox_voxel_desc_update, GvoxVoxelDesc handle, GvoxVoxelDescCreateInfo const *info);
 GVOX_FUNC(void, gvox_destroy_voxel_desc, GvoxVoxelDesc handle);
 
 GVOX_FUNC(uint32_t, gvox_voxel_desc_size_in_bits, GvoxVoxelDesc handle);

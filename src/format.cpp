@@ -85,6 +85,42 @@ auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *
 
     return GVOX_SUCCESS;
 }
+auto gvox_voxel_desc_update(GvoxVoxelDesc handle, GvoxVoxelDescCreateInfo const *info) GVOX_FUNC_ATTRIB -> GvoxResult {
+    if (!handle || info->struct_type != GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO) {
+        return GVOX_ERROR_BAD_STRUCT_TYPE;
+    }
+    auto &impl = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc)*>(handle);
+    // reset
+    impl.attributes.clear();
+    impl.bit_count = 0;
+    // TODO: refactor code with create
+    for (uint32_t i = 0; i < info->attribute_count; ++i) {
+        auto const &in_attrib = info->attributes[i];
+        if (in_attrib.struct_type != GVOX_STRUCT_TYPE_ATTRIBUTE) {
+            return GVOX_ERROR_BAD_STRUCT_TYPE;
+        }
+        auto const format_desc = std::bit_cast<FormatDescriptor>(in_attrib.format);
+        uint32_t attribute_size = 0;
+        if (is_packed_multi_channel_attribute(in_attrib.type)) {
+            for (uint32_t c = 0; c < format_desc.packed.component_count + 1; ++c) {
+                attribute_size +=
+                  (c == 0 ? format_desc.packed.d0_bit_count + 1 :
+                  (c == 1 ? format_desc.packed.d1_bit_count + 1 :
+                            format_desc.packed.d2_bit_count + 1));
+            }
+        } else {
+            attribute_size = format_desc.single.bit_count + 1;
+        }
+        impl.attributes.push_back({
+            .bit_count   = attribute_size,
+            .bit_offset  = impl.bit_count,
+            .type        = in_attrib.type,
+            .format_desc = format_desc,
+        });
+        impl.bit_count += attribute_size;
+    }
+    return GVOX_SUCCESS;
+}
 void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB {
     destroy_handle(handle);
 }

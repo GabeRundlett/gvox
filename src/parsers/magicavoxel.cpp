@@ -831,13 +831,13 @@ namespace {
                         .attribute_count = static_cast<uint32_t>(dynamic_attributes.size()),
                         .attributes = dynamic_attributes.data(),
                     };
-                    
-                    if (iter.dynamic_desc) {
-                        gvox_destroy_voxel_desc(iter.dynamic_desc);
-                        iter.dynamic_desc = nullptr;
+                    GvoxResult res = GVOX_SUCCESS;
+                    if (!iter.dynamic_desc) {
+                        res = gvox_create_voxel_desc(&voxel_desc_info, &iter.dynamic_desc);
+                    } else {
+                        res = gvox_voxel_desc_update(iter.dynamic_desc, &voxel_desc_info);
                     }
 
-                    auto res = gvox_create_voxel_desc(&voxel_desc_info, &iter.dynamic_desc);
                     if (res != GVOX_SUCCESS) {
                         // NOTE: hoping that it doesn't fail
                         out->tag = GVOX_ITERATOR_VALUE_TYPE_LEAF;
