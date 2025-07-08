@@ -168,11 +168,18 @@ GVOX_ENUM(GvoxIteratorValueType){
     GVOX_ITERATOR_VALUE_TYPE_NODE_END,
 };
 
+GVOX_ENUM(GvoxNodeFlags) {
+    GVOX_NODE_FLAG_NONE = 0,
+    GVOX_NODE_FLAG_ANIMATION = 1 << 0,
+};
+
+
 GVOX_STRUCT(GvoxIteratorValue) {
     GvoxIteratorValueType tag;
     void const *voxel_data;
     GvoxVoxelDesc voxel_desc;
     GvoxRange range;
+    uint32_t flags;
 };
 
 #ifdef __cplusplus

@@ -49,7 +49,19 @@ namespace {
         size_t parent_group_begin_index{};
     };
 
-    using IteratorNode = std::variant<ModelInstance, GroupInstanceBegin, GroupInstanceEnd>;
+    struct AnimationInstanceBegin {
+        size_t parent_group_begin_index{};
+        GvoxOffset3D offset{};
+        GvoxExtent3D extent{};
+        size_t end_index{};
+        uint32_t num_frames{};
+    };
+
+    struct AnimationInstanceEnd {
+        size_t parent_group_begin_index{};
+    };
+
+    using IteratorNode = std::variant<ModelInstance, GroupInstanceBegin, GroupInstanceEnd, AnimationInstanceBegin, AnimationInstanceEnd>;
 
     struct Scene {
         std::vector<magicavoxel::Model> models{};
@@ -167,7 +179,79 @@ namespace {
             min_p.data[2] = std::min(min_p.data[2], s_current_node.offset.data[2]);
             max_p.data[0] = std::max(max_p.data[0], s_current_node.offset.data[0] + static_cast<int64_t>(s_current_node.extent.data[0]));
             max_p.data[1] = std::max(max_p.data[1], s_current_node.offset.data[1] + static_cast<int64_t>(s_current_node.extent.data[1]));
-            max_p.data[2] = std::max(max_p.data[2], s_current_node.offset.data[2] + static_cast<int64_t>(s_current_node.extent.data[2]));
+            max_p.data[2] = std::max(max_p.data[2], s_current_node.offset.data[2] + static_cast<int64_t>(s_current_node.extent.data[2]));        
+        } else if (std::holds_alternative<magicavoxel::SceneAnimationInfo>(node_info)) {
+            auto const &a_node_info = std::get<magicavoxel::SceneAnimationInfo>(node_info);
+
+            // Reserve room for all the frames + parent node
+            scene.iterator_nodes.reserve(scene.iterator_nodes.size() + a_node_info.num_frames + 2);
+            auto animation_begin_index = scene.iterator_nodes.size();
+            
+            // Create AnimationInstanceBegin
+            scene.iterator_nodes.emplace_back(AnimationInstanceBegin{
+                .parent_group_begin_index = parent_group_begin_index,
+                .num_frames = a_node_info.num_frames
+            });
+            
+            GvoxOffset3D animation_min_p{}, animation_max_p{};
+            animation_min_p.data[0] = animation_min_p.data[1] = animation_min_p.data[2] = std::numeric_limits<int64_t>::max();
+            animation_max_p.data[0] = animation_max_p.data[1] = animation_max_p.data[2] = std::numeric_limits<int64_t>::min();
+            
+            // Create ModelInstance for every frame
+            for (uint32_t frame_i = 0; frame_i < a_node_info.num_frames; ++frame_i) {
+                uint32_t model_id = scene_info.animation_frame_ids[a_node_info.first_frame_model_id_index + frame_i];
+                
+                scene.iterator_nodes.emplace_back(ModelInstance{});
+                auto &frame_node = std::get<ModelInstance>(scene.iterator_nodes.back());
+                frame_node.parent_group_begin_index = animation_begin_index;
+                frame_node.rotation = magicavoxel::inverse(trn.rotation);
+                frame_node.index = model_id;
+                
+                auto &model = scene.models[model_id];
+                auto extent = magicavoxel::rotate(
+                    magicavoxel::inverse(trn.rotation),
+                    GvoxExtent3D{model.extent[0], model.extent[1], model.extent[2]});
+                auto extent_offset = GvoxExtent3D{
+                    static_cast<uint32_t>((trn.rotation >> 4) & 1),
+                    static_cast<uint32_t>((trn.rotation >> 5) & 1),
+                    static_cast<uint32_t>((trn.rotation >> 6) & 1),
+                };
+                frame_node.offset = {
+                    trn.offset.data[0] - static_cast<int32_t>(extent.data[0] + extent_offset.data[0]) / 2,
+                    trn.offset.data[1] - static_cast<int32_t>(extent.data[1] + extent_offset.data[1]) / 2,
+                    trn.offset.data[2] - static_cast<int32_t>(extent.data[2] + extent_offset.data[2]) / 2,
+                };
+                frame_node.extent = extent;
+                
+                // Update parent BB of the animation
+                animation_min_p.data[0] = std::min(animation_min_p.data[0], frame_node.offset.data[0]);
+                animation_min_p.data[1] = std::min(animation_min_p.data[1], frame_node.offset.data[1]);
+                animation_min_p.data[2] = std::min(animation_min_p.data[2], frame_node.offset.data[2]);
+                animation_max_p.data[0] = std::max(animation_max_p.data[0], frame_node.offset.data[0] + static_cast<int64_t>(frame_node.extent.data[0]));
+                animation_max_p.data[1] = std::max(animation_max_p.data[1], frame_node.offset.data[1] + static_cast<int64_t>(frame_node.extent.data[1]));
+                animation_max_p.data[2] = std::max(animation_max_p.data[2], frame_node.offset.data[2] + static_cast<int64_t>(frame_node.extent.data[2]));
+            }
+            
+            auto end_index = scene.iterator_nodes.size();
+            scene.iterator_nodes.emplace_back(AnimationInstanceEnd{.parent_group_begin_index = animation_begin_index});
+            
+            // Configure Animation Begin
+            auto &animation_begin = std::get<AnimationInstanceBegin>(scene.iterator_nodes[animation_begin_index]);
+            animation_begin.offset = animation_min_p;
+            animation_begin.extent = GvoxExtent3D{
+                static_cast<uint64_t>(animation_max_p.data[0] - animation_min_p.data[0]),
+                static_cast<uint64_t>(animation_max_p.data[1] - animation_min_p.data[1]),
+                static_cast<uint64_t>(animation_max_p.data[2] - animation_min_p.data[2]),
+            };
+            animation_begin.end_index = end_index;
+            
+            // Set parent BB of the animation
+            min_p.data[0] = std::min(min_p.data[0], animation_min_p.data[0]);
+            min_p.data[1] = std::min(min_p.data[1], animation_min_p.data[1]);
+            min_p.data[2] = std::min(min_p.data[2], animation_min_p.data[2]);
+            max_p.data[0] = std::max(max_p.data[0], animation_max_p.data[0]);
+            max_p.data[1] = std::max(max_p.data[1], animation_max_p.data[1]);
+            max_p.data[2] = std::max(max_p.data[2], animation_max_p.data[2]);
         }
     }
 
@@ -287,6 +371,7 @@ namespace {
         magicavoxel::SceneInfo scene_info{};
         std::vector<magicavoxel::ModelKeyframe> shape_keyframes{};
         std::vector<magicavoxel::Layer> layers{};
+        std::vector<uint32_t> animation_frame_models{};
         auto temp_dict = magicavoxel::Dictionary{};
         while (true) {
             auto curr = gvox_input_tell(args->input_stream);
@@ -299,6 +384,54 @@ namespace {
             // curr = gvox_input_tell(args->input_stream);
             // std::cout << " - [" << curr << ", " << curr + chunk_header.size << "]: " << std::string_view{char_array.data(), char_array.size()} << std::endl;
             switch (chunk_header.id) {
+            case magicavoxel::CHUNK_ID_PACK: {
+                uint32_t frame_count = 0;
+                gvox_input_read(args->input_stream, &frame_count, sizeof(frame_count));
+                if (frame_count == 0) {
+                    delete &self;
+                    return GVOX_ERROR_UNKNOWN;
+                }
+
+                auto result_animation = magicavoxel::SceneAnimationInfo{};
+                result_animation.num_frames = frame_count;
+                result_animation.first_frame_model_id_index = static_cast<uint32_t>(scene_info.animation_frame_ids.size());
+
+                scene_info.animation_frame_ids.resize(result_animation.first_frame_model_id_index + frame_count);
+
+                for (uint32_t frame_i = 0; frame_i < frame_count; ++frame_i) {
+                    // SIZE
+                    magicavoxel::ChunkHeader size_chunk{};
+                    gvox_input_read(args->input_stream, &size_chunk, sizeof(size_chunk));
+                    if (size_chunk.id != magicavoxel::CHUNK_ID_SIZE ||
+                        size_chunk.size != 12 || size_chunk.child_size != 0) {
+                        delete &self;
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+
+                    models.push_back(magicavoxel::Model{});
+                    auto &model = models.back();
+                    gvox_input_read(args->input_stream, &model.extent, sizeof(model.extent));
+
+                    // XYZI
+                    magicavoxel::ChunkHeader xyzi_chunk{};
+                    gvox_input_read(args->input_stream, &xyzi_chunk, sizeof(xyzi_chunk));
+                    if (xyzi_chunk.id != magicavoxel::CHUNK_ID_XYZI) {
+                        delete &self;
+                        return GVOX_ERROR_UNKNOWN;
+                    }
+                    gvox_input_read(args->input_stream, &model.voxel_count, sizeof(model.voxel_count));
+                    model.input_offset = gvox_input_tell(args->input_stream);
+                    gvox_input_seek(
+                        args->input_stream,
+                        static_cast<int64_t>(xyzi_chunk.size) - static_cast<int64_t>(sizeof(model.voxel_count)),
+                        GVOX_SEEK_ORIGIN_CUR);
+
+                    scene_info.animation_frame_ids[result_animation.first_frame_model_id_index + frame_i] = 
+                        static_cast<uint32_t>(models.size() - 1);
+                }
+
+                scene_info.node_infos.push_back(result_animation);
+            } break;
             case magicavoxel::CHUNK_ID_SIZE: {
                 if (chunk_header.size != 12 || chunk_header.child_size != 0) {
                     // gvox_adapter_push_error(ctx, GVOX_RESULT_ERROR_PARSE_ADAPTER_INVALID_INPUT, "unexpected chunk size for SIZE chunk");
@@ -631,6 +764,8 @@ namespace {
         auto &self = *static_cast<Parser *>(self_ptr);
         auto &iter = *static_cast<Iterator *>(*iterator_ptr);
         auto mode = info->mode;
+        // TODO:should iterator keep state during traverse?
+        out->flags = 0u;
         while (true) {
             if (iter.iterator_index >= self.scene.iterator_nodes.size()) {
                 out->tag = GVOX_ITERATOR_VALUE_TYPE_NULL;
@@ -893,6 +1028,40 @@ namespace {
                     .offset = {.axis_n = 3, .axis = iter.offset.data},
                     .extent = {.axis_n = 3, .axis = iter.extent.data},
                 };
+                ++iter.iterator_index;
+                return;
+            } else if (std::holds_alternative<AnimationInstanceBegin>(node)) {
+                // Enter animation node
+                auto &animation_begin = std::get<AnimationInstanceBegin>(node);
+                if (mode == GVOX_ITERATOR_ADVANCE_MODE_SKIP_BRANCH) {
+                    iter.iterator_index = animation_begin.end_index;
+                    mode = GVOX_ITERATOR_ADVANCE_MODE_NEXT;
+                    continue;
+                } else {
+                    iter.offset = animation_begin.offset;
+                    iter.extent = animation_begin.extent;
+                    out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN;
+                    out->range = GvoxRange{
+                        .offset = {.axis_n = 3, .axis = iter.offset.data},
+                        .extent = {.axis_n = 3, .axis = iter.extent.data},
+                    };
+                    out->flags |= GVOX_NODE_FLAG_ANIMATION;
+                    // TODO: add extra metadata like animation frame count?
+                    ++iter.iterator_index;
+                    return;
+                }
+            } else if (std::holds_alternative<AnimationInstanceEnd>(node)) {
+                // Exit animation node
+                auto &animation_end = std::get<AnimationInstanceEnd>(node);
+                auto &animation_begin = std::get<AnimationInstanceBegin>(self.scene.iterator_nodes[animation_end.parent_group_begin_index]);
+                iter.offset = animation_begin.offset;
+                iter.extent = animation_begin.extent;
+                out->tag = GVOX_ITERATOR_VALUE_TYPE_NODE_END;
+                out->range = GvoxRange{
+                    .offset = {.axis_n = 3, .axis = iter.offset.data},
+                    .extent = {.axis_n = 3, .axis = iter.extent.data},
+                };
+                out->flags |= GVOX_NODE_FLAG_ANIMATION;
                 ++iter.iterator_index;
                 return;
             }

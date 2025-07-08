@@ -23,6 +23,7 @@ namespace magicavoxel {
     static constexpr uint32_t CHUNK_ID_LAYR = std::bit_cast<uint32_t>(std::array{'L', 'A', 'Y', 'R'});
     static constexpr uint32_t CHUNK_ID_MATL = std::bit_cast<uint32_t>(std::array{'M', 'A', 'T', 'L'});
     static constexpr uint32_t CHUNK_ID_MATT = std::bit_cast<uint32_t>(std::array{'M', 'A', 'T', 'T'});
+    static constexpr uint32_t CHUNK_ID_PACK = std::bit_cast<uint32_t>(std::array{'P', 'A', 'C', 'K'});
 
     static constexpr uint32_t MATERIAL_METAL_BIT = 1 << 0;
     static constexpr uint32_t MATERIAL_ROUGH_BIT = 1 << 1;
@@ -122,12 +123,18 @@ namespace magicavoxel {
         size_t keyframe_offset;
         bool loop;
     };
+    
+    struct SceneAnimationInfo {
+        uint32_t num_frames{};
+        uint32_t first_frame_model_id_index{};
+    };
 
-    using SceneNodeInfo = std::variant<SceneTransformInfo, SceneGroupInfo, SceneShapeInfo>;
+    using SceneNodeInfo = std::variant<SceneTransformInfo, SceneGroupInfo, SceneShapeInfo, SceneAnimationInfo>;
 
     struct SceneInfo {
         std::vector<uint32_t> group_children_ids{};
         std::vector<magicavoxel::SceneNodeInfo> node_infos{};
+        std::vector<uint32_t> animation_frame_ids{};
     };
 
     struct Model {
