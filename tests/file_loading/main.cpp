@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstdint>
 #include <stack>
+#include <set>
 
 #define HANDLE_RES(x, message)               \
     if ((x) != GVOX_SUCCESS) {               \
@@ -133,6 +134,8 @@ auto main() -> int {
         uint32_t num_voxels;
         uint32_t animation_id;
         uint32_t frame_index;
+        std::set<uint8_t> materials;
+        GvoxRange range;
     };
     
     std::stack<NodeContext> context_stack;
@@ -141,6 +144,7 @@ auto main() -> int {
     uint32_t current_model_index = 0;
     bool in_model = false;
     ModelData* current_model = nullptr;
+    std::set<uint8_t> unique_materials;
 
     std::cout << "Starting iteration..." << std::endl;
 
@@ -186,6 +190,7 @@ auto main() -> int {
                     current_model->num_voxels = 0;
                     current_model->animation_id = parent_animation_id;
                     current_model->frame_index = frame_index;
+                    current_model->range = iter_value.range;
                     
                     if (inside_animation) {
                         std::cout << "  MODEL BEGIN: ID=" << current_model_index 
@@ -341,6 +346,9 @@ auto main() -> int {
                     }
                 }
 
+                unique_materials.emplace(vd.palette_id);
+                current_model->materials.emplace(vd.palette_id);
+
                 // std::cout
                 //     << "Voxel leaf:\n"
                 //     << "  color       = ("
@@ -395,7 +403,7 @@ end_iteration:
         const auto& model = models[i];
         total_voxels += model.num_voxels;
         
-        std::cout << "Model " << i << ": " << model.num_voxels << " voxels";
+        std::cout << "Model " << i << ": " << model.num_voxels << " voxels : " << model.materials.size() << " materials";
         
         if (model.animation_id != UINT32_MAX) {
             std::cout << " (Animation " << model.animation_id 
@@ -405,12 +413,21 @@ end_iteration:
             std::cout << " (Standalone)";
             standalone_models++;
         }
+        std::cout << "  bounds offset=("
+                  << model.range.offset.axis[0] << ","
+                  << model.range.offset.axis[1] << ","
+                  << model.range.offset.axis[2] << ")"
+                  << " extent=("
+                  << model.range.extent.axis[0] << ","
+                  << model.range.extent.axis[1] << ","
+                  << model.range.extent.axis[2] << ")";
         std::cout << std::endl;
     }
     
     std::cout << "Animation frames: " << animation_frames << std::endl;
     std::cout << "Standalone models: " << standalone_models << std::endl;
     std::cout << "Total voxels: " << total_voxels << std::endl;
+    std::cout << "Total materials: " << unique_materials.size() << std::endl;
 
     gvox_destroy_iterator(input_iterator);
     gvox_destroy_input_stream(file_input);
