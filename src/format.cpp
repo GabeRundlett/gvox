@@ -85,6 +85,42 @@ auto gvox_create_voxel_desc(GvoxVoxelDescCreateInfo const *info, GvoxVoxelDesc *
 
     return GVOX_SUCCESS;
 }
+auto gvox_voxel_desc_update(GvoxVoxelDesc handle, GvoxVoxelDescCreateInfo const *info) GVOX_FUNC_ATTRIB -> GvoxResult {
+    if (!handle || info->struct_type != GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO) {
+        return GVOX_ERROR_BAD_STRUCT_TYPE;
+    }
+    auto &impl = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc)*>(handle);
+    // reset
+    impl.attributes.clear();
+    impl.bit_count = 0;
+    // TODO: refactor code with create
+    for (uint32_t i = 0; i < info->attribute_count; ++i) {
+        auto const &in_attrib = info->attributes[i];
+        if (in_attrib.struct_type != GVOX_STRUCT_TYPE_ATTRIBUTE) {
+            return GVOX_ERROR_BAD_STRUCT_TYPE;
+        }
+        auto const format_desc = std::bit_cast<FormatDescriptor>(in_attrib.format);
+        uint32_t attribute_size = 0;
+        if (is_packed_multi_channel_attribute(in_attrib.type)) {
+            for (uint32_t c = 0; c < format_desc.packed.component_count + 1; ++c) {
+                attribute_size +=
+                  (c == 0 ? format_desc.packed.d0_bit_count + 1 :
+                  (c == 1 ? format_desc.packed.d1_bit_count + 1 :
+                            format_desc.packed.d2_bit_count + 1));
+            }
+        } else {
+            attribute_size = format_desc.single.bit_count + 1;
+        }
+        impl.attributes.push_back({
+            .bit_count   = attribute_size,
+            .bit_offset  = impl.bit_count,
+            .type        = in_attrib.type,
+            .format_desc = format_desc,
+        });
+        impl.bit_count += attribute_size;
+    }
+    return GVOX_SUCCESS;
+}
 void gvox_destroy_voxel_desc(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB {
     destroy_handle(handle);
 }
@@ -96,6 +132,19 @@ auto gvox_voxel_desc_size_in_bits(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB -> uint
 auto gvox_voxel_desc_attribute_count(GvoxVoxelDesc handle) GVOX_FUNC_ATTRIB -> uint32_t {
     auto &voxel_desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc) *>(handle);
     return static_cast<uint32_t>(voxel_desc.attributes.size());
+}
+
+auto gvox_voxel_desc_get_attribute(GvoxVoxelDesc handle, uint32_t index, GvoxAttribute *out_attribute) GVOX_FUNC_ATTRIB -> GvoxResult {
+    auto &desc = *reinterpret_cast<IMPL_STRUCT_NAME(VoxelDesc)*>(handle);
+    if (index >= desc.attributes.size()) {
+        return GVOX_ERROR_OUT_OF_BOUNDS;
+    }
+    auto const &impl = desc.attributes[index];
+    out_attribute->struct_type = GVOX_STRUCT_TYPE_ATTRIBUTE;
+    out_attribute->next        = nullptr;
+    out_attribute->type        = impl.type;
+    out_attribute->format      = std::bit_cast<GvoxFormat>(impl.format_desc);
+    return GVOX_SUCCESS;
 }
 
 auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FUNC_ATTRIB -> uint8_t {
@@ -118,6 +167,10 @@ auto gvox_voxel_desc_compare(GvoxVoxelDesc desc_a, GvoxVoxelDesc desc_b) GVOX_FU
 // }
 
 auto gvox_translate_voxel(void const *src_data, GvoxVoxelDesc src_desc, void *dst_data, GvoxVoxelDesc dst_desc, GvoxAttributeMapping const *attrib_mapping, uint32_t attrib_mapping_n) GVOX_FUNC_ATTRIB -> GvoxResult {
+
+    if(src_desc->attributes.size() < attrib_mapping_n || dst_desc->attributes.size() < attrib_mapping_n)
+        return GVOX_ERROR_OUT_OF_BOUNDS;
+
     for (uint32_t mapping_i = 0; mapping_i < attrib_mapping_n; ++mapping_i) {
         auto const &mapping = attrib_mapping[mapping_i];
 

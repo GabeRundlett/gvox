@@ -9,12 +9,33 @@
 #include <fstream>
 #include <vector>
 #include <cstdint>
+#include <stack>
+#include <set>
 
 #define HANDLE_RES(x, message)               \
     if ((x) != GVOX_SUCCESS) {               \
         std::cerr << (message) << std::endl; \
         return -1;                           \
     }
+
+
+#pragma pack(push, 1)
+struct VoxelData
+{
+    uint8_t color[3];
+    uint8_t palette_id;
+    uint8_t type;
+    float roughness;
+    float opacity;
+    float metalness;
+    float ior;
+    float reflectivity;
+    float emissivity;
+    float density;
+    float phase;
+};
+#pragma pack(pop)
+
 
 auto main() -> int {
     // First create a voxel description.
@@ -80,6 +101,8 @@ auto main() -> int {
         auto parser_collection = GvoxParserDescriptionCollection{
             .struct_type = GVOX_STRUCT_TYPE_PARSER_DESCRIPTION_COLLECTION,
             .next = nullptr,
+            .descriptions = nullptr,
+            .description_n = 0,
         };
         gvox_enumerate_standard_parser_descriptions(&parser_collection.descriptions, &parser_collection.description_n);
         HANDLE_RES(gvox_create_parser_from_input(&parser_collection, file_input, &file_parser), "Failed to create parser");
@@ -100,6 +123,31 @@ auto main() -> int {
         gvox_create_iterator(&iter_ci, &input_iterator);
     }
 
+    struct NodeContext {
+        enum Type { UNKNOWN, ANIMATION, MODEL };
+        Type type;
+        uint32_t animation_id;
+        uint32_t current_frame;
+    };
+
+    struct ModelData {
+        uint32_t num_voxels;
+        uint32_t animation_id;
+        uint32_t frame_index;
+        std::set<uint8_t> materials;
+        GvoxRange range;
+    };
+    
+    std::stack<NodeContext> context_stack;
+    std::vector<ModelData> models;
+    uint32_t current_animation_id = 0;
+    uint32_t current_model_index = 0;
+    bool in_model = false;
+    ModelData* current_model = nullptr;
+    std::set<uint8_t> unique_materials;
+
+    std::cout << "Starting iteration..." << std::endl;
+
     // Now we'll simply iterate over the input.
     auto iter_value = GvoxIteratorValue{};
     auto advance_info = GvoxIteratorAdvanceInfo{
@@ -108,26 +156,284 @@ auto main() -> int {
     };
     while (true) {
         gvox_iterator_advance(input_iterator, &advance_info, &iter_value);
-        if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_NULL) {
-            break;
-        }
-        if (iter_value.tag == GVOX_ITERATOR_VALUE_TYPE_LEAF) {
-            // And for every "Leaf" node in the model, we'll write it into our container.
-            auto fill_info = GvoxFillInfo{
-                .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
-                .next = nullptr,
-                .src_data = iter_value.voxel_data,
-                .src_desc = iter_value.voxel_desc,
-                .dst = raw_container,
-                .range = iter_value.range,
-            };
-            HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+        
+        switch (iter_value.tag) {
+            case GVOX_ITERATOR_VALUE_TYPE_NODE_BEGIN: {
+                NodeContext new_context{};
+                
+                if (iter_value.flags & GVOX_NODE_FLAG_ANIMATION) {
+                    // This is an animation
+                    new_context.type = NodeContext::ANIMATION;
+                    new_context.animation_id = current_animation_id++;
+                    new_context.current_frame = 0;
+                    
+                    std::cout << "ANIMATION BEGIN: ID=" << new_context.animation_id << std::endl;
+                    
+                } else {
+                    // This is a model
+                    new_context.type = NodeContext::MODEL;
+                    
+                    // Check if we're inside an animation
+                    bool inside_animation = false;
+                    uint32_t parent_animation_id = UINT32_MAX;
+                    uint32_t frame_index = 0;
+                    
+                    if (!context_stack.empty() && context_stack.top().type == NodeContext::ANIMATION) {
+                        inside_animation = true;
+                        parent_animation_id = context_stack.top().animation_id;
+                        frame_index = context_stack.top().current_frame++;
+                    }
+                    
+                    // Create new model
+                    models.emplace_back();
+                    current_model = &models.back();
+                    current_model->num_voxels = 0;
+                    current_model->animation_id = parent_animation_id;
+                    current_model->frame_index = frame_index;
+                    current_model->range = iter_value.range;
+                    
+                    if (inside_animation) {
+                        std::cout << "  MODEL BEGIN: ID=" << current_model_index 
+                                  << " (Animation " << parent_animation_id 
+                                  << ", Frame " << frame_index << ")" << std::endl;
+                    } else {
+                        std::cout << "MODEL BEGIN: ID=" << current_model_index << " (Standalone)" << std::endl;
+                    }
+                    
+                    current_model_index++;
+                    in_model = true;
+                }
+                
+                context_stack.push(new_context);
+                break;
+            }
+            
+            case GVOX_ITERATOR_VALUE_TYPE_NODE_END: {
+                if (!context_stack.empty()) {
+                    auto context = context_stack.top();
+                    context_stack.pop();
+                    
+                    if (context.type == NodeContext::ANIMATION) {
+                        std::cout << "ANIMATION END: ID=" << context.animation_id 
+                                  << " (" << context.current_frame << " frames)" << std::endl;
+                    } else if (context.type == NodeContext::MODEL) {
+                        if (current_model) {
+                            if (current_model->animation_id != UINT32_MAX) {
+                                std::cout << "  MODEL END: " << current_model->num_voxels 
+                                          << " voxels (Animation " << current_model->animation_id 
+                                          << ", Frame " << current_model->frame_index << ")" << std::endl;
+                            } else {
+                                std::cout << "MODEL END: " << current_model->num_voxels 
+                                          << " voxels (Standalone)" << std::endl;
+                            }
+                        }
+                        current_model = nullptr;
+                        in_model = false;
+                    }
+                }
+                break;
+            }
+            
+            case GVOX_ITERATOR_VALUE_TYPE_LEAF: {
+                // Count voxel for current model
+                if (in_model && current_model) {
+                    current_model->num_voxels++;
+                }
+
+                // Extract detailed voxel data (from dynamic descriptors branch)
+                uint32_t desc_count = gvox_voxel_desc_attribute_count(iter_value.voxel_desc);
+
+                std::vector<GvoxAttribute> attrs(desc_count);
+                std::vector<GvoxAttributeMapping> mappings(desc_count);
+                for (uint32_t i = 0; i < desc_count; ++i) {
+                    HANDLE_RES(
+                        gvox_voxel_desc_get_attribute(iter_value.voxel_desc, i, &attrs[i]),
+                        "Failed to get attribute");
+                    mappings[i] = GvoxAttributeMapping{ .dst_index = static_cast<uint8_t>(i),
+                                                        .src_index = static_cast<uint8_t>(i),
+                                                        .src1_index = static_cast<uint8_t>(0),
+                                                        .src2_index = static_cast<uint8_t>(0) };
+                }
+
+                GvoxVoxelDesc leaf_desc{};
+                GvoxVoxelDescCreateInfo di{
+                    .struct_type     = GVOX_STRUCT_TYPE_VOXEL_DESC_CREATE_INFO,
+                    .next            = nullptr,
+                    .attribute_count = desc_count,
+                    .attributes      = attrs.data(),
+                };
+                HANDLE_RES(
+                    gvox_create_voxel_desc(&di, &leaf_desc),
+                    "Failed to create temporary voxel descriptor");
+
+                std::vector<uint8_t> buffer(sizeof(VoxelData));
+                HANDLE_RES(
+                    gvox_translate_voxel(iter_value.voxel_data,
+                                        iter_value.voxel_desc,
+                                        buffer.data(),
+                                        leaf_desc,
+                                        mappings.data(),
+                                        desc_count),
+                    "Failed to translate voxel data");
+
+                VoxelData vd{};
+                uint32_t arb_seen = 0;
+                uint8_t *raw = buffer.data();
+
+                for (uint32_t i = 0; i < desc_count; ++i) {
+                    GvoxAttribute attr;
+                    gvox_voxel_desc_get_attribute(iter_value.voxel_desc, i, &attr);
+
+                    switch (attr.type) {
+                        case GVOX_ATTRIBUTE_TYPE_ALBEDO_PACKED:
+                            // 3 bytes R,G,B
+                            memcpy(vd.color, raw, 3);
+                            raw += 3;
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_ARBITRARY_INTEGER:
+                            if (arb_seen == 0)
+                                vd.palette_id = raw[0];
+                            else if (arb_seen == 1)
+                                vd.type       = raw[0];
+                            ++arb_seen;
+                            raw += 1;
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_ROUGHNESS:
+                            vd.roughness = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_OPACITY:
+                            vd.opacity = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_METALNESS:
+                            vd.metalness = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_IOR:
+                            vd.ior = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_REFLECTIVITY:
+                            vd.reflectivity = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_EMISSIVITY:
+                            vd.emissivity = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_DENSITY:
+                            vd.density = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        case GVOX_ATTRIBUTE_TYPE_PHASE:
+                            vd.phase = *reinterpret_cast<float*>(raw);
+                            raw += sizeof(float);
+                            break;
+
+                        default:
+                            // TODO: check format and increment by size
+                            break;
+                    }
+                }
+
+                unique_materials.emplace(vd.palette_id);
+                current_model->materials.emplace(vd.palette_id);
+
+                // std::cout
+                //     << "Voxel leaf:\n"
+                //     << "  color       = ("
+                //     << static_cast<uint32_t>(vd.color[0]) << ", "
+                //     << static_cast<uint32_t>(vd.color[1]) << ", "
+                //     << static_cast<uint32_t>(vd.color[2]) << ")\n"
+                //     << "  palette_id  = " << static_cast<uint32_t>(vd.palette_id) << "\n"
+                //     << "  type        = " << static_cast<uint32_t>(vd.type) << "\n"
+                //     << "  roughness   = " << vd.roughness << "\n"
+                //     << "  opacity     = " << vd.opacity << "\n"
+                //     << "  metalness   = " << vd.metalness << "\n"
+                //     << "  ior         = " << vd.ior << "\n"
+                //     << "  reflectivity= " << vd.reflectivity << "\n"
+                //     << "  emissivity  = " << vd.emissivity << "\n"
+                //     << "  density     = " << vd.density << "\n"
+                //     << "  phase       = " << vd.phase << "\n"
+                //     << std::endl;
+
+                gvox_destroy_voxel_desc(leaf_desc);
+
+                // And for every "Leaf" node in the model, we'll write it into our container.
+                auto fill_info = GvoxFillInfo{
+                    .struct_type = GVOX_STRUCT_TYPE_FILL_INFO,
+                    .next = nullptr,
+                    .src_data = iter_value.voxel_data,
+                    .src_desc = iter_value.voxel_desc,
+                    .dst = raw_container,
+                    .range = iter_value.range,
+                };
+                HANDLE_RES(gvox_fill(&fill_info), "Failed to do fill");
+                break;
+            }
+            
+            case GVOX_ITERATOR_VALUE_TYPE_NULL:
+                goto end_iteration;
+                
+            default:
+                break;
         }
     }
+
+    // little gift
+end_iteration:
+    std::cout << "\n=== SUMMARY ===" << std::endl;
+    std::cout << "Total models: " << models.size() << std::endl;
+    
+    uint32_t total_voxels = 0;
+    uint32_t animation_frames = 0;
+    uint32_t standalone_models = 0;
+    
+    for (size_t i = 0; i < models.size(); ++i) {
+        const auto& model = models[i];
+        total_voxels += model.num_voxels;
+        
+        std::cout << "Model " << i << ": " << model.num_voxels << " voxels : " << model.materials.size() << " materials";
+        
+        if (model.animation_id != UINT32_MAX) {
+            std::cout << " (Animation " << model.animation_id 
+                      << ", Frame " << model.frame_index << ")";
+            animation_frames++;
+        } else {
+            std::cout << " (Standalone)";
+            standalone_models++;
+        }
+        std::cout << "  bounds offset=("
+                  << model.range.offset.axis[0] << ","
+                  << model.range.offset.axis[1] << ","
+                  << model.range.offset.axis[2] << ")"
+                  << " extent=("
+                  << model.range.extent.axis[0] << ","
+                  << model.range.extent.axis[1] << ","
+                  << model.range.extent.axis[2] << ")";
+        std::cout << std::endl;
+    }
+    
+    std::cout << "Animation frames: " << animation_frames << std::endl;
+    std::cout << "Standalone models: " << standalone_models << std::endl;
+    std::cout << "Total voxels: " << total_voxels << std::endl;
+    std::cout << "Total materials: " << unique_materials.size() << std::endl;
 
     gvox_destroy_iterator(input_iterator);
     gvox_destroy_input_stream(file_input);
     gvox_destroy_parser(file_parser);
     gvox_destroy_container(raw_container);
     gvox_destroy_voxel_desc(rgb_voxel_desc);
+    
+    return 0;
 }
