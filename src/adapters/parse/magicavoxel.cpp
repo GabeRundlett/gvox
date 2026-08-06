@@ -8,6 +8,7 @@
 #include <memory>
 #include <limits>
 #include <numeric>
+#include <chrono>
 
 #include "../shared/thread_pool.hpp"
 using namespace gvox_detail::thread_pool;
