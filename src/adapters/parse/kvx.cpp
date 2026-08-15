@@ -103,9 +103,9 @@ extern "C" auto gvox_parse_adapter_kvx_sample_region(GvoxBlitContext * /*unused*
         return {0u, 0u};
     }
 
-    auto x = offset->x;
-    auto y = user_state.ysiz - offset->y - 1;
-    auto z = user_state.zsiz - offset->z - 1;
+    auto x = static_cast<uint32_t>(offset->x);
+    auto y = user_state.ysiz - static_cast<uint32_t>(offset->y) - 1;
+    auto z = user_state.zsiz - static_cast<uint32_t>(offset->z) - 1;
 
     auto start_index = user_state.xoffset[x] - user_state.voxdata_offset + user_state.xyoffset[x * (user_state.ysiz + 1) + y];
     auto end_index = user_state.xoffset[x] - user_state.voxdata_offset + user_state.xyoffset[x * (user_state.ysiz + 1) + (y + 1)];

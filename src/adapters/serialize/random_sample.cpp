@@ -33,7 +33,7 @@ extern "C" void gvox_serialize_adapter_random_sample_destroy(GvoxAdapterContext 
     free(&user_state);
 }
 
-extern "C" void gvox_serialize_adapter_random_sample_blit_begin(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegionRange const *range, uint32_t channel_flags) {
+extern "C" void gvox_serialize_adapter_random_sample_blit_begin(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegionRange const * /*unused*/, uint32_t /*unused*/) {
 }
 
 extern "C" void gvox_serialize_adapter_random_sample_blit_end(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx) {
@@ -61,7 +61,7 @@ extern "C" void gvox_serialize_adapter_random_sample_serialize_region(GvoxBlitCo
     auto x_dist = std::uniform_int_distribution<std::mt19937::result_type>(0, range->extent.x - 1);
     auto y_dist = std::uniform_int_distribution<std::mt19937::result_type>(0, range->extent.y - 1);
     auto z_dist = std::uniform_int_distribution<std::mt19937::result_type>(0, range->extent.z - 1);
-    auto c_dist = std::uniform_int_distribution<std::mt19937::result_type>(0, channels.size() - 1);
+    auto c_dist = std::uniform_int_distribution<std::mt19937::result_type>(0, static_cast<std::mt19937::result_type>(channels.size() - 1));
 
     for (size_t i = 0; i < user_state.config.sample_count; ++i) {
         // get random pos
@@ -92,6 +92,6 @@ extern "C" void gvox_serialize_adapter_random_sample_serialize_region(GvoxBlitCo
 }
 
 // Parse Driven
-extern "C" void gvox_serialize_adapter_random_sample_receive_region(GvoxBlitContext *blit_ctx, GvoxAdapterContext *ctx, GvoxRegion const *region) {
+extern "C" void gvox_serialize_adapter_random_sample_receive_region(GvoxBlitContext * /*unused*/, GvoxAdapterContext * /*unused*/, GvoxRegion const * /*unused*/) {
     // Shouldn't be called
 }

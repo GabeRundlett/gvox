@@ -43,6 +43,7 @@ extern "C" void gvox_parse_adapter_voxlap_create(GvoxAdapterContext *ctx, void c
             .size_y = 1024,
             .size_z = 256,
             .make_solid = 1,
+            .is_ace_of_spades = 0,
         };
     }
 }

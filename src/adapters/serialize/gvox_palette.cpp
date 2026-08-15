@@ -117,7 +117,7 @@ extern "C" void gvox_serialize_adapter_gvox_palette_blit_end(GvoxBlitContext *bl
             for (uint32_t rxi = 0; rxi < user_state.region_nx; ++rxi) {
                 auto &palette_region_channel = user_state.palette_region_channels[rxi + ryi * user_state.region_nx + rzi * user_state.region_nx * user_state.region_ny];
                 for (uint32_t ci = 0; ci < user_state.channels.size(); ++ci) {
-                    auto region_header = ChannelHeader{.variant_n = 1u};
+                    auto region_header = ChannelHeader{.variant_n = 1u, .blob_offset = 0u};
                     auto size = size_t{0};
                     auto local_data = std::vector<uint8_t>{};
                     auto alloc_region = [&]() {
